@@ -1,5 +1,16 @@
 spring:
   application:
     name: whataburger-project
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/whataburger
+    hikari:
+      username: root
+      password: 1234
+  jpa:
+    database: mysql
+    database-platform: org.hibernate.dialect.MySQL8Dialect
+    show-sql: true
+
 server:
   port: 8080
