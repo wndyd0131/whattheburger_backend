@@ -21,7 +21,7 @@ public class Order {
     @JoinColumn(name = "user_id")
     private User user;
     @OneToMany(mappedBy = "order")
-    private OrderItem orderItems;
+    private List<OrderItem> orderItems = new ArrayList<>();
     private LocalDateTime orderDate;
     @Enumerated(EnumType.STRING)
     private OrderType orderType;

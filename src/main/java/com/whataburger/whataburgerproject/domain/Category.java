@@ -13,5 +13,4 @@ public class Category {
     @Column(name = "category_id")
     private Long id;
     private String name;
-    private List<Product>
 }

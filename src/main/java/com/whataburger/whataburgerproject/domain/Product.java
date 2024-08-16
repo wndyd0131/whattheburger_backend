@@ -1,11 +1,16 @@
 package com.whataburger.whataburgerproject.domain;
 
+import com.whataburger.whataburgerproject.exception.NotEnoughStockException;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
+@Getter
+@Setter
 public class Product {
     @Id
     @Column(name = "product_id")
@@ -13,8 +18,19 @@ public class Product {
     private Long id;
     private String name;
     private int price;
-    private int stock;
-    @OneToMany //?
-    private List<Ingredient> ingredients = new ArrayList<>();
-    private List categories;
+//    private int stock;
+    @OneToMany(mappedBy = "product")
+    private List<ProductIngredient> productIngredients = new ArrayList<>();
+
+//    public void addStock(int quantity) {
+//        this.stock += quantity;
+//    }
+//
+//    public void reduceStock(int quantity) {
+//         int reducedStock = this.stock - quantity;
+//         if (reducedStock < 0) {
+//             throw new NotEnoughStockException("not enough stock");
+//         }
+//         this.stock = reducedStock;
+//    }
 }
