@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 
 @Entity
 public class ProductIngredient {
-    @Id @GeneratedValue
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "product_ingredient_id")
     private Long id;
 

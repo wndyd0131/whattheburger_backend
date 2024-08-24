@@ -3,21 +3,20 @@ package com.whataburger.whataburgerproject.domain;
 import com.whataburger.whataburgerproject.exception.NotEnoughStockException;
 import jakarta.persistence.*;
 import lombok.Getter;
-import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
 @Getter
-@Setter
 public class Product {
     @Id
     @Column(name = "product_id")
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String name;
     private int price;
+    private int calories;
 //    private int stock;
     @OneToMany(mappedBy = "product")
     private List<ProductIngredient> productIngredients = new ArrayList<>();

@@ -35,7 +35,7 @@ public class UserService {
     }
 
     private void validateDuplicateEmail(User user) {
-        List<User> userList = userRepository.findUserByName(user.getEmail());
+        List<User> userList = userRepository.findUserByEmail(user.getEmail());
         if (!userList.isEmpty()) {
             throw new IllegalStateException("The user already exists");
         }
