@@ -6,14 +6,25 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class ProductService {
     private final ProductRepository productRepository;
 
-    public List<Product> getAllProducts() {
+    public Long createProduct(Product product) {
+        productRepository.save(product);
+        return product.getId();
+    }
+    public List<Product> findAllProducts() {
         List<Product> products = productRepository.findAll();
         return products;
     }
+
+    public Product findProductById(Long productId) {
+        Product product = productRepository.findById(productId).get();
+        return product;
+    }
+
 }

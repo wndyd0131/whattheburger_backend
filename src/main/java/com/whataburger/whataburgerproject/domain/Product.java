@@ -2,34 +2,35 @@ package com.whataburger.whataburgerproject.domain;
 
 import com.whataburger.whataburgerproject.exception.NotEnoughStockException;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
 @Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Product {
     @Id
     @Column(name = "product_id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String name;
-    private int price;
-    private int calories;
-//    private int stock;
-    @OneToMany(mappedBy = "product")
-    private List<ProductIngredient> productIngredients = new ArrayList<>();
+    private double price;
+    private String ingredientInfo;
+//    @OneToMany(mappedBy = "product")
+//    private List<ProductIngredient> productIngredients = new ArrayList<>();
 
-//    public void addStock(int quantity) {
-//        this.stock += quantity;
-//    }
-//
-//    public void reduceStock(int quantity) {
-//         int reducedStock = this.stock - quantity;
-//         if (reducedStock < 0) {
-//             throw new NotEnoughStockException("not enough stock");
-//         }
-//         this.stock = reducedStock;
-//    }
+    public Product(
+            String name,
+            double price,
+            String ingredientInfo
+    ) {
+        this.name = name;
+        this.price = price;
+        this.ingredientInfo = ingredientInfo;
+    }
+
 }
