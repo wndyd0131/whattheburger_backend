@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.util.List;
+import java.util.Optional;
 
 @DataJpaTest
 @ActiveProfiles("test")
@@ -53,5 +54,16 @@ public class ProductRepositoryTest {
 
         Assertions.assertThat(foundProduct).isNotNull();
         Assertions.assertThat(foundProduct).isSameAs(product);
+    }
+
+    @Test
+    public void Product_Repository_DeleteById_Success() {
+        Product product = new Product("whataburger", 5.99, "Delicious whataburger");
+
+        productRepository.save(product);
+        productRepository.deleteById(product.getId());
+        Optional<Product> foundProduct = productRepository.findById(product.getId());
+
+        Assertions.assertThat(foundProduct).isEmpty();
     }
 }

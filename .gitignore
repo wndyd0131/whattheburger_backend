@@ -33,8 +33,11 @@ out/
 /nbdist/
 /.nb-gradle/
 
-# Properties
+### Properties ###
 src/**/resources/application*.yml
+
+### Personal ###
+/note.txt
 
 
 ### VS Code ###

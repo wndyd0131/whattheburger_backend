@@ -1,14 +1,12 @@
 package com.whataburger.whataburgerproject.controller.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
+@Builder
 public class ProductCreateResponseDTO {
     private Long id;
 }

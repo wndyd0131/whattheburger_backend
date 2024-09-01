@@ -14,8 +14,6 @@ public class ProductControllerTest {
     @MockBean // Load mocked bean (that ProductController depends on)
     ProductService productService;
 
-    // localhost:8082/api/v1/products
-
     @Test
     void getProducts() throws Exception {
 

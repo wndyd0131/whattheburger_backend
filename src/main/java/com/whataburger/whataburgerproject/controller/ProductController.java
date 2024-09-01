@@ -24,7 +24,6 @@ public class ProductController {
     @PostMapping("/api/v1/products")
     public ProductCreateResponseDTO createProduct(@RequestBody ProductCreateRequestDTO productCreateRequestDTO) {
         Product product = productCreateRequestDTO.toEntity();
-        System.out.println(product.getIngredientInfo());
         Long productId = productService.createProduct(product);
         return new ProductCreateResponseDTO(productId);
     }

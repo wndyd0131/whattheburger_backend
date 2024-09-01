@@ -14,6 +14,7 @@ public class ProductService {
     private final ProductRepository productRepository;
 
     public Long createProduct(Product product) {
+        System.out.println(product.getName());
         productRepository.save(product);
         return product.getId();
     }
