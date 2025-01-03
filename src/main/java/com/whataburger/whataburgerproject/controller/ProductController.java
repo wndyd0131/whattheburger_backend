@@ -17,7 +17,7 @@ public class ProductController {
     private final ProductService productService;
     @GetMapping("/api/v1/products")
     public List<Product> getAllProducts() {
-        List<Product> allProducts = productService.findAllProducts();
+        List<Product> allProducts = productService.getAllProducts();
         return allProducts;
     }
 
@@ -30,7 +30,7 @@ public class ProductController {
 
     @GetMapping("/api/v1/products/{id}")
     public Product getProductById(@PathVariable Long product_id) {
-        Product product = productService.findProductById(product_id);
+        Product product = productService.getProductById(product_id);
         return product;
     }
 

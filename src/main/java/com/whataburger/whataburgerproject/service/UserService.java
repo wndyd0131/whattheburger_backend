@@ -3,11 +3,12 @@ package com.whataburger.whataburgerproject.service;
 import com.whataburger.whataburgerproject.domain.User;
 import com.whataburger.whataburgerproject.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Optional;
 
 @Service
 @Transactional(readOnly = true) // optimization
@@ -35,17 +36,12 @@ public class UserService {
     }
 
     private void validateDuplicateEmail(User user) {
-        List<User> userList = userRepository.findUserByEmail(user.getEmail());
-        if (!userList.isEmpty()) {
-            throw new IllegalStateException("The user already exists");
-        }
-    }
-
-    public List<User> findUsers() {
-        return userRepository.findAllUser();
+        if (userRepository.findByEmail(user.getEmail()).isPresent())
+            throw new IllegalArgumentException("The user already exists");
     }
 
     public User findUser(Long userId) {
-        return userRepository.findUser(userId);
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("There is no such user"));
     }
 }

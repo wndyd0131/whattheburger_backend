@@ -34,7 +34,6 @@ public class ProductServiceTest {
         product.setId(1L);
         when(productRepository.save(Mockito.any(Product.class))).thenReturn(product); // not working well..
         Long productId = productService.createProduct(product);
-        System.out.println(productId);
         Assertions.assertThat(productId).isEqualTo(product.getId());
     }
     @Test
@@ -43,7 +42,7 @@ public class ProductServiceTest {
         Product product = new Product("whataburger", 5.99, "This is whataburger");
         Product newProduct = productRepository.save(product);
         //then
-        Product foundProduct = productService.findProductById(newProduct.getId());
+        Product foundProduct = productService.getProductById(newProduct.getId());
         Assertions.assertThat(foundProduct.getId()).isEqualTo(newProduct.getId());
     }
 }

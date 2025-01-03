@@ -1,6 +1,5 @@
 package com.whataburger.whataburgerproject.domain;
 
-import com.whataburger.whataburgerproject.domain.enums.Allergens;
 import jakarta.persistence.*;
 
 import java.util.List;
@@ -25,9 +24,9 @@ public class Nutrition {
     private int dietaryFiber;
     private int protein;
     private int sugars;
-    @ElementCollection
-    @Enumerated(EnumType.STRING)
-    private List<Allergens> allergens;
+//    @ElementCollection
+//    @Enumerated(EnumType.STRING)
+//    private List<Allergens> allergens;
 
     /* allergens
     * 1. column: allergen_name, product_id

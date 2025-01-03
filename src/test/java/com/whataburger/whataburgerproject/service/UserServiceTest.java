@@ -1,19 +1,14 @@
 package com.whataburger.whataburgerproject.service;
 
-import com.whataburger.whataburgerproject.domain.User;
-import com.whataburger.whataburgerproject.repository.UserRepository;
-import org.assertj.core.api.Assertions;
+import com.whataburger.whataburgerproject.repository.UserRepository1;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 @Transactional
 class UserServiceTest {
     @Autowired
-    UserRepository userRepository;
+    UserRepository1 userRepository;
     @Autowired
     UserService userService;
 

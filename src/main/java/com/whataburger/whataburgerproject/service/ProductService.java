@@ -18,12 +18,12 @@ public class ProductService {
         productRepository.save(product);
         return product.getId();
     }
-    public List<Product> findAllProducts() {
+    public List<Product> getAllProducts() {
         List<Product> products = productRepository.findAll();
         return products;
     }
 
-    public Product findProductById(Long productId) {
+    public Product getProductById(Long productId) {
         Product product = productRepository.findById(productId).get();
         return product;
     }
