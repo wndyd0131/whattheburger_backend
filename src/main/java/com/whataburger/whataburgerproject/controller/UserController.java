@@ -29,12 +29,13 @@ public class UserController {
                         user.getFirstName(),
                         user.getLastName(),
                         user.getPhoneNum(),
-                        user.getZipcode(),
-                        user.getEmail()),
+                        user.getEmail(),
+                        user.getZipcode()
+                ),
                 HttpStatusCode.valueOf(200)
         );
     }
-    @PostMapping("/api/v1/users")
+    @PostMapping("/api/v1/register")
     public ResponseEntity<UserCreateResponseDto> saveUser(@RequestBody UserDto userDto) {
         Long userId = userService.join(userDto.toEntity());
         return new ResponseEntity<>(

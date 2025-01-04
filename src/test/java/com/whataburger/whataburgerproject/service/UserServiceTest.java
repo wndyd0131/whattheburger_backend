@@ -1,6 +1,6 @@
 package com.whataburger.whataburgerproject.service;
 
-import com.whataburger.whataburgerproject.repository.UserRepository1;
+import com.whataburger.whataburgerproject.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
@@ -8,7 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 class UserServiceTest {
     @Autowired
-    UserRepository1 userRepository;
+    UserRepository userRepository;
     @Autowired
     UserService userService;
 
