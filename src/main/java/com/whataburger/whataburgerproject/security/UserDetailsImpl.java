@@ -8,11 +8,11 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 import java.util.Collections;
 
-public class UserPrincipal implements UserDetails {
+public class UserDetailsImpl implements UserDetails {
 
     private User user;
 
-    public UserPrincipal(User user) {
+    public UserDetailsImpl(User user) {
         this.user = user;
     }
 
@@ -29,6 +29,22 @@ public class UserPrincipal implements UserDetails {
     @Override
     public String getUsername() {
         return user.getEmail();
+    }
+
+    public String getFirstName() {
+        return user.getFirstName();
+    }
+
+    public String getLastName() {
+        return user.getLastName();
+    }
+
+    public String getPhoneNum() {
+        return user.getPhoneNum();
+    }
+
+    public String getZipcode() {
+        return user.getZipcode();
     }
 
     @Override

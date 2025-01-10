@@ -2,7 +2,6 @@ package com.whataburger.whataburgerproject.security;
 
 import com.whataburger.whataburgerproject.domain.User;
 import com.whataburger.whataburgerproject.repository.UserRepository;
-import com.whataburger.whataburgerproject.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -22,6 +21,6 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 () -> new IllegalArgumentException("No such user")
         );
 
-        return new UserPrincipal(user);
+        return new UserDetailsImpl(user);
     }
 }

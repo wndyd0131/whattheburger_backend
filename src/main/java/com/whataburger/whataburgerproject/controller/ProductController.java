@@ -4,14 +4,17 @@ import com.whataburger.whataburgerproject.controller.dto.ProductCreateRequestDTO
 import com.whataburger.whataburgerproject.controller.dto.ProductCreateResponseDTO;
 import com.whataburger.whataburgerproject.domain.Product;
 import com.whataburger.whataburgerproject.service.ProductService;
+import com.whataburger.whataburgerproject.service.dto.ProductCreateDetailsDto;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
+@Slf4j
 public class ProductController {
 
     private final ProductService productService;
@@ -23,9 +26,14 @@ public class ProductController {
 
     @PostMapping("/api/v1/products")
     public ProductCreateResponseDTO createProduct(@RequestBody ProductCreateRequestDTO productCreateRequestDTO) {
-        Product product = productCreateRequestDTO.toEntity();
-        Long productId = productService.createProduct(product);
-        return new ProductCreateResponseDTO(productId);
+        Product product = productService.createProduct(productCreateRequestDTO);
+        return new ProductCreateResponseDTO(
+                product.getId(),
+                product.getName(),
+                product.getPrice(),
+                product.getIngredientInfo(),
+                product.getImageSource()
+        );
     }
 
     @GetMapping("/api/v1/products/{id}")

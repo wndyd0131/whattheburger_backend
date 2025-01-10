@@ -34,13 +34,13 @@ public class SecurityConfig {
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(
                         (auth) -> auth
-                                .requestMatchers(HttpMethod.POST, "/api/v1/register", "/api/v1/login").permitAll()
-                                .requestMatchers(HttpMethod.GET, "/api/v1/users").authenticated()
+//                                .requestMatchers(HttpMethod.POST, "/api/v1/register", "/api/v1/login").permitAll()
+//                                .requestMatchers(HttpMethod.GET, "/api/v1/users").authenticated()
+                                .anyRequest().permitAll()
                 );
         // Apple
         // Google
         // Facebook
-        // Local
 
         return http.build();
     }

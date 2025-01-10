@@ -1,4 +1,4 @@
-package com.whataburger.whataburgerproject.enums;
+package com.whataburger.whataburgerproject.security.enums;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
