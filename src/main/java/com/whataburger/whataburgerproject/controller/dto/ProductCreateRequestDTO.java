@@ -9,19 +9,21 @@ import java.util.List;
 @Data
 @Builder
 public class ProductCreateRequestDTO {
-    private String name;
-    private double price;
+    private String productName;
+    private double productPrice;
     private String ingredientInfo;
     private String imageSource;
-    private List<IngredientRequest> ingredients;
+    private List<OptionRequest> options;
 
     @NoArgsConstructor
     @Data
-    public static class IngredientRequest {
-        private Long ingredientId;
+    public static class OptionRequest {
+        private Long optionId;
+        private Boolean isDefault;
+        private int defaultQuantity;
     }
 
     public Product toEntity() {
-        return new Product(name, price, ingredientInfo, imageSource);
+        return new Product(productName, productPrice, ingredientInfo, imageSource);
     }
 }

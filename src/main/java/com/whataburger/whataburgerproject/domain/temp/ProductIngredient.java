@@ -5,7 +5,7 @@ import com.whataburger.whataburgerproject.domain.Product;
 import jakarta.persistence.*;
 import lombok.NoArgsConstructor;
 
-@Entity
+//@Entity
 @NoArgsConstructor
 public class ProductIngredient {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)

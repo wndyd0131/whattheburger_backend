@@ -1,4 +1,4 @@
-package com.whataburger.whataburgerproject.domain;
+package com.whataburger.whataburgerproject.domain.temp;
 
 import jakarta.persistence.*;
 

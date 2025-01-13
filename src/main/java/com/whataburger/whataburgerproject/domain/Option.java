@@ -6,22 +6,25 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Inheritance(strategy = InheritanceType.JOINED)
-@DiscriminatorColumn(name = "option_type", discriminatorType = DiscriminatorType.STRING)
-@Table(name="options")
-public abstract class Option {
+@Table(name = "options")
+public class Option {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "option_id")
     private Long id;
     private String name;
     private double extraPrice;
-    private int calories;
+
+    @ManyToOne
+    @JoinColumn(name = "option_type_id")
+    private OptionType optionType;
+
     @OneToMany(mappedBy = "option")
     private List<ProductOption> productOptions = new ArrayList<>();
-    //    @OneToMany
-//    private Ingredient ingredient;
 
-    public abstract void validate();
-    public abstract void apply();
+    @ManyToMany
+    @JoinTable(name="OPTION_OPTION_TRAIT",
+            joinColumns = @JoinColumn(name="option_id"),
+            inverseJoinColumns = @JoinColumn(name="option_trait_id"))
+    private List<OptionTrait> optionTraits = new ArrayList<>();
 }

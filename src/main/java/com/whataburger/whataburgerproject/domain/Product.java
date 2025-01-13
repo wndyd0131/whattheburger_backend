@@ -21,15 +21,12 @@ public class Product {
     private double price;
     private String ingredientInfo;
     private String imageSource;
+
     @ManyToMany(mappedBy = "products")
     private List<Category> categories = new ArrayList<>();
-    //    @OneToMany(mappedBy = "product")
-//    private List<ProductIngredient> productIngredients = new ArrayList<>();
 
     @OneToMany(mappedBy = "product")
     private List<ProductOption> productOptions = new ArrayList<>();
-
-
 
     public Product(
             String name,

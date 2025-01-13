@@ -1,14 +1,15 @@
 package com.whataburger.whataburgerproject.service;
 
 import com.whataburger.whataburgerproject.controller.dto.ProductCreateRequestDTO;
-import com.whataburger.whataburgerproject.domain.Ingredient;
+import com.whataburger.whataburgerproject.domain.Option;
 import com.whataburger.whataburgerproject.domain.Product;
-import com.whataburger.whataburgerproject.domain.temp.ProductIngredient;
-import com.whataburger.whataburgerproject.repository.IngredientRepository;
-import com.whataburger.whataburgerproject.repository.ProductIngredientRepository;
+import com.whataburger.whataburgerproject.domain.ProductOption;
+import com.whataburger.whataburgerproject.repository.OptionRepository;
+import com.whataburger.whataburgerproject.repository.ProductOptionRepository;
 import com.whataburger.whataburgerproject.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -16,23 +17,28 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ProductService {
     private final ProductRepository productRepository;
-    private final IngredientRepository ingredientRepository;
-    private final ProductIngredientRepository productIngredientRepository;
+    private final OptionRepository optionRepository;
+    private final ProductOptionRepository productOptionRepository;
 
+    @Transactional
     public Product createProduct(ProductCreateRequestDTO productCreateRequestDTO) {
         Product product = productCreateRequestDTO.toEntity();
         Product savedProduct = productRepository.save(product);
-        for (ProductCreateRequestDTO.IngredientRequest ir : productCreateRequestDTO.getIngredients()) {
-            Long ingredientId = ir.getIngredientId();
-            Ingredient ingredient = ingredientRepository
-                    .findById(ingredientId)
+        for (ProductCreateRequestDTO.OptionRequest optionRequest : productCreateRequestDTO.getOptions()) {
+            Long optionId = optionRequest.getOptionId();
+            Boolean isDefault = optionRequest.getIsDefault();
+            int defaultQuantity = optionRequest.getDefaultQuantity();
+            Option option = optionRepository
+                    .findById(optionId)
                     .orElseThrow(() -> new RuntimeException());
 
-            ProductIngredient productIngredient = new ProductIngredient(
+            ProductOption productOption = new ProductOption(
                     savedProduct,
-                    ingredient
+                    option,
+                    isDefault,
+                    defaultQuantity
             );
-            productIngredientRepository.save(productIngredient);
+            productOptionRepository.save(productOption);
         }
         return savedProduct;
     }
