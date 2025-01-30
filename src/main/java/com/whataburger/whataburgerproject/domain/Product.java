@@ -28,6 +28,9 @@ public class Product {
     @OneToMany(mappedBy = "product")
     private List<ProductOption> productOptions = new ArrayList<>();
 
+    @OneToMany(mappedBy = "product")
+    private List<OrderProduct> orderProducts = new ArrayList<>();
+
     public Product(
             String name,
             double price,

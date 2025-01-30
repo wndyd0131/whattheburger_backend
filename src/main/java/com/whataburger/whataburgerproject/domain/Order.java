@@ -20,6 +20,10 @@ public class Order {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
+
+    @OneToMany(mappedBy = "order")
+    private List<OrderProduct> orderProducts = new ArrayList<>();
+
     private LocalDateTime orderDate;
     @Enumerated(EnumType.STRING)
     private OrderType orderType;

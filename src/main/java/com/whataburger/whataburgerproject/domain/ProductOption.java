@@ -14,6 +14,7 @@ public class ProductOption {
     private Long id;
     private Boolean isDefault;
     private int defaultQuantity;
+    private double extraPrice;
 
     @ManyToOne
     @JoinColumn(name = "product_id")

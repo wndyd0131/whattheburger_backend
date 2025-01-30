@@ -3,17 +3,15 @@ package com.whataburger.whataburgerproject.domain;
 import jakarta.persistence.*;
 
 @Entity
-public class ProductOptionTrait {
+public class OrderProductOptionTrait {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "product_option_trait_id")
+    @Column(name = "order_product_option_trait_id")
     private Long id;
-    private Boolean isDefault;
-    private double extraPrice;
 
     @ManyToOne
-    @JoinColumn(name = "product_option_id")
-    private ProductOption productOption;
+    @JoinColumn(name = "order_product_option_id")
+    private OrderProductOption orderProductOption;
 
     @ManyToOne
     @JoinColumn(name = "option_trait_id")

@@ -1,16 +1,21 @@
 package com.whataburger.whataburgerproject.domain;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
+@Getter
+@NoArgsConstructor
 public class Category {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "category_id")
     private Long id;
     private String name;
+    private String imageSource;
 
     @ManyToOne
     @JoinColumn(name = "PARENT_ID")
@@ -24,4 +29,9 @@ public class Category {
             joinColumns = @JoinColumn(name="category_id"),
             inverseJoinColumns = @JoinColumn(name="product_id"))
     private List<Product> products = new ArrayList<>();
+
+    public Category(String name, String imageSource) {
+        this.name = name;
+        this.imageSource = imageSource;
+    }
 }

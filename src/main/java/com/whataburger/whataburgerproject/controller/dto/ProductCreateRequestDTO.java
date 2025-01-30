@@ -13,6 +13,7 @@ public class ProductCreateRequestDTO {
     private double productPrice;
     private String ingredientInfo;
     private String imageSource;
+    private Long categoryId;
     private List<OptionRequest> options;
 
     @NoArgsConstructor
