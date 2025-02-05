@@ -4,9 +4,7 @@ import com.whataburger.whataburgerproject.controller.dto.ProductCreateRequestDTO
 import com.whataburger.whataburgerproject.controller.dto.ProductCreateResponseDTO;
 import com.whataburger.whataburgerproject.controller.dto.ProductReadByCategoryIdResponseDto;
 import com.whataburger.whataburgerproject.controller.dto.ProductReadByProductIdResponseDto;
-import com.whataburger.whataburgerproject.domain.Product;
-import com.whataburger.whataburgerproject.domain.ProductOption;
-import com.whataburger.whataburgerproject.domain.ProductOptionTrait;
+import com.whataburger.whataburgerproject.domain.*;
 import com.whataburger.whataburgerproject.service.ProductService;
 import com.whataburger.whataburgerproject.service.dto.ProductReadByCategoryIdDto;
 import lombok.Data;
@@ -28,48 +26,54 @@ public class ProductController {
         List<Product> allProducts = productService.getAllProducts();
         return allProducts;
     }
-//    Product{
-//        Option{
-//            OptionTraits {
-//
-//            }
-//            OptionTraits {
-//
-//            }
-//        }
-//        Option{
-//
-//        }
-//    }
-
 
     // productOption -> Option & ProductOptionTrait info -> trying to make a structure of DTO, stuck with putting data into List
     @GetMapping("/api/v1/products/{productId}")
     public ProductReadByProductIdResponseDto getProductById(@PathVariable("productId") Long productId) {
         Product product = productService.findProductById(productId);
         List<ProductOption> productOptions = productService.findProductOptionByProductId(product.getId());
+        List<ProductReadByProductIdResponseDto.OptionRequest> optionRequests = new ArrayList<>();
 
         for (ProductOption productOption : productOptions) {
-            // productOption
+            Option option = productOption.getOption();
             List<ProductOptionTrait> productOptionTraits = productOption.getProductOptionTraits();
+            List<ProductReadByProductIdResponseDto.OptionTraitRequest> optionTraitRequests = new ArrayList<>();
             for (ProductOptionTrait productOptionTrait : productOptionTraits) {
-//                productOptionTrait.getOptionTrait().getId();
-//                productOptionTrait.getOptionTrait().getName();
+                OptionTrait optionTrait = productOptionTrait.getOptionTrait();
+                optionTraitRequests.add(
+                        ProductReadByProductIdResponseDto.OptionTraitRequest
+                                .builder()
+                                .optionTraitId(optionTrait.getId())
+                                .name(optionTrait.getName())
+                                .isDefault(productOptionTrait.getIsDefault())
+                                .extraPrice(productOptionTrait.getExtraPrice())
+                                .calories(optionTrait.getCalories())
+                                .build()
+                );
             }
-            ProductReadByProductIdResponseDto
-                    .OptionTraitRequest
+            optionRequests.add(ProductReadByProductIdResponseDto.OptionRequest
                     .builder()
-                    .optionTraitId(product)
-                    .build();
-            ProductReadByProductIdResponseDto.OptionRequest.builder().optionTraitRequests()
-            productOption.
+                    .optionId(option.getId())
+                    .name(option.getName())
+                    .isDefault(productOption.getIsDefault())
+                    .defaultQuantity(productOption.getDefaultQuantity())
+                    .maxQuantity(productOption.getMaxQuantity())
+                    .extraPrice(productOption.getExtraPrice())
+                    .calories(option.getCalories())
+                    .imageSource(option.getImageSource())
+                    .optionTraitRequests(
+                            optionTraitRequests
+                    )
+                    .build()
+            );
         }
         return new ProductReadByProductIdResponseDto(
                 product.getId(),
                 product.getName(),
                 product.getPrice(),
                 product.getImageSource(),
-                product.getIngredientInfo()
+                product.getIngredientInfo(),
+                optionRequests
         );
     }
 

@@ -1,5 +1,6 @@
 package com.whataburger.whataburgerproject.controller.dto;
 import com.whataburger.whataburgerproject.domain.Product;
+import com.whataburger.whataburgerproject.domain.enums.ProductType;
 import lombok.*;
 
 import java.util.List;
@@ -14,6 +15,7 @@ public class ProductCreateRequestDTO {
     private String ingredientInfo;
     private String imageSource;
     private Long categoryId;
+    private ProductType productType;
     private List<OptionRequest> options;
 
     @NoArgsConstructor
@@ -25,6 +27,6 @@ public class ProductCreateRequestDTO {
     }
 
     public Product toEntity() {
-        return new Product(productName, productPrice, ingredientInfo, imageSource);
+        return new Product(productName, productPrice, ingredientInfo, imageSource, productType);
     }
 }

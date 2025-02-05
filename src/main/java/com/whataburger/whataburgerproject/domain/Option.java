@@ -1,11 +1,13 @@
 package com.whataburger.whataburgerproject.domain;
 
 import jakarta.persistence.*;
+import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
+@Getter
 @Table(name = "options")
 public class Option {
     @Id
