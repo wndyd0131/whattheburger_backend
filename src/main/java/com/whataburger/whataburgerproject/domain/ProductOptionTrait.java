@@ -12,6 +12,7 @@ public class ProductOptionTrait {
     private Long id;
     private Boolean isDefault;
     private double extraPrice;
+    private int extraCalories;
 
     @ManyToOne
     @JoinColumn(name = "product_option_id")

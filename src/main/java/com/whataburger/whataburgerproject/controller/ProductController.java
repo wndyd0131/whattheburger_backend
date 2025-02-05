@@ -27,7 +27,6 @@ public class ProductController {
         return allProducts;
     }
 
-    // productOption -> Option & ProductOptionTrait info -> trying to make a structure of DTO, stuck with putting data into List
     @GetMapping("/api/v1/products/{productId}")
     public ProductReadByProductIdResponseDto getProductById(@PathVariable("productId") Long productId) {
         Product product = productService.findProductById(productId);
@@ -47,7 +46,7 @@ public class ProductController {
                                 .name(optionTrait.getName())
                                 .isDefault(productOptionTrait.getIsDefault())
                                 .extraPrice(productOptionTrait.getExtraPrice())
-                                .calories(optionTrait.getCalories())
+                                .extraCalories(productOptionTrait.getExtraCalories())
                                 .build()
                 );
             }

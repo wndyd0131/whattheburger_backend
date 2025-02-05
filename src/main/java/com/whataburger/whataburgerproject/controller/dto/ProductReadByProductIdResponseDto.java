@@ -44,6 +44,6 @@ public class ProductReadByProductIdResponseDto {
         private String name;
         private Boolean isDefault; //productOptionTrait
         private double extraPrice; //productOptionTrait
-        private int calories;
+        private int extraCalories; //productOptionTrait
     }
 }

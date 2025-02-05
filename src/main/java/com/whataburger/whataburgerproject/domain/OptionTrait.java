@@ -14,7 +14,6 @@ public class OptionTrait {
     @Column(name = "option_trait_id")
     private Long id;
     private String name;
-    private int calories;
 
     @ManyToMany(mappedBy = "optionTraits") // toasted, not-toasted
     private List<Option> options = new ArrayList<>();
