@@ -9,10 +9,13 @@ import com.whataburger.whataburgerproject.repository.CategoryRepository;
 import com.whataburger.whataburgerproject.repository.OptionRepository;
 import com.whataburger.whataburgerproject.repository.ProductOptionRepository;
 import com.whataburger.whataburgerproject.repository.ProductRepository;
+import com.whataburger.whataburgerproject.service.dto.ProductOptionDto;
+import com.whataburger.whataburgerproject.service.dto.ProductReadByCategoryIdDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -57,9 +60,39 @@ public class ProductService {
         return products;
     }
 
-    public Product getProductById(Long productId) {
-        Product product = productRepository.findById(productId).get();
+    public List<ProductReadByCategoryIdDto> findProductsByCategoryId(Long categoryId) {
+        Category category = categoryRepository
+                .findById(categoryId)
+                .orElseThrow(() -> new RuntimeException());
+        List<Product> products = category.getProducts();
+        List<ProductReadByCategoryIdDto> productReadDtoList = new ArrayList<>();
+        for (Product product : products) {
+            productReadDtoList.add(
+                    new ProductReadByCategoryIdDto(
+                            product.getId(),
+                            product.getName(),
+                            product.getPrice(),
+                            product.getImageSource(),
+                            product.getIngredientInfo()
+                    )
+            );
+        }
+        return productReadDtoList;
+    }
+
+    public Product findProductById(Long productId) {
+        Product product = productRepository
+                .findById(productId)
+                .orElseThrow(() -> new RuntimeException());
         return product;
     }
 
+    public List<ProductOption> findProductOptionByProductId(Long productId) {
+        List<ProductOption> productOptions = productOptionRepository.findByProductId(productId);
+        return productOptions;
+//        for (ProductOption productOption : productOptions) {
+//            productOption.getOption();
+//            productOption.get
+//        }
+    }
 }

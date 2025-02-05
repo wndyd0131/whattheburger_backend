@@ -13,6 +13,8 @@ public class Option {
     @Column(name = "option_id")
     private Long id;
     private String name;
+    private String imageSource;
+    private int calories;
 
     @ManyToOne
     @JoinColumn(name = "option_type_id")

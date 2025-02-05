@@ -1,13 +1,10 @@
 package com.whataburger.whataburgerproject.domain;
-
-import com.whataburger.whataburgerproject.controller.dto.ProductCreateRequestDTO;
+import com.whataburger.whataburgerproject.domain.enums.ProductType;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import static com.whataburger.whataburgerproject.controller.dto.ProductCreateRequestDTO.*;
 
 @Entity
 @Getter
@@ -21,6 +18,8 @@ public class Product {
     private double price;
     private String ingredientInfo;
     private String imageSource;
+    @Enumerated(EnumType.STRING)
+    private ProductType productType;
 
     @ManyToMany(mappedBy = "products")
     private List<Category> categories = new ArrayList<>();
@@ -35,11 +34,13 @@ public class Product {
             String name,
             double price,
             String ingredientInfo,
-            String imageSource
+            String imageSource,
+            ProductType productType
     ) {
         this.name = name;
         this.price = price;
         this.ingredientInfo = ingredientInfo;
         this.imageSource = imageSource;
+        this.productType = productType;
     }
 }

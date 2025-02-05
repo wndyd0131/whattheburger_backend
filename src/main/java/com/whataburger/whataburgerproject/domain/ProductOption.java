@@ -1,5 +1,6 @@
 package com.whataburger.whataburgerproject.domain;
 import jakarta.persistence.*;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.util.ArrayList;
@@ -7,6 +8,7 @@ import java.util.List;
 
 @Entity
 @NoArgsConstructor
+@Getter
 public class ProductOption {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -14,6 +16,7 @@ public class ProductOption {
     private Long id;
     private Boolean isDefault;
     private int defaultQuantity;
+    private int maxQuantity;
     private double extraPrice;
 
     @ManyToOne

@@ -1,8 +1,10 @@
 package com.whataburger.whataburgerproject.domain;
 
 import jakarta.persistence.*;
+import lombok.Getter;
 
 @Entity
+@Getter
 public class ProductOptionTrait {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
