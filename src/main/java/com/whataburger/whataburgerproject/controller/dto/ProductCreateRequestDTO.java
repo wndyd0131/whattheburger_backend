@@ -24,6 +24,8 @@ public class ProductCreateRequestDTO {
         private Long optionId;
         private Boolean isDefault;
         private int defaultQuantity;
+        private int maxQuantity;
+        private double extraPrice;
     }
 
     public Product toEntity() {

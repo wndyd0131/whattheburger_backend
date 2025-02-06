@@ -39,8 +39,6 @@ public class ProductService {
 
         for (ProductCreateRequestDTO.OptionRequest optionRequest : productCreateRequestDTO.getOptions()) {
             Long optionId = optionRequest.getOptionId();
-            Boolean isDefault = optionRequest.getIsDefault();
-            int defaultQuantity = optionRequest.getDefaultQuantity();
             Option option = optionRepository
                     .findById(optionId)
                     .orElseThrow(() -> new RuntimeException());
@@ -48,8 +46,10 @@ public class ProductService {
             ProductOption productOption = new ProductOption(
                     savedProduct,
                     option,
-                    isDefault,
-                    defaultQuantity
+                    optionRequest.getIsDefault(),
+                    optionRequest.getDefaultQuantity(),
+                    optionRequest.getMaxQuantity(),
+                    optionRequest.getExtraPrice()
             );
             productOptionRepository.save(productOption);
         }

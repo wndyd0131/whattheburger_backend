@@ -34,11 +34,15 @@ public class ProductOption {
             Product product,
             Option option,
             Boolean isDefault,
-            int defaultQuantity
+            int defaultQuantity,
+            int maxQuantity,
+            double extraPrice
     ) {
         this.product = product;
         this.option = option;
         this.isDefault = isDefault;
         this.defaultQuantity = defaultQuantity;
+        this.maxQuantity = maxQuantity;
+        this.extraPrice = extraPrice;
     }
 }
