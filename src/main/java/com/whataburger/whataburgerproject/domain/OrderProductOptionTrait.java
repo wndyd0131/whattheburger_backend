@@ -14,6 +14,6 @@ public class OrderProductOptionTrait {
     private OrderProductOption orderProductOption;
 
     @ManyToOne
-    @JoinColumn(name = "option_trait_id")
-    private OptionTrait optionTrait;
+    @JoinColumn(name = "product_option_trait_id")
+    private ProductOptionTrait productOptionTrait;
 }

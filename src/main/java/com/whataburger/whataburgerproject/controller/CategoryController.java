@@ -3,6 +3,7 @@ package com.whataburger.whataburgerproject.controller;
 import com.whataburger.whataburgerproject.controller.dto.CategoryReadResponseDto;
 import com.whataburger.whataburgerproject.service.CategoryService;
 import com.whataburger.whataburgerproject.service.dto.CategoryReadDto;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -12,6 +13,7 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
+@Tag(name = "Category")
 public class CategoryController {
 
     private final CategoryService categoryService;

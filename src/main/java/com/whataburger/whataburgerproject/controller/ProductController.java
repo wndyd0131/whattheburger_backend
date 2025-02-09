@@ -7,9 +7,11 @@ import com.whataburger.whataburgerproject.controller.dto.ProductReadByProductIdR
 import com.whataburger.whataburgerproject.domain.*;
 import com.whataburger.whataburgerproject.service.ProductService;
 import com.whataburger.whataburgerproject.service.dto.ProductReadByCategoryIdDto;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -18,6 +20,7 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Product")
 public class ProductController {
 
     private final ProductService productService;
@@ -94,6 +97,7 @@ public class ProductController {
         return productReadResponseDto;
     }
 
+    @Transactional
     @PostMapping("/api/v1/products")
     public ProductCreateResponseDTO createProduct(@RequestBody ProductCreateRequestDTO productCreateRequestDTO) {
         Product product = productService.createProduct(productCreateRequestDTO);

@@ -11,14 +11,16 @@ public class OrderProductOption {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "order_product_option_id")
     private Long id;
+    private String name;
+    private int quantity;
 
     @ManyToOne
     @JoinColumn(name = "order_product_id")
     private OrderProduct orderProduct;
 
     @ManyToOne
-    @JoinColumn(name = "option_id")
-    private Option option;
+    @JoinColumn(name = "product_option_id")
+    private ProductOption productOption;
 
     @OneToMany(mappedBy = "orderProductOption")
     private List<OrderProductOptionTrait> orderProductOptionTraits = new ArrayList<>();

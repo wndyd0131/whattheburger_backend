@@ -3,11 +3,11 @@ package com.whataburger.whataburgerproject.controller;
 import com.whataburger.whataburgerproject.controller.dto.UserCreateResponseDto;
 import com.whataburger.whataburgerproject.controller.dto.UserDto;
 import com.whataburger.whataburgerproject.controller.dto.UserReadResponseDTO;
-import com.whataburger.whataburgerproject.exception.AuthenticationCredentialsNotFoundException;
-import com.whataburger.whataburgerproject.exception.ExceptionResponse;
-import com.whataburger.whataburgerproject.exception.UserPrincipalNotFoundException;
+import com.whataburger.whataburgerproject.security.exception.AuthenticationCredentialsNotFoundException;
+import com.whataburger.whataburgerproject.security.exception.UserPrincipalNotFoundException;
 import com.whataburger.whataburgerproject.service.UserService;
 import com.whataburger.whataburgerproject.service.dto.AuthUserDto;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "User")
 public class UserController {
 
     private final UserService userService;
@@ -47,28 +48,6 @@ public class UserController {
         return new ResponseEntity<>(
                 new UserCreateResponseDto(userId),
                 HttpStatusCode.valueOf(201)
-        );
-    }
-
-    @ExceptionHandler(UserPrincipalNotFoundException.class)
-    public ResponseEntity<ExceptionResponse> handleUserPrincipalNotFoundException(UserPrincipalNotFoundException ex) {
-        return new ResponseEntity<>(
-                new ExceptionResponse(
-                        ex.getMessage(),
-                        HttpStatus.UNAUTHORIZED.value()
-                ),
-                HttpStatus.UNAUTHORIZED
-        );
-    }
-
-    @ExceptionHandler(AuthenticationCredentialsNotFoundException.class)
-    public ResponseEntity<ExceptionResponse> handleAuthenticationCredentialsNotFoundException(AuthenticationCredentialsNotFoundException ex) {
-        return new ResponseEntity<>(
-                new ExceptionResponse(
-                        ex.getMessage(),
-                        HttpStatus.UNAUTHORIZED.value()
-                ),
-                HttpStatus.UNAUTHORIZED
         );
     }
 }

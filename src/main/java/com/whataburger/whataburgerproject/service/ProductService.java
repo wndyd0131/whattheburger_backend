@@ -11,7 +11,11 @@ import com.whataburger.whataburgerproject.repository.ProductOptionRepository;
 import com.whataburger.whataburgerproject.repository.ProductRepository;
 import com.whataburger.whataburgerproject.service.dto.ProductOptionDto;
 import com.whataburger.whataburgerproject.service.dto.ProductReadByCategoryIdDto;
+import com.whataburger.whataburgerproject.service.exception.CategoryNotFoundException;
+import com.whataburger.whataburgerproject.service.exception.OptionNotFoundException;
+import com.whataburger.whataburgerproject.service.exception.ProductNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,9 +35,10 @@ public class ProductService {
         Product product = productCreateRequestDTO.toEntity();
         Product savedProduct = productRepository.save(product);
 
-        Category category = categoryRepository.findById(productCreateRequestDTO
-                        .getCategoryId())
-                .orElseThrow(() -> new RuntimeException());
+        Long categoryId = productCreateRequestDTO.getCategoryId();
+        Category category = categoryRepository
+                .findById(categoryId)
+                .orElseThrow(() -> new CategoryNotFoundException(categoryId));
         category.getProducts().add(product);
         categoryRepository.save(category);
 
@@ -41,7 +46,7 @@ public class ProductService {
             Long optionId = optionRequest.getOptionId();
             Option option = optionRepository
                     .findById(optionId)
-                    .orElseThrow(() -> new RuntimeException());
+                    .orElseThrow(() -> new OptionNotFoundException(optionId));
 
             ProductOption productOption = new ProductOption(
                     savedProduct,
@@ -83,16 +88,12 @@ public class ProductService {
     public Product findProductById(Long productId) {
         Product product = productRepository
                 .findById(productId)
-                .orElseThrow(() -> new RuntimeException());
+                .orElseThrow(() -> new ProductNotFoundException(productId));
         return product;
     }
 
     public List<ProductOption> findProductOptionByProductId(Long productId) {
         List<ProductOption> productOptions = productOptionRepository.findByProductId(productId);
         return productOptions;
-//        for (ProductOption productOption : productOptions) {
-//            productOption.getOption();
-//            productOption.get
-//        }
     }
 }

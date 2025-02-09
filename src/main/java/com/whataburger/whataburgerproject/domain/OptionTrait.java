@@ -20,7 +20,4 @@ public class OptionTrait {
 
     @OneToMany(mappedBy = "optionTrait")
     private List<ProductOptionTrait> productOptionTraits = new ArrayList<>();
-
-    @OneToMany(mappedBy = "optionTrait")
-    private List<OrderProductOptionTrait> orderProductOptionTraits = new ArrayList<>();
 }

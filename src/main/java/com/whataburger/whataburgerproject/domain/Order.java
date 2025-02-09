@@ -2,6 +2,8 @@ package com.whataburger.whataburgerproject.domain;
 
 import com.whataburger.whataburgerproject.domain.enums.OrderStatus;
 import com.whataburger.whataburgerproject.domain.enums.OrderType;
+import com.whataburger.whataburgerproject.domain.enums.PaymentMethod;
+import com.whataburger.whataburgerproject.domain.enums.PaymentStatus;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
@@ -16,17 +18,29 @@ public class Order {
     @Column(name = "order_id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    private Long orderPrice;
+    @Enumerated(EnumType.STRING)
+    private OrderStatus orderStatus;
+    @Enumerated(EnumType.STRING)
+    private OrderType orderType;
+    @Enumerated(EnumType.STRING)
+    private PaymentStatus paymentStatus;
+    @Enumerated(EnumType.STRING)
+    private PaymentMethod paymentMethod;
+    private String orderNote;
+    private double discountApplied;
+    private double taxAmount;
+    // private Store store;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;
 
     @OneToMany(mappedBy = "order")
     private List<OrderProduct> orderProducts = new ArrayList<>();
 
-    private LocalDateTime orderDate;
-    @Enumerated(EnumType.STRING)
-    private OrderType orderType;
-    @Enumerated(EnumType.STRING)
-    private OrderStatus orderStatus;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+
+
 }

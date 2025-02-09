@@ -37,7 +37,6 @@ out/
 src/**/resources/application*.yml
 
 ### Personal ###
-/note.txt
 
 
 ### VS Code ###

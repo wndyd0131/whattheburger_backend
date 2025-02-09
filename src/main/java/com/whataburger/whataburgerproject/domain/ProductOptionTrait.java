@@ -3,6 +3,9 @@ package com.whataburger.whataburgerproject.domain;
 import jakarta.persistence.*;
 import lombok.Getter;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Getter
 public class ProductOptionTrait {
@@ -21,4 +24,7 @@ public class ProductOptionTrait {
     @ManyToOne
     @JoinColumn(name = "option_trait_id")
     private OptionTrait optionTrait;
+
+    @OneToMany(mappedBy = "productOptionTrait")
+    private List<OrderProductOptionTrait> orderProductOptionTraits = new ArrayList<>();
 }

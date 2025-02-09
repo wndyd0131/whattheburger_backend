@@ -1,0 +1,247 @@
+# @AllArgsConstructor, @NoArgsConstructor, @RequiredArgsConstructor
+- NoArgsConstructor is necessary for JPA, since it needs default constructor to make an entity
+- If you have AllArgsConstructor, default constructor won't be auto-generated, so you have to define it manually
+- RequiredArgsConstructor is used for dependency injection
+
+# Mock
+- Why use mock?
+    1. Connection to db affect speed
+    2. make it deterministic: consistent result
+
+# Security
+- Do users need to log in? Yes
+- Different roles?
+
+# Autowired
+//    @Autowired // userRepository will be fixed, so it's not flexible
+//    @Autowired // allows more flexible change for userRepository (ex. for testing, mock injection), but it's setter so not safe
+//    public setUserRepository(UserRepository userRepository) {
+//        this.userRepository = userRepository;
+//    }
+//    @Autowired // flexible + safe
+//    public UserService(UserRepository userRepository) {
+//        this.userRepository = userRepository;
+//    }
+
+Required functionalities
+- User
+- Product
+    - Option
+- Order
+-
+
+
+
+['bread_type', 'toast_type', 'beef_type', 'cheese_type', ]
+('bread_type'),('toast_type'),('beef_type'),('cheese_type'),('add_on'),('topping'),('sauce')
+
+(name, extra_price, option_type_id)
+('large_bun', 0, 2), ('small_bun', 0, 2), ('brioche_bun', 0, 2), ('texas_toast', 0, 2), ('no_bun', 0, 2)
+
+
+
+Whataburger create ex)
+{
+    "productName": "Whataburger",
+    "productPrice": 6.99,
+    "ingredientInfo": "Whataburger includes ...",
+    "imageSource": "whataburger.jpg",
+    "categoryId": 1,
+    "productType": "ONLY",
+    "options": [
+        {
+            "optionId": 1,
+            "isDefault": true,
+            "defaultQuantity": 1,
+            "maxQuantity": 1,
+            "extraPrice": 0
+        },
+        {
+            "optionId": 2,
+            "isDefault": false,
+            "defaultQuantity": 0,
+            "maxQuantity": 1,
+            "extraPrice": 0
+        },
+        {
+            "optionId": 3,
+            "isDefault": false,
+            "defaultQuantity": 0,
+            "maxQuantity": 1,
+            "extraPrice": 0
+        },
+        {
+            "optionId": 4,
+            "isDefault": false,
+            "defaultQuantity": 0,
+            "maxQuantity": 1,
+            "extraPrice": 0
+        },
+        {
+            "optionId": 5,
+            "isDefault": false,
+            "defaultQuantity": 0,
+            "maxQuantity": 1,
+            "extraPrice": 0
+        },
+        {
+            "optionId": 6,
+            "isDefault": true,
+            "defaultQuantity": 1,
+            "maxQuantity": 8,
+            "extraPrice": 2
+        },
+        {
+            "optionId": 7,
+            "isDefault": false,
+            "defaultQuantity": 0,
+            "maxQuantity": 8,
+            "extraPrice": 0.6
+        },
+        {
+            "optionId": 8,
+            "isDefault": false,
+            "defaultQuantity": 0,
+            "maxQuantity": 8,
+            "extraPrice": 0.6
+        },
+        {
+            "optionId": 9,
+            "isDefault": false,
+            "defaultQuantity": 0,
+            "maxQuantity": 8,
+            "extraPrice": 0.5
+        },
+        {
+            "optionId": 10,
+            "isDefault": false,
+            "defaultQuantity": 0,
+            "maxQuantity": 4,
+            "extraPrice": 0.65
+        },
+        {
+            "optionId": 11,
+            "isDefault": false,
+            "defaultQuantity": 0,
+            "maxQuantity": 4,
+            "extraPrice": 0.65
+        },
+        {
+            "optionId": 12,
+            "isDefault": false,
+            "defaultQuantity": 0,
+            "maxQuantity": 4,
+            "extraPrice": 1.20
+        },
+        {
+            "optionId": 13,
+            "isDefault": false,
+            "defaultQuantity": 0,
+            "maxQuantity": 4,
+            "extraPrice": 0.99
+        },
+        {
+            "optionId": 14,
+            "isDefault": true,
+            "defaultQuantity": 1,
+            "maxQuantity": 1,
+            "extraPrice": 0
+        },
+        {
+            "optionId": 15,
+            "isDefault": true,
+            "defaultQuantity": 1,
+            "maxQuantity": 1,
+            "extraPrice": 0
+        },
+        {
+            "optionId": 16,
+            "isDefault": true,
+            "defaultQuantity": 1,
+            "maxQuantity": 1,
+            "extraPrice": 0
+        },
+        {
+            "optionId": 17,
+            "isDefault": true,
+            "defaultQuantity": 1,
+            "maxQuantity": 1,
+            "extraPrice": 0
+        },
+        {
+            "optionId": 18,
+            "isDefault": false,
+            "defaultQuantity": 1,
+            "maxQuantity": 1,
+            "extraPrice": 0
+        },
+        {
+            "optionId": 19,
+            "isDefault": true,
+            "defaultQuantity": 1,
+            "maxQuantity": 1,
+            "extraPrice": 0
+        },
+        {
+            "optionId": 20,
+            "isDefault": false,
+            "defaultQuantity": 1,
+            "maxQuantity": 1,
+            "extraPrice": 0
+        },
+        {
+            "optionId": 21,
+            "isDefault": false,
+            "defaultQuantity": 1,
+            "maxQuantity": 1,
+            "extraPrice": 0
+        },
+        {
+            "optionId": 22,
+            "isDefault": false,
+            "defaultQuantity": 1,
+            "maxQuantity": 1,
+            "extraPrice": 0
+        },
+        {
+            "optionId": 23,
+            "isDefault": false,
+            "defaultQuantity": 1,
+            "maxQuantity": 1,
+            "extraPrice": 0
+        }
+    ]
+}
+
+{
+
+    "order_request": [
+        {
+            "product_id": 0,
+            "options": [
+                {
+                    "option_id": 0,
+                    "option_traits": [
+                        {
+                            "option_trait_id": 0
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "product_id": 1
+        }
+    ]
+}
+
+
+Might be better?
+    - Instead of OrderProduct having option, option_traits, letting order have product, product_option, product_option_traits.
+        - 주문한 product의 옵션과 옵션 특징 vs. 주문#1 에 들어가는 product와, product의 옵션과, product의 옵션 특징
+
+
+What now?
+    - Woking on Order product
+    - Trying to work more on product logic
+        - Categorizing product

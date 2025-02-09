@@ -30,6 +30,9 @@ public class ProductOption {
     @OneToMany(mappedBy = "productOption")
     private List<ProductOptionTrait> productOptionTraits = new ArrayList<>();
 
+    @OneToMany(mappedBy = "productOption")
+    private List<OrderProductOption> orderProductOptions = new ArrayList<>();
+
     public ProductOption(
             Product product,
             Option option,

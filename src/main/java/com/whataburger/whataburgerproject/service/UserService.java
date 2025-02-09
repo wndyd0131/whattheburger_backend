@@ -1,12 +1,13 @@
 package com.whataburger.whataburgerproject.service;
 
 import com.whataburger.whataburgerproject.domain.User;
-import com.whataburger.whataburgerproject.exception.UserPrincipalNotFoundException;
+import com.whataburger.whataburgerproject.security.exception.AuthenticationCredentialsNotFoundException;
+import com.whataburger.whataburgerproject.security.exception.UserPrincipalNotFoundException;
 import com.whataburger.whataburgerproject.repository.UserRepository;
 import com.whataburger.whataburgerproject.security.UserDetailsImpl;
 import com.whataburger.whataburgerproject.service.dto.AuthUserDto;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,18 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor // auto create constructor for field with final
 public class UserService {
 
-//    @Autowired // userRepository will be fixed, so it's not flexible
     private final UserRepository userRepository; // final causes compile error if there's no injection in constructor
-
-//    @Autowired // allows more flexible change for userRepository (ex. for testing, mock injection), but it's setter so not safe
-//    public setUserRepository(UserRepository userRepository) {
-//        this.userRepository = userRepository;
-//    }
-
-//    @Autowired // flexible + safe
-//    public UserService(UserRepository userRepository) {
-//        this.userRepository = userRepository;
-//    }
 
     @Transactional
     public Long join(User user) {
@@ -48,7 +38,7 @@ public class UserService {
 
     public AuthUserDto getAuthenticatedUser(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated())
-            throw new AuthenticationCredentialsNotFoundException("Credentials not found");
+            throw new AuthenticationCredentialsNotFoundException("Credentials not found", HttpStatus.UNAUTHORIZED);
 
         Object principal = authentication.getPrincipal();
         if (principal instanceof UserDetailsImpl userDetails) {
@@ -60,7 +50,7 @@ public class UserService {
                     userDetails.getZipcode()
             );
         }
-        throw new UserPrincipalNotFoundException("User principal not found");
+        throw new UserPrincipalNotFoundException("User principal not found", HttpStatus.NOT_FOUND);
 
     }
 }

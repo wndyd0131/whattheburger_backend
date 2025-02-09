@@ -30,7 +30,4 @@ public class Option {
             joinColumns = @JoinColumn(name="option_id"),
             inverseJoinColumns = @JoinColumn(name="option_trait_id"))
     private List<OptionTrait> optionTraits = new ArrayList<>();
-
-    @OneToMany(mappedBy = "option")
-    private List<OrderProductOption> orderProductOptions = new ArrayList<>();
 }

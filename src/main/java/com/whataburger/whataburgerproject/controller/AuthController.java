@@ -4,6 +4,7 @@ import com.whataburger.whataburgerproject.controller.dto.LoginRequestDto;
 import com.whataburger.whataburgerproject.controller.dto.LoginResponseDto;
 import com.whataburger.whataburgerproject.service.AuthService;
 import com.whataburger.whataburgerproject.service.dto.JwtDto;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
+@Tag(name = "Auth")
 public class AuthController {
 
     private final AuthService authService;
