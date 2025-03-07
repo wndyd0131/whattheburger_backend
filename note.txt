@@ -44,7 +44,7 @@ Whataburger create ex)
 {
     "productName": "Whataburger",
     "productPrice": 6.99,
-    "ingredientInfo": "Whataburger includes ...",
+    "briefInfo": "Whataburger includes ...",
     "imageSource": "whataburger.jpg",
     "categoryId": 1,
     "productType": "ONLY",

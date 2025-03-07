@@ -1,14 +1,10 @@
 package com.whataburger.whataburgerproject.controller;
 
-import com.whataburger.whataburgerproject.controller.dto.ProductCreateRequestDTO;
-import com.whataburger.whataburgerproject.controller.dto.ProductCreateResponseDTO;
-import com.whataburger.whataburgerproject.controller.dto.ProductReadByCategoryIdResponseDto;
-import com.whataburger.whataburgerproject.controller.dto.ProductReadByProductIdResponseDto;
+import com.whataburger.whataburgerproject.controller.dto.*;
 import com.whataburger.whataburgerproject.domain.*;
 import com.whataburger.whataburgerproject.service.ProductService;
 import com.whataburger.whataburgerproject.service.dto.ProductReadByCategoryIdDto;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,9 +21,22 @@ public class ProductController {
 
     private final ProductService productService;
     @GetMapping("/api/v1/products")
-    public List<Product> getAllProducts() {
+    public List<ProductReadResponseDto> getAllProducts() {
         List<Product> allProducts = productService.getAllProducts();
-        return allProducts;
+        List<ProductReadResponseDto> productReadResponseDtoList = new ArrayList<>();
+        for (Product product : allProducts) {
+            productReadResponseDtoList.add(
+                    new ProductReadResponseDto(
+                            product.getId(),
+                            product.getName(),
+                            product.getPrice(),
+                            product.getBriefInfo(),
+                            product.getImageSource(),
+                            product.getProductType()
+                    )
+            );
+        }
+        return productReadResponseDtoList;
     }
 
     @GetMapping("/api/v1/products/{productId}")
@@ -74,7 +83,7 @@ public class ProductController {
                 product.getName(),
                 product.getPrice(),
                 product.getImageSource(),
-                product.getIngredientInfo(),
+                product.getBriefInfo(),
                 optionRequests
         );
     }
@@ -90,7 +99,7 @@ public class ProductController {
                             productDto.getProductName(),
                             productDto.getProductPrice(),
                             productDto.getImageSource(),
-                            productDto.getIngredientInfo()
+                            productDto.getBriefInfo()
                     )
             );
         }
@@ -105,7 +114,7 @@ public class ProductController {
                 product.getId(),
                 product.getName(),
                 product.getPrice(),
-                product.getIngredientInfo(),
+                product.getBriefInfo(),
                 product.getImageSource()
         );
     }

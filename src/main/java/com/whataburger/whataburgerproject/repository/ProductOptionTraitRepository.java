@@ -7,6 +7,6 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface ProductOptionTraitRepository extends JpaRepository {
+public interface ProductOptionTraitRepository extends JpaRepository<ProductOptionTrait, Long> {
     Optional<ProductOptionTrait> findByProductOptionIdAndOptionTraitId(Long productOptionId, Long optionTraitId);
 }

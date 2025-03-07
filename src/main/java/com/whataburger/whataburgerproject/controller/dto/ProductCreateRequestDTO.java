@@ -12,7 +12,7 @@ import java.util.List;
 public class ProductCreateRequestDTO {
     private String productName;
     private double productPrice;
-    private String ingredientInfo;
+    private String briefInfo;
     private String imageSource;
     private Long categoryId;
     private ProductType productType;
@@ -29,6 +29,6 @@ public class ProductCreateRequestDTO {
     }
 
     public Product toEntity() {
-        return new Product(productName, productPrice, ingredientInfo, imageSource, productType);
+        return new Product(productName, productPrice, briefInfo, imageSource, productType);
     }
 }

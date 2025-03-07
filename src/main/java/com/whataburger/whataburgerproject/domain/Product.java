@@ -16,7 +16,7 @@ public class Product {
     private Long id;
     private String name;
     private double price;
-    private String ingredientInfo;
+    private String briefInfo;
     private String imageSource;
     @Enumerated(EnumType.STRING)
     private ProductType productType;
@@ -33,13 +33,13 @@ public class Product {
     public Product(
             String name,
             double price,
-            String ingredientInfo,
+            String briefInfo,
             String imageSource,
             ProductType productType
     ) {
         this.name = name;
         this.price = price;
-        this.ingredientInfo = ingredientInfo;
+        this.briefInfo = briefInfo;
         this.imageSource = imageSource;
         this.productType = productType;
     }

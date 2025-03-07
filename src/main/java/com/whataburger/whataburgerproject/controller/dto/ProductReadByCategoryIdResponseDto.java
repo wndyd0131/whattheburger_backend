@@ -14,5 +14,5 @@ public class ProductReadByCategoryIdResponseDto {
     private String productName;
     private double productPrice;
     private String imageSource;
-    private String ingredientInfo;
+    private String briefInfo;
 }

@@ -9,13 +9,11 @@ import com.whataburger.whataburgerproject.repository.CategoryRepository;
 import com.whataburger.whataburgerproject.repository.OptionRepository;
 import com.whataburger.whataburgerproject.repository.ProductOptionRepository;
 import com.whataburger.whataburgerproject.repository.ProductRepository;
-import com.whataburger.whataburgerproject.service.dto.ProductOptionDto;
 import com.whataburger.whataburgerproject.service.dto.ProductReadByCategoryIdDto;
 import com.whataburger.whataburgerproject.service.exception.CategoryNotFoundException;
 import com.whataburger.whataburgerproject.service.exception.OptionNotFoundException;
 import com.whataburger.whataburgerproject.service.exception.ProductNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -78,7 +76,7 @@ public class ProductService {
                             product.getName(),
                             product.getPrice(),
                             product.getImageSource(),
-                            product.getIngredientInfo()
+                            product.getBriefInfo()
                     )
             );
         }
