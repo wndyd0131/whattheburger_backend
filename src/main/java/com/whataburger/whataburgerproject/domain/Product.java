@@ -10,14 +10,14 @@ import java.util.List;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Product {
-    @Id
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "product_id")
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String name;
     private double price;
     private String briefInfo;
     private String imageSource;
+    private double calories;
     @Enumerated(EnumType.STRING)
     private ProductType productType;
 
@@ -30,17 +30,22 @@ public class Product {
     @OneToMany(mappedBy = "product")
     private List<OrderProduct> orderProducts = new ArrayList<>();
 
+    @OneToMany(mappedBy = "product")
+    private List<CustomRule> customRules = new ArrayList<>();
+
     public Product(
             String name,
             double price,
             String briefInfo,
             String imageSource,
+            double calories,
             ProductType productType
     ) {
         this.name = name;
         this.price = price;
         this.briefInfo = briefInfo;
         this.imageSource = imageSource;
+        this.calories = calories;
         this.productType = productType;
     }
 }

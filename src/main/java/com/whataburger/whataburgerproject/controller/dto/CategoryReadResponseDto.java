@@ -14,6 +14,5 @@ import java.util.List;
 public class CategoryReadResponseDto {
     private Long categoryId;
     private String name;
-    private String categoryImage;
     private int productCount;
 }

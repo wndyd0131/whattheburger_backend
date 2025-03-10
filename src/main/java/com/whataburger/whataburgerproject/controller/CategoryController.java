@@ -27,7 +27,6 @@ public class CategoryController {
                     new CategoryReadResponseDto(
                         categoryReadDto.getCategoryId(),
                         categoryReadDto.getCategoryName(),
-                        categoryReadDto.getCategoryImageSource(),
                         categoryReadDto.getProductCount()
                     )
             );

@@ -21,7 +21,6 @@ public class CategoryService {
                     new CategoryReadDto(
                             category.getId(),
                             category.getName(),
-                            category.getImageSource(),
                             category.getProducts().size()
                     )
             );

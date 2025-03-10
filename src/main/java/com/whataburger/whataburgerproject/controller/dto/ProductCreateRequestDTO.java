@@ -15,6 +15,7 @@ public class ProductCreateRequestDTO {
     private String briefInfo;
     private String imageSource;
     private Long categoryId;
+    private double calories;
     private ProductType productType;
     private List<OptionRequest> options;
 
@@ -29,6 +30,6 @@ public class ProductCreateRequestDTO {
     }
 
     public Product toEntity() {
-        return new Product(productName, productPrice, briefInfo, imageSource, productType);
+        return new Product(productName, productPrice, briefInfo, imageSource, calories, productType);
     }
 }

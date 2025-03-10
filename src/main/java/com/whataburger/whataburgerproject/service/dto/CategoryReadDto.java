@@ -12,6 +12,5 @@ import lombok.NoArgsConstructor;
 public class CategoryReadDto {
     private Long categoryId;
     private String categoryName;
-    private String categoryImageSource;
     private int productCount;
 }

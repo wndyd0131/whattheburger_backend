@@ -242,6 +242,16 @@ Might be better?
 
 
 What now?
-    - Woking on Order product
-    - Trying to work more on product logic
-        - Categorizing product
+    - Product_Option's OptionType = Bread, Toppings...
+        - OptionType.radio = Single, Multiple...
+    - ProductOptionTrait = melt, easy, regular, extra -> Countable, Meltable, Toastable, Measurable...
+    - Calories calculation
+
+
+customRule
+    - id
+    - row-index (alignment order)
+    - name ("bread", "beef", "cheese"...)
+    - type ("unique", "multiple")
+    - min_s ()
+    - max_s () option의 개수? 또는 Free: 음수, 0, NULL 처리

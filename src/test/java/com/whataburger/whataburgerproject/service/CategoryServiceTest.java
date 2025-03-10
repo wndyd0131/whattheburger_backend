@@ -27,8 +27,8 @@ public class CategoryServiceTest {
     @Test
     void categoryService_findAllCategories_returnAllCategoryDto() {
         List<Category> categories = new ArrayList<>();
-        categories.add(new Category("burgers", "/image/burgers.jpg"));
-        categories.add(new Category("chickens", "/image/chickens.jpg"));
+        categories.add(new Category("burgers"));
+        categories.add(new Category("chickens"));
         when(categoryRepository.findAll()).thenReturn(categories);
         List<CategoryReadDto> allCategories = categoryService.findAllCategories();
         Assertions.assertThat(allCategories).isNotNull();

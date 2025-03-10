@@ -15,7 +15,6 @@ public class Category {
     @Column(name = "category_id")
     private Long id;
     private String name;
-    private String imageSource;
 
     @ManyToOne
     @JoinColumn(name = "PARENT_ID")
@@ -30,8 +29,7 @@ public class Category {
             inverseJoinColumns = @JoinColumn(name="product_id"))
     private List<Product> products = new ArrayList<>();
 
-    public Category(String name, String imageSource) {
+    public Category(String name) {
         this.name = name;
-        this.imageSource = imageSource;
     }
 }
