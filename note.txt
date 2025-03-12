@@ -246,8 +246,10 @@ What now?
         - OptionType.radio = Single, Multiple...
     - ProductOptionTrait = melt, easy, regular, extra -> Countable, Meltable, Toastable, Measurable...
     - Calories calculation
-
-
+    - insert data to custom_rule_product_option based on product_id and option_type_id
+    - productOption and customRule (modify to N:1), delete ProductOptionCustomRule
+    - OptionType recreate
+    - render all the options on frontend
 customRule
     - id
     - row-index (alignment order)
@@ -255,3 +257,7 @@ customRule
     - type ("unique", "multiple")
     - min_s ()
     - max_s () option의 개수? 또는 Free: 음수, 0, NULL 처리
+
+
+customRule and productOption
+    - sharing option_type so that they can joined based on option_type

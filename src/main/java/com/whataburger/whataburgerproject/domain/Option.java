@@ -18,10 +18,6 @@ public class Option {
     private String imageSource;
     private int calories;
 
-    @ManyToOne
-    @JoinColumn(name = "option_type_id")
-    private OptionType optionType;
-
     @OneToMany(mappedBy = "option")
     private List<ProductOption> productOptions = new ArrayList<>();
 

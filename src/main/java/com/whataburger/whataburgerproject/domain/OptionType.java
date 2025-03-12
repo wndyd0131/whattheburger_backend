@@ -2,6 +2,7 @@ package com.whataburger.whataburgerproject.domain;
 
 import jakarta.persistence.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -11,7 +12,4 @@ public class OptionType {
     @Column(name = "option_type_id")
     private Long id;
     private String name;
-
-    @OneToMany(mappedBy = "optionType")
-    private List<Option> options;
 }

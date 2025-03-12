@@ -35,9 +35,10 @@ out/
 
 ### Properties ###
 src/**/resources/application*.yml
+src/**/resources/data.sql
 
 ### Personal ###
-
+note.txt
 
 ### VS Code ###
 .vscode/

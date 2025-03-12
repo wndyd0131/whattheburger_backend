@@ -21,10 +21,6 @@ public class CustomRule {
     private int min_selection;
     private int max_selection;
 
-    @ManyToOne
-    @JoinColumn(name = "product_id")
-    private Product product;
-
     @OneToMany(mappedBy = "customRule")
-    private List<CustomRuleProductOption> customRuleProductOptions = new ArrayList<>();
+    private List<ProductOption> productOptions = new ArrayList<>();
 }

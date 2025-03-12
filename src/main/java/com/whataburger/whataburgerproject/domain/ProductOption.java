@@ -33,8 +33,9 @@ public class ProductOption {
     @OneToMany(mappedBy = "productOption")
     private List<OrderProductOption> orderProductOptions = new ArrayList<>();
 
-    @OneToMany(mappedBy = "productOption")
-    private List<CustomRuleProductOption> customRuleProductOptions = new ArrayList<>();
+    @ManyToOne
+    @JoinColumn(name = "custom_rule_id")
+    private CustomRule customRule;
 
     public ProductOption(
             Product product,

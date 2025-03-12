@@ -1,5 +1,6 @@
 package com.whataburger.whataburgerproject.controller.dto;
 
+import com.whataburger.whataburgerproject.domain.enums.CustomRuleType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -32,7 +33,21 @@ public class ProductReadByProductIdResponseDto {
         private double extraPrice; //productOption
         private int calories;
         private String imageSource;
+        private CustomRuleRequest customRuleRequest;
         private List<OptionTraitRequest> optionTraitRequests;
+    }
+
+    @AllArgsConstructor
+    @Builder
+    @NoArgsConstructor
+    @Data
+    public static class CustomRuleRequest {
+        private Long customRuleId;
+        private String name;
+        private CustomRuleType customRuleType;
+        private int rowIndex;
+        private int minSelection;
+        private int maxSelection;
     }
 
     @AllArgsConstructor

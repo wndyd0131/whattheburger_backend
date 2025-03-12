@@ -2,6 +2,7 @@ package com.whataburger.whataburgerproject.controller;
 
 import com.whataburger.whataburgerproject.controller.dto.*;
 import com.whataburger.whataburgerproject.domain.*;
+import com.whataburger.whataburgerproject.service.ProductOptionService;
 import com.whataburger.whataburgerproject.service.ProductService;
 import com.whataburger.whataburgerproject.service.dto.ProductReadByCategoryIdDto;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -20,6 +21,8 @@ import java.util.List;
 public class ProductController {
 
     private final ProductService productService;
+    private final ProductOptionService productOptionService;
+
     @GetMapping("/api/v1/products")
     public List<ProductReadResponseDto> getAllProducts() {
         List<Product> allProducts = productService.getAllProducts();
@@ -42,13 +45,24 @@ public class ProductController {
     @GetMapping("/api/v1/products/{productId}")
     public ProductReadByProductIdResponseDto getProductById(@PathVariable("productId") Long productId) {
         Product product = productService.findProductById(productId);
-        List<ProductOption> productOptions = productService.findProductOptionByProductId(product.getId());
+        List<ProductOption> productOptions = productOptionService.findProductOptionByProductId(product.getId());
         List<ProductReadByProductIdResponseDto.OptionRequest> optionRequests = new ArrayList<>();
 
         for (ProductOption productOption : productOptions) {
             Option option = productOption.getOption();
             List<ProductOptionTrait> productOptionTraits = productOption.getProductOptionTraits();
             List<ProductReadByProductIdResponseDto.OptionTraitRequest> optionTraitRequests = new ArrayList<>();
+            CustomRule customRule = productOption.getCustomRule();
+            ProductReadByProductIdResponseDto.CustomRuleRequest customRuleRequest =
+                    ProductReadByProductIdResponseDto.CustomRuleRequest
+                            .builder()
+                            .customRuleId(customRule.getId())
+                            .name(customRule.getName())
+                            .customRuleType(customRule.getCustomRuleType())
+                            .rowIndex(customRule.getRowIndex())
+                            .minSelection(customRule.getMin_selection())
+                            .maxSelection(customRule.getMax_selection())
+                            .build();
             for (ProductOptionTrait productOptionTrait : productOptionTraits) {
                 OptionTrait optionTrait = productOptionTrait.getOptionTrait();
                 optionTraitRequests.add(
@@ -72,9 +86,11 @@ public class ProductController {
                     .extraPrice(productOption.getExtraPrice())
                     .calories(option.getCalories())
                     .imageSource(option.getImageSource())
+                    .customRuleRequest(customRuleRequest)
                     .optionTraitRequests(
                             optionTraitRequests
                     )
+
                     .build()
             );
         }

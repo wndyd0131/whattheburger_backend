@@ -89,9 +89,4 @@ public class ProductService {
                 .orElseThrow(() -> new ProductNotFoundException(productId));
         return product;
     }
-
-    public List<ProductOption> findProductOptionByProductId(Long productId) {
-        List<ProductOption> productOptions = productOptionRepository.findByProductId(productId);
-        return productOptions;
-    }
 }

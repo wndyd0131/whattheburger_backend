@@ -30,9 +30,6 @@ public class Product {
     @OneToMany(mappedBy = "product")
     private List<OrderProduct> orderProducts = new ArrayList<>();
 
-    @OneToMany(mappedBy = "product")
-    private List<CustomRule> customRules = new ArrayList<>();
-
     public Product(
             String name,
             double price,
