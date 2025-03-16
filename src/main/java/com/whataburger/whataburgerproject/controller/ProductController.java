@@ -86,6 +86,7 @@ public class ProductController {
                     .extraPrice(productOption.getExtraPrice())
                     .calories(option.getCalories())
                     .imageSource(option.getImageSource())
+                    .orderIndex(productOption.getOrderIndex())
                     .customRuleRequest(customRuleRequest)
                     .optionTraitRequests(
                             optionTraitRequests

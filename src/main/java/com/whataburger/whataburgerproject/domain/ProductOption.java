@@ -18,6 +18,7 @@ public class ProductOption {
     private int defaultQuantity;
     private int maxQuantity;
     private double extraPrice;
+    private int orderIndex;
 
     @ManyToOne
     @JoinColumn(name = "product_id")
@@ -43,7 +44,8 @@ public class ProductOption {
             Boolean isDefault,
             int defaultQuantity,
             int maxQuantity,
-            double extraPrice
+            double extraPrice,
+            int orderIndex
     ) {
         this.product = product;
         this.option = option;
@@ -51,5 +53,6 @@ public class ProductOption {
         this.defaultQuantity = defaultQuantity;
         this.maxQuantity = maxQuantity;
         this.extraPrice = extraPrice;
+        this.orderIndex = orderIndex;
     }
 }

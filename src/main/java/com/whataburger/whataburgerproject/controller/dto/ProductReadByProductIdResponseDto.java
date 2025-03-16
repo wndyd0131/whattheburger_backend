@@ -33,6 +33,7 @@ public class ProductReadByProductIdResponseDto {
         private double extraPrice; //productOption
         private int calories;
         private String imageSource;
+        private int orderIndex;
         private CustomRuleRequest customRuleRequest;
         private List<OptionTraitRequest> optionTraitRequests;
     }

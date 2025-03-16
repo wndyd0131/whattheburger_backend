@@ -52,7 +52,8 @@ public class ProductService {
                     optionRequest.getIsDefault(),
                     optionRequest.getDefaultQuantity(),
                     optionRequest.getMaxQuantity(),
-                    optionRequest.getExtraPrice()
+                    optionRequest.getExtraPrice(),
+                    optionRequest.getOrderIndex()
             );
             productOptionRepository.save(productOption);
         }
