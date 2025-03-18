@@ -13,7 +13,7 @@ public class ProductOptionTrait {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "product_option_trait_id")
     private Long id;
-    private Boolean isDefault;
+    private int defaultSelection;
     private double extraPrice;
     private int extraCalories;
 

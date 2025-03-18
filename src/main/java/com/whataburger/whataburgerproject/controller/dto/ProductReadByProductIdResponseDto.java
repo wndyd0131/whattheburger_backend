@@ -18,13 +18,13 @@ public class ProductReadByProductIdResponseDto {
     private double productPrice;
     private String imageSource;
     private String briefInfo;
-    private List<OptionRequest> optionRequests;
+    private List<OptionResponse> optionResponses;
 
     @AllArgsConstructor
     @Builder
     @NoArgsConstructor
     @Data
-    public static class OptionRequest {
+    public static class OptionResponse {
         private Long optionId;
         private String name;
         private Boolean isDefault; //productOption
@@ -34,15 +34,15 @@ public class ProductReadByProductIdResponseDto {
         private int calories;
         private String imageSource;
         private int orderIndex;
-        private CustomRuleRequest customRuleRequest;
-        private List<OptionTraitRequest> optionTraitRequests;
+        private CustomRuleResponse customRuleResponse;
+        private List<OptionTraitResponse> optionTraitResponses;
     }
 
     @AllArgsConstructor
     @Builder
     @NoArgsConstructor
     @Data
-    public static class CustomRuleRequest {
+    public static class CustomRuleResponse {
         private Long customRuleId;
         private String name;
         private CustomRuleType customRuleType;
@@ -55,10 +55,10 @@ public class ProductReadByProductIdResponseDto {
     @Builder
     @NoArgsConstructor
     @Data
-    public static class OptionTraitRequest {
+    public static class OptionTraitResponse {
         private Long optionTraitId;
         private String name;
-        private Boolean isDefault; //productOptionTrait
+        private int defaultSelection; //productOptionTrait
         private double extraPrice; //productOptionTrait
         private int extraCalories; //productOptionTrait
     }

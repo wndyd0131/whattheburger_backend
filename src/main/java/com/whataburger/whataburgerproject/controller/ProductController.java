@@ -5,6 +5,11 @@ import com.whataburger.whataburgerproject.domain.*;
 import com.whataburger.whataburgerproject.service.ProductOptionService;
 import com.whataburger.whataburgerproject.service.ProductService;
 import com.whataburger.whataburgerproject.service.dto.ProductReadByCategoryIdDto;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,19 +47,62 @@ public class ProductController {
         return productReadResponseDtoList;
     }
 
+    @Operation(summary = "Get product by ID", description = "Returns a product with its options and traits")
+    @ApiResponse(responseCode = "200", description = "Find Product By ProductId",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ProductReadByProductIdResponseDto.class),
+                    examples = @ExampleObject(value = """
+                            {
+                              "productId": 1,
+                              "productName": "Whataburger",
+                              "productPrice": 5.49,
+                              "imageSource": null,
+                              "briefInfo": "Large Bun (5\\\"), Large Beef Patty (5\\\") (1), Tomato (Regular), Lettuce (Regular), Pickles (Regular), Diced Onions (Regular), Mustard (Regular)",
+                              "optionResponses": [
+                                {
+                                  "optionId": 1,
+                                  "name": "large_bun",
+                                  "isDefault": true,
+                                  "defaultQuantity": 1,
+                                  "maxQuantity": 1,
+                                  "extraPrice": 0,
+                                  "calories": 310,
+                                  "imageSource": null,
+                                  "orderIndex": 0,
+                                  "customRuleResponse": {
+                                    "customRuleId": 1,
+                                    "name": "BREAD",
+                                    "customRuleType": "UNIQUE",
+                                    "rowIndex": 0,
+                                    "minSelection": 1,
+                                    "maxSelection": 1
+                                  },
+                                  "optionTraitResponses": [
+                                    {
+                                        "optionTraitId": 1,
+                                        "name": "TBS"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                            """)
+            )
+    )
     @GetMapping("/api/v1/products/{productId}")
     public ProductReadByProductIdResponseDto getProductById(@PathVariable("productId") Long productId) {
         Product product = productService.findProductById(productId);
         List<ProductOption> productOptions = productOptionService.findProductOptionByProductId(product.getId());
-        List<ProductReadByProductIdResponseDto.OptionRequest> optionRequests = new ArrayList<>();
+        List<ProductReadByProductIdResponseDto.OptionResponse> optionResponses = new ArrayList<>();
 
         for (ProductOption productOption : productOptions) {
             Option option = productOption.getOption();
             List<ProductOptionTrait> productOptionTraits = productOption.getProductOptionTraits();
-            List<ProductReadByProductIdResponseDto.OptionTraitRequest> optionTraitRequests = new ArrayList<>();
+            List<ProductReadByProductIdResponseDto.OptionTraitResponse> optionTraitResponses = new ArrayList<>();
             CustomRule customRule = productOption.getCustomRule();
-            ProductReadByProductIdResponseDto.CustomRuleRequest customRuleRequest =
-                    ProductReadByProductIdResponseDto.CustomRuleRequest
+            ProductReadByProductIdResponseDto.CustomRuleResponse customRuleResponse =
+                    ProductReadByProductIdResponseDto.CustomRuleResponse
                             .builder()
                             .customRuleId(customRule.getId())
                             .name(customRule.getName())
@@ -65,18 +113,18 @@ public class ProductController {
                             .build();
             for (ProductOptionTrait productOptionTrait : productOptionTraits) {
                 OptionTrait optionTrait = productOptionTrait.getOptionTrait();
-                optionTraitRequests.add(
-                        ProductReadByProductIdResponseDto.OptionTraitRequest
+                optionTraitResponses.add(
+                        ProductReadByProductIdResponseDto.OptionTraitResponse
                                 .builder()
                                 .optionTraitId(optionTrait.getId())
                                 .name(optionTrait.getName())
-                                .isDefault(productOptionTrait.getIsDefault())
+                                .defaultSelection(productOptionTrait.getDefaultSelection())
                                 .extraPrice(productOptionTrait.getExtraPrice())
                                 .extraCalories(productOptionTrait.getExtraCalories())
                                 .build()
                 );
             }
-            optionRequests.add(ProductReadByProductIdResponseDto.OptionRequest
+            optionResponses.add(ProductReadByProductIdResponseDto.OptionResponse
                     .builder()
                     .optionId(option.getId())
                     .name(option.getName())
@@ -87,9 +135,9 @@ public class ProductController {
                     .calories(option.getCalories())
                     .imageSource(option.getImageSource())
                     .orderIndex(productOption.getOrderIndex())
-                    .customRuleRequest(customRuleRequest)
-                    .optionTraitRequests(
-                            optionTraitRequests
+                    .customRuleResponse(customRuleResponse)
+                    .optionTraitResponses(
+                            optionTraitResponses
                     )
 
                     .build()
@@ -101,7 +149,7 @@ public class ProductController {
                 product.getPrice(),
                 product.getImageSource(),
                 product.getBriefInfo(),
-                optionRequests
+                optionResponses
         );
     }
 
