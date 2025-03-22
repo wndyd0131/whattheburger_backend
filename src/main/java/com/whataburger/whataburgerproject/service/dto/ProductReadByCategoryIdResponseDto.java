@@ -1,4 +1,4 @@
-package com.whataburger.whataburgerproject.controller.dto;
+package com.whataburger.whataburgerproject.service.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

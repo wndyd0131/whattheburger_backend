@@ -1,15 +1,13 @@
 package com.whataburger.whataburgerproject.service;
 
 import com.whataburger.whataburgerproject.controller.dto.ProductCreateRequestDTO;
-import com.whataburger.whataburgerproject.domain.Category;
-import com.whataburger.whataburgerproject.domain.Option;
-import com.whataburger.whataburgerproject.domain.Product;
-import com.whataburger.whataburgerproject.domain.ProductOption;
+import com.whataburger.whataburgerproject.controller.dto.ProductReadByProductIdResponseDto;
+import com.whataburger.whataburgerproject.domain.*;
 import com.whataburger.whataburgerproject.repository.CategoryRepository;
 import com.whataburger.whataburgerproject.repository.OptionRepository;
 import com.whataburger.whataburgerproject.repository.ProductOptionRepository;
 import com.whataburger.whataburgerproject.repository.ProductRepository;
-import com.whataburger.whataburgerproject.service.dto.ProductReadByCategoryIdDto;
+import com.whataburger.whataburgerproject.service.dto.ProductReadByCategoryIdResponseDto;
 import com.whataburger.whataburgerproject.service.exception.CategoryNotFoundException;
 import com.whataburger.whataburgerproject.service.exception.OptionNotFoundException;
 import com.whataburger.whataburgerproject.service.exception.ProductNotFoundException;
@@ -59,20 +57,21 @@ public class ProductService {
         }
         return savedProduct;
     }
+
     public List<Product> getAllProducts() {
         List<Product> products = productRepository.findAll();
         return products;
     }
 
-    public List<ProductReadByCategoryIdDto> findProductsByCategoryId(Long categoryId) {
+    public List<ProductReadByCategoryIdResponseDto> findProductsByCategoryId(Long categoryId) {
         Category category = categoryRepository
                 .findById(categoryId)
                 .orElseThrow(() -> new RuntimeException());
         List<Product> products = category.getProducts();
-        List<ProductReadByCategoryIdDto> productReadDtoList = new ArrayList<>();
+        List<ProductReadByCategoryIdResponseDto> productReadDtoList = new ArrayList<>();
         for (Product product : products) {
             productReadDtoList.add(
-                    new ProductReadByCategoryIdDto(
+                    new ProductReadByCategoryIdResponseDto(
                             product.getId(),
                             product.getName(),
                             product.getPrice(),
@@ -84,10 +83,65 @@ public class ProductService {
         return productReadDtoList;
     }
 
-    public Product findProductById(Long productId) {
-        Product product = productRepository
-                .findById(productId)
-                .orElseThrow(() -> new ProductNotFoundException(productId));
-        return product;
+    public ProductReadByProductIdResponseDto findProductById(Long productId) {
+        Product product = productRepository.findById(productId).orElseThrow(() -> new ProductNotFoundException(productId));
+        List<ProductOption> productOptions = productOptionRepository.findByProductId(product.getId());
+        List<ProductReadByProductIdResponseDto.OptionResponse> optionResponses = new ArrayList<>();
+
+        for (ProductOption productOption : productOptions) {
+            Option option = productOption.getOption();
+            List<ProductOptionTrait> productOptionTraits = productOption.getProductOptionTraits();
+            List<ProductReadByProductIdResponseDto.OptionTraitResponse> optionTraitResponses = new ArrayList<>();
+            CustomRule customRule = productOption.getCustomRule();
+            ProductReadByProductIdResponseDto.CustomRuleResponse customRuleResponse =
+                    ProductReadByProductIdResponseDto.CustomRuleResponse
+                            .builder()
+                            .customRuleId(customRule.getId())
+                            .name(customRule.getName())
+                            .customRuleType(customRule.getCustomRuleType())
+                            .rowIndex(customRule.getRowIndex())
+                            .minSelection(customRule.getMin_selection())
+                            .maxSelection(customRule.getMax_selection())
+                            .build();
+            for (ProductOptionTrait productOptionTrait : productOptionTraits) {
+                OptionTrait optionTrait = productOptionTrait.getOptionTrait();
+                optionTraitResponses.add(
+                        ProductReadByProductIdResponseDto.OptionTraitResponse
+                                .builder()
+                                .optionTraitId(optionTrait.getId())
+                                .name(optionTrait.getName())
+                                .defaultSelection(productOptionTrait.getDefaultSelection())
+                                .extraPrice(productOptionTrait.getExtraPrice())
+                                .extraCalories(productOptionTrait.getExtraCalories())
+                                .build()
+                );
+            }
+            optionResponses.add(ProductReadByProductIdResponseDto.OptionResponse
+                    .builder()
+                    .optionId(option.getId())
+                    .name(option.getName())
+                    .isDefault(productOption.getIsDefault())
+                    .defaultQuantity(productOption.getDefaultQuantity())
+                    .maxQuantity(productOption.getMaxQuantity())
+                    .extraPrice(productOption.getExtraPrice())
+                    .calories(option.getCalories())
+                    .imageSource(option.getImageSource())
+                    .orderIndex(productOption.getOrderIndex())
+                    .customRuleResponse(customRuleResponse)
+                    .optionTraitResponses(
+                            optionTraitResponses
+                    )
+
+                    .build()
+            );
+        }
+        return new ProductReadByProductIdResponseDto(
+                product.getId(),
+                product.getName(),
+                product.getPrice(),
+                product.getImageSource(),
+                product.getBriefInfo(),
+                optionResponses
+        );
     }
 }
