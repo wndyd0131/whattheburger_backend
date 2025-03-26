@@ -3,10 +3,7 @@ package com.whataburger.whataburgerproject.service;
 import com.whataburger.whataburgerproject.controller.dto.ProductCreateRequestDTO;
 import com.whataburger.whataburgerproject.controller.dto.ProductReadByProductIdResponseDto;
 import com.whataburger.whataburgerproject.domain.*;
-import com.whataburger.whataburgerproject.repository.CategoryRepository;
-import com.whataburger.whataburgerproject.repository.OptionRepository;
-import com.whataburger.whataburgerproject.repository.ProductOptionRepository;
-import com.whataburger.whataburgerproject.repository.ProductRepository;
+import com.whataburger.whataburgerproject.repository.*;
 import com.whataburger.whataburgerproject.service.dto.ProductReadByCategoryIdResponseDto;
 import com.whataburger.whataburgerproject.service.exception.CategoryNotFoundException;
 import com.whataburger.whataburgerproject.service.exception.OptionNotFoundException;
@@ -25,11 +22,14 @@ public class ProductService {
     private final OptionRepository optionRepository;
     private final ProductOptionRepository productOptionRepository;
     private final CategoryRepository categoryRepository;
+    private final CustomRuleRepository customRuleRepository;
+    private final OptionTraitRepository optionTraitRepository;
+    private final ProductOptionTraitRepository productOptionTraitRepository;
 
     @Transactional
     public Product createProduct(ProductCreateRequestDTO productCreateRequestDTO) {
         Product product = productCreateRequestDTO.toEntity();
-        Product savedProduct = productRepository.save(product);
+        Product newProduct = productRepository.save(product);
 
         Long categoryId = productCreateRequestDTO.getCategoryId();
         Category category = categoryRepository
@@ -38,24 +38,50 @@ public class ProductService {
         category.getProducts().add(product);
         categoryRepository.save(category);
 
-        for (ProductCreateRequestDTO.OptionRequest optionRequest : productCreateRequestDTO.getOptions()) {
-            Long optionId = optionRequest.getOptionId();
-            Option option = optionRepository
-                    .findById(optionId)
-                    .orElseThrow(() -> new OptionNotFoundException(optionId));
-
-            ProductOption productOption = new ProductOption(
-                    savedProduct,
-                    option,
-                    optionRequest.getIsDefault(),
-                    optionRequest.getDefaultQuantity(),
-                    optionRequest.getMaxQuantity(),
-                    optionRequest.getExtraPrice(),
-                    optionRequest.getOrderIndex()
+        for (ProductCreateRequestDTO.CustomRuleRequest customRuleRequest : productCreateRequestDTO.getCustomRuleRequests()) {
+            CustomRule customRule = new CustomRule(
+                    customRuleRequest.getCustomRuleName(),
+                    customRuleRequest.getCustomRuleType(),
+                    customRuleRequest.getRowIndex(),
+                    customRuleRequest.getMinSelection(),
+                    customRuleRequest.getMaxSelection()
             );
-            productOptionRepository.save(productOption);
+            CustomRule newCustomRule = customRuleRepository.save(customRule);
+            for (ProductCreateRequestDTO.OptionRequest optionRequest : customRuleRequest.getOptionRequests()) {
+                Long optionId = optionRequest.getOptionId();
+                Option option = optionRepository
+                        .findById(optionId)
+                        .orElseThrow(() -> new OptionNotFoundException(optionId));
+
+                ProductOption productOption = new ProductOption(
+                        newProduct,
+                        option,
+                        newCustomRule,
+                        optionRequest.getIsDefault(),
+                        optionRequest.getDefaultQuantity(),
+                        optionRequest.getMaxQuantity(),
+                        optionRequest.getExtraPrice(),
+                        optionRequest.getOrderIndex()
+                );
+                ProductOption newProductOption = productOptionRepository.save(productOption);
+                for (ProductCreateRequestDTO.OptionTraitRequest optionTraitRequest : optionRequest.getOptionTraitRequests()) {
+                    Long optionTraitId = optionTraitRequest.getOptionTraitId();
+                    OptionTrait optionTrait = optionTraitRepository
+                            .findById(optionTraitId)
+                            .orElseThrow(() -> new OptionNotFoundException(optionTraitId));
+                    ProductOptionTrait productOptionTrait = new ProductOptionTrait(
+                            newProductOption,
+                            optionTrait,
+                            optionTraitRequest.getDefaultSelection(),
+                            optionTraitRequest.getExtraPrice(),
+                            optionTraitRequest.getExtraCalories()
+                    );
+                    productOptionTraitRepository.save(productOptionTrait);
+                }
+            }
         }
-        return savedProduct;
+
+        return newProduct;
     }
 
     public List<Product> getAllProducts() {
@@ -100,8 +126,8 @@ public class ProductService {
                             .name(customRule.getName())
                             .customRuleType(customRule.getCustomRuleType())
                             .rowIndex(customRule.getRowIndex())
-                            .minSelection(customRule.getMin_selection())
-                            .maxSelection(customRule.getMax_selection())
+                            .minSelection(customRule.getMinSelection())
+                            .maxSelection(customRule.getMaxSelection())
                             .build();
             for (ProductOptionTrait productOptionTrait : productOptionTraits) {
                 OptionTrait optionTrait = productOptionTrait.getOptionTrait();

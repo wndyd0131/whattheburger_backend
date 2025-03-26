@@ -41,6 +41,7 @@ public class ProductOption {
     public ProductOption(
             Product product,
             Option option,
+            CustomRule customRule,
             Boolean isDefault,
             int defaultQuantity,
             int maxQuantity,
@@ -49,6 +50,7 @@ public class ProductOption {
     ) {
         this.product = product;
         this.option = option;
+        this.customRule = customRule;
         this.isDefault = isDefault;
         this.defaultQuantity = defaultQuantity;
         this.maxQuantity = maxQuantity;

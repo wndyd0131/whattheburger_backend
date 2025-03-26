@@ -31,7 +31,7 @@ public class ProductReadByProductIdResponseDto {
         private int defaultQuantity; //productOption
         private int maxQuantity; //productOption
         private double extraPrice; //productOption
-        private int calories;
+        private double calories;
         private String imageSource;
         private int orderIndex;
         private CustomRuleResponse customRuleResponse;
@@ -60,6 +60,6 @@ public class ProductReadByProductIdResponseDto {
         private String name;
         private int defaultSelection; //productOptionTrait
         private double extraPrice; //productOptionTrait
-        private int extraCalories; //productOptionTrait
+        private double extraCalories; //productOptionTrait
     }
 }
