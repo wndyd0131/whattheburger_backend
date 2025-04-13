@@ -1,6 +1,6 @@
 package com.whataburger.whataburgerproject.service;
 
-import com.whataburger.whataburgerproject.controller.dto.ProductCreateRequestDTO;
+import com.whataburger.whataburgerproject.controller.dto.ProductCreateRequestDto;
 import com.whataburger.whataburgerproject.controller.dto.ProductReadByProductIdResponseDto;
 import com.whataburger.whataburgerproject.domain.*;
 import com.whataburger.whataburgerproject.repository.*;
@@ -27,7 +27,7 @@ public class ProductService {
     private final ProductOptionTraitRepository productOptionTraitRepository;
 
     @Transactional
-    public Product createProduct(ProductCreateRequestDTO productCreateRequestDTO) {
+    public Product createProduct(ProductCreateRequestDto productCreateRequestDTO) {
         Product product = productCreateRequestDTO.toEntity();
         Product newProduct = productRepository.save(product);
 
@@ -38,7 +38,7 @@ public class ProductService {
         category.getProducts().add(product);
         categoryRepository.save(category);
 
-        for (ProductCreateRequestDTO.CustomRuleRequest customRuleRequest : productCreateRequestDTO.getCustomRuleRequests()) {
+        for (ProductCreateRequestDto.CustomRuleRequest customRuleRequest : productCreateRequestDTO.getCustomRuleRequests()) {
             CustomRule customRule = new CustomRule(
                     customRuleRequest.getCustomRuleName(),
                     customRuleRequest.getCustomRuleType(),
@@ -47,7 +47,7 @@ public class ProductService {
                     customRuleRequest.getMaxSelection()
             );
             CustomRule newCustomRule = customRuleRepository.save(customRule);
-            for (ProductCreateRequestDTO.OptionRequest optionRequest : customRuleRequest.getOptionRequests()) {
+            for (ProductCreateRequestDto.OptionRequest optionRequest : customRuleRequest.getOptionRequests()) {
                 Long optionId = optionRequest.getOptionId();
                 Option option = optionRepository
                         .findById(optionId)
@@ -58,13 +58,14 @@ public class ProductService {
                         option,
                         newCustomRule,
                         optionRequest.getIsDefault(),
+                        optionRequest.getMeasureType(),
                         optionRequest.getDefaultQuantity(),
                         optionRequest.getMaxQuantity(),
                         optionRequest.getExtraPrice(),
                         optionRequest.getOrderIndex()
                 );
                 ProductOption newProductOption = productOptionRepository.save(productOption);
-                for (ProductCreateRequestDTO.OptionTraitRequest optionTraitRequest : optionRequest.getOptionTraitRequests()) {
+                for (ProductCreateRequestDto.OptionTraitRequest optionTraitRequest : optionRequest.getOptionTraitRequests()) {
                     Long optionTraitId = optionTraitRequest.getOptionTraitId();
                     OptionTrait optionTrait = optionTraitRepository
                             .findById(optionTraitId)
@@ -109,7 +110,7 @@ public class ProductService {
         return productReadDtoList;
     }
 
-    public ProductReadByProductIdResponseDto findProductById(Long productId) {
+    public ProductReadByProductIdResponseDto getProductById(Long productId) {
         Product product = productRepository.findById(productId).orElseThrow(() -> new ProductNotFoundException(productId));
         List<ProductOption> productOptions = productOptionRepository.findByProductId(product.getId());
         List<ProductReadByProductIdResponseDto.OptionResponse> optionResponses = new ArrayList<>();

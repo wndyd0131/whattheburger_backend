@@ -2,6 +2,7 @@ package com.whataburger.whataburgerproject.domain;
 
 import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,6 +10,7 @@ import java.util.List;
 @Entity
 @Getter
 @Table(name = "options")
+@NoArgsConstructor
 public class Option {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,4 +28,10 @@ public class Option {
             joinColumns = @JoinColumn(name="option_id"),
             inverseJoinColumns = @JoinColumn(name="option_trait_id"))
     private List<OptionTrait> optionTraits = new ArrayList<>();
+
+    public Option(String name, String imageSource, int calories) {
+        this.name = name;
+        this.imageSource = imageSource;
+        this.calories = calories;
+    }
 }

@@ -20,7 +20,7 @@ public class CategoryController {
 
     @GetMapping("/api/v1/category")
     public List<CategoryReadResponseDto> getAllCategories() {
-        List<CategoryReadDto> allCategories = categoryService.findAllCategories();
+        List<CategoryReadDto> allCategories = categoryService.getAllCategories();
         List<CategoryReadResponseDto> categoryReadResponseDtoList = new ArrayList<>();
         for (CategoryReadDto categoryReadDto : allCategories) {
             categoryReadResponseDtoList.add(

@@ -13,7 +13,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CategoryService {
     private final CategoryRepository categoryRepository;
-    public List<CategoryReadDto> findAllCategories() {
+    public List<CategoryReadDto> getAllCategories() {
         List<Category> categories = categoryRepository.findAll();
         List<CategoryReadDto> categoryReadDtoList = new ArrayList<>();
         for (Category category: categories) {

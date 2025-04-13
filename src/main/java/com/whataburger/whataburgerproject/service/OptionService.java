@@ -13,7 +13,7 @@ public class OptionService {
 
     private final OptionRepository optionRepository;
 
-    public List<Option> findAllOptions() {
+    public List<Option> getAllOptions() {
         return optionRepository.findAll();
     }
 }

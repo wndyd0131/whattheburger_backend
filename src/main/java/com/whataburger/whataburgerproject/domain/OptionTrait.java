@@ -2,12 +2,14 @@ package com.whataburger.whataburgerproject.domain;
 
 import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
 @Getter
+@NoArgsConstructor
 public class OptionTrait {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -20,4 +22,8 @@ public class OptionTrait {
 
     @OneToMany(mappedBy = "optionTrait")
     private List<ProductOptionTrait> productOptionTraits = new ArrayList<>();
+
+    public OptionTrait(String name) {
+        this.name = name;
+    }
 }

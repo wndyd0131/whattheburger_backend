@@ -1,4 +1,5 @@
 package com.whataburger.whataburgerproject.domain;
+import com.whataburger.whataburgerproject.domain.enums.MeasureType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -15,6 +16,7 @@ public class ProductOption {
     @Column(name = "product_option_id")
     private Long id;
     private Boolean isDefault;
+    private MeasureType measureType;
     private int defaultQuantity;
     private int maxQuantity;
     private double extraPrice;
@@ -43,6 +45,7 @@ public class ProductOption {
             Option option,
             CustomRule customRule,
             Boolean isDefault,
+            MeasureType measureType,
             int defaultQuantity,
             int maxQuantity,
             double extraPrice,
@@ -52,6 +55,7 @@ public class ProductOption {
         this.option = option;
         this.customRule = customRule;
         this.isDefault = isDefault;
+        this.measureType = measureType;
         this.defaultQuantity = defaultQuantity;
         this.maxQuantity = maxQuantity;
         this.extraPrice = extraPrice;

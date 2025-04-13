@@ -13,7 +13,7 @@ public class ProductOptionService {
 
     private final ProductOptionRepository productOptionRepository;
 
-    public List<ProductOption> findProductOptionByProductId(Long productId) {
+    public List<ProductOption> getProductOptionByProductId(Long productId) {
         List<ProductOption> productOptions = productOptionRepository.findByProductId(productId);
         return productOptions;
     }

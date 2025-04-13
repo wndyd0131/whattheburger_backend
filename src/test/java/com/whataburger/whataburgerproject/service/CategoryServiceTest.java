@@ -8,9 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,7 +28,7 @@ public class CategoryServiceTest {
         categories.add(new Category("burgers"));
         categories.add(new Category("chickens"));
         when(categoryRepository.findAll()).thenReturn(categories);
-        List<CategoryReadDto> allCategories = categoryService.findAllCategories();
+        List<CategoryReadDto> allCategories = categoryService.getAllCategories();
         Assertions.assertThat(allCategories).isNotNull();
         Assertions.assertThat(allCategories.size()).isEqualTo(2);
     }

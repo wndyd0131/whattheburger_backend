@@ -13,6 +13,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
@@ -92,7 +94,7 @@ public class ProductController {
     )
     @GetMapping("/api/v1/products/{productId}")
     public ProductReadByProductIdResponseDto getProductById(@PathVariable("productId") Long productId) {
-        ProductReadByProductIdResponseDto productResponseDto = productService.findProductById(productId);
+        ProductReadByProductIdResponseDto productResponseDto = productService.getProductById(productId);
         return productResponseDto;
     }
 
@@ -104,14 +106,8 @@ public class ProductController {
 
     @Transactional
     @PostMapping("/api/v1/products")
-    public ProductCreateResponseDTO createProduct(@RequestBody ProductCreateRequestDTO productCreateRequestDTO) {
-        Product product = productService.createProduct(productCreateRequestDTO);
-        return new ProductCreateResponseDTO(
-                product.getId(),
-                product.getName(),
-                product.getPrice(),
-                product.getBriefInfo(),
-                product.getImageSource()
-        );
+    public ResponseEntity<String> createProduct(@RequestBody ProductCreateRequestDto productCreateRequestDTO) {
+        productService.createProduct(productCreateRequestDTO);
+        return ResponseEntity.status(HttpStatus.CREATED).body("Product successfully created");
     }
 }

@@ -1,5 +1,6 @@
 package com.whataburger.whataburgerproject.controller.dto;
 import com.whataburger.whataburgerproject.domain.Product;
+import com.whataburger.whataburgerproject.domain.enums.MeasureType;
 import com.whataburger.whataburgerproject.domain.enums.CustomRuleType;
 import com.whataburger.whataburgerproject.domain.enums.ProductType;
 import lombok.*;
@@ -10,7 +11,7 @@ import java.util.List;
 @NoArgsConstructor
 @Data
 @Builder
-public class ProductCreateRequestDTO {
+public class ProductCreateRequestDto {
     private String productName;
     private double productPrice;
     private double calories;
@@ -22,6 +23,8 @@ public class ProductCreateRequestDTO {
 
     @NoArgsConstructor
     @Data
+    @AllArgsConstructor
+    @Builder
     public static class CustomRuleRequest {
         private String customRuleName;
         private CustomRuleType customRuleType;
@@ -33,9 +36,12 @@ public class ProductCreateRequestDTO {
 
     @NoArgsConstructor
     @Data
+    @AllArgsConstructor
+    @Builder
     public static class OptionRequest {
         private Long optionId;
         private Boolean isDefault;
+        private MeasureType measureType;
         private int defaultQuantity;
         private int maxQuantity;
         private double extraPrice;
@@ -45,6 +51,8 @@ public class ProductCreateRequestDTO {
 
     @NoArgsConstructor
     @Data
+    @AllArgsConstructor
+    @Builder
     public static class OptionTraitRequest {
         private Long optionTraitId;
         private int defaultSelection;

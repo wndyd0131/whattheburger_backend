@@ -19,7 +19,7 @@ public class OptionController {
 
     @GetMapping("/api/v1/options")
     public ResponseEntity<List<OptionReadResponseDto>> getAllOptions() {
-        List<Option> options = optionService.findAllOptions();
+        List<Option> options = optionService.getAllOptions();
         List<OptionReadResponseDto> optionReadResponseDtos = new ArrayList<>();
         for (Option option : options) {
             optionReadResponseDtos.add(
