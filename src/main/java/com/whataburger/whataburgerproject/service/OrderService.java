@@ -5,13 +5,14 @@ import com.whataburger.whataburgerproject.domain.Order;
 import com.whataburger.whataburgerproject.domain.Product;
 import com.whataburger.whataburgerproject.domain.ProductOption;
 import com.whataburger.whataburgerproject.domain.ProductOptionTrait;
-import com.whataburger.whataburgerproject.exception.ResourceNotFoundException;
 import com.whataburger.whataburgerproject.repository.OrderRepository;
 import com.whataburger.whataburgerproject.repository.ProductOptionRepository;
 import com.whataburger.whataburgerproject.repository.ProductOptionTraitRepository;
 import com.whataburger.whataburgerproject.repository.ProductRepository;
 import com.whataburger.whataburgerproject.service.exception.OptionNotFoundException;
 import com.whataburger.whataburgerproject.service.exception.ProductNotFoundException;
+import com.whataburger.whataburgerproject.service.exception.ProductOptionNotFoundException;
+import com.whataburger.whataburgerproject.service.exception.ProductOptionTraitNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -44,12 +45,13 @@ public class OrderService {
                 Long optionId = optionRequest.getOptionId();
                 ProductOption productOption = productOptionRepository
                         .findByProductIdAndOptionId(productId, optionId)
-                        .orElseThrow(() -> new OptionNotFoundException(optionId));
+                        .orElseThrow(() -> new ProductOptionNotFoundException(productId, optionId));
+                Long productOptionId = productOption.getId();
                 for (OptionTraitRequest optionTraitRequest : optionRequest.getOptionTraitRequests()) {
                     Long optionTraitId = optionTraitRequest.getOptionTraitId();
                     ProductOptionTrait optionTrait = productOptionTraitRepository
-                            .findByProductOptionIdAndOptionTraitId(productId, optionTraitId)
-                            .orElseThrow(() -> new ResourceNotFoundException("OptionTrait", optionTraitId, HttpStatus.NOT_FOUND));
+                            .findByProductOptionIdAndOptionTraitId(productOptionId, optionTraitId)
+                            .orElseThrow(() -> new ProductOptionTraitNotFoundException(productOptionId, optionTraitId));
                 }
             }
         }

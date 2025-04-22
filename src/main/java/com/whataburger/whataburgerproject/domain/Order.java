@@ -28,8 +28,8 @@ public class Order {
     @Enumerated(EnumType.STRING)
     private PaymentMethod paymentMethod;
     private String orderNote;
-    private double discountApplied;
-    private double taxAmount;
+    private Double discountApplied;
+    private Double taxAmount;
     // private Store store;
 
     @ManyToOne

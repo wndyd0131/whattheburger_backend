@@ -13,5 +13,5 @@ public class OptionReadResponseDto {
     private Long optionId;
     private String optionName;
     private String imageSource;
-    private int optionCalories;
+    private Double optionCalories;
 }

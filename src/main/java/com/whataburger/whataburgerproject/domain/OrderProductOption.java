@@ -12,7 +12,7 @@ public class OrderProductOption {
     @Column(name = "order_product_option_id")
     private Long id;
     private String name;
-    private int quantity;
+    private Integer quantity;
 
     @ManyToOne
     @JoinColumn(name = "order_product_id")

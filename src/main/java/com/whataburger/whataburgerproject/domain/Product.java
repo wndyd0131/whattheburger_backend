@@ -14,15 +14,12 @@ public class Product {
     @Column(name = "product_id")
     private Long id;
     private String name;
-    private double price;
+    private Double price;
     private String briefInfo;
     private String imageSource;
-    private double calories;
+    private Double calories;
     @Enumerated(EnumType.STRING)
     private ProductType productType;
-
-    @ManyToMany(mappedBy = "products")
-    private List<Category> categories = new ArrayList<>();
 
     @OneToMany(mappedBy = "product")
     private List<ProductOption> productOptions = new ArrayList<>();
@@ -30,12 +27,15 @@ public class Product {
     @OneToMany(mappedBy = "product")
     private List<OrderProduct> orderProducts = new ArrayList<>();
 
+    @OneToMany(mappedBy = "product")
+    private List<CategoryProduct> categoryProducts = new ArrayList<>();
+
     public Product(
             String name,
-            double price,
+            Double price,
             String briefInfo,
             String imageSource,
-            double calories,
+            Double calories,
             ProductType productType
     ) {
         this.name = name;

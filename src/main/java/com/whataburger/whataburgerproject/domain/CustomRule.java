@@ -19,9 +19,9 @@ public class CustomRule {
     private String name;
     @Enumerated(EnumType.STRING)
     private CustomRuleType customRuleType;
-    private int rowIndex;
-    private int minSelection;
-    private int maxSelection;
+    private Integer orderIndex;
+    private Integer minSelection;
+    private Integer maxSelection;
 
     @OneToMany(mappedBy = "customRule")
     private List<ProductOption> productOptions = new ArrayList<>();
@@ -29,13 +29,13 @@ public class CustomRule {
     public CustomRule(
             String name,
             CustomRuleType customRuleType,
-            int rowIndex,
-            int minSelection,
-            int maxSelection
+            Integer orderIndex,
+            Integer minSelection,
+            Integer maxSelection
     ) {
         this.name = name;
         this.customRuleType = customRuleType;
-        this.rowIndex = rowIndex;
+        this.orderIndex = orderIndex;
         this.minSelection = minSelection;
         this.maxSelection = maxSelection;
     }

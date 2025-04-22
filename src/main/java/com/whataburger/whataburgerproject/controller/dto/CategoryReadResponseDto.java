@@ -14,5 +14,5 @@ import java.util.List;
 public class CategoryReadResponseDto {
     private Long categoryId;
     private String name;
-    private int productCount;
+    private Integer productCount;
 }

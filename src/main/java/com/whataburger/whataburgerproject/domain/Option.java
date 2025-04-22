@@ -18,7 +18,7 @@ public class Option {
     private Long id;
     private String name;
     private String imageSource;
-    private int calories;
+    private Double calories;
 
     @OneToMany(mappedBy = "option")
     private List<ProductOption> productOptions = new ArrayList<>();
@@ -29,7 +29,7 @@ public class Option {
             inverseJoinColumns = @JoinColumn(name="option_trait_id"))
     private List<OptionTrait> optionTraits = new ArrayList<>();
 
-    public Option(String name, String imageSource, int calories) {
+    public Option(String name, String imageSource, Double calories) {
         this.name = name;
         this.imageSource = imageSource;
         this.calories = calories;

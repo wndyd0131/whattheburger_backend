@@ -1,12 +1,12 @@
 package com.whataburger.whataburgerproject.service.exception;
 
-import com.whataburger.whataburgerproject.exception.ResourceNotFoundException;
+import com.whataburger.whataburgerproject.exception.ApiException;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
 @Getter
-public class CategoryNotFoundException extends ResourceNotFoundException {
+public class CategoryNotFoundException extends ApiException {
     public CategoryNotFoundException(Long categoryId) {
-        super("Category", categoryId, HttpStatus.NOT_FOUND);
+        super("Category with ID[" + categoryId + "] not found", HttpStatus.NOT_FOUND);
     }
 }

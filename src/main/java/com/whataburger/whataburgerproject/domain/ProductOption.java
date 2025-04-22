@@ -17,10 +17,10 @@ public class ProductOption {
     private Long id;
     private Boolean isDefault;
     private MeasureType measureType;
-    private int defaultQuantity;
-    private int maxQuantity;
-    private double extraPrice;
-    private int orderIndex;
+    private Integer defaultQuantity;
+    private Integer maxQuantity;
+    private Double extraPrice;
+    private Integer orderIndex;
 
     @ManyToOne
     @JoinColumn(name = "product_id")
@@ -46,10 +46,10 @@ public class ProductOption {
             CustomRule customRule,
             Boolean isDefault,
             MeasureType measureType,
-            int defaultQuantity,
-            int maxQuantity,
-            double extraPrice,
-            int orderIndex
+            Integer defaultQuantity,
+            Integer maxQuantity,
+            Double extraPrice,
+            Integer orderIndex
     ) {
         this.product = product;
         this.option = option;

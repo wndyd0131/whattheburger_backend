@@ -25,7 +25,9 @@ public class OptionTraitController {
             optionTraitReadResponseDtos.add(
                     new OptionTraitReadResponseDto(
                             optionTrait.getId(),
-                            optionTrait.getName()
+                            optionTrait.getName(),
+                            optionTrait.getLabelCode(),
+                            optionTrait.getOptionTraitType()
                     )
             );
         }

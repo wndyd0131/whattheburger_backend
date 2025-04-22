@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @Builder
 public class ProductCreateDetailsDto {
     private String name;
-    private double price;
+    private Double price;
     private String briefInfo;
     private String imageSource;
 }

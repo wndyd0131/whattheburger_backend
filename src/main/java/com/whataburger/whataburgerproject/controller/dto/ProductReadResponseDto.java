@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 public class ProductReadResponseDto {
     private Long productId;
     private String name;
-    private double price;
+    private Double price;
     private String briefInfo;
     private String imageSource;
     private ProductType productType;

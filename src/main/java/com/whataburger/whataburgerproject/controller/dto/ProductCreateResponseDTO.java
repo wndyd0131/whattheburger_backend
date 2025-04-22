@@ -10,7 +10,7 @@ import lombok.*;
 public class ProductCreateResponseDTO {
     private Long id;
     private String name;
-    private double price;
+    private Double price;
     private String briefInfo;
     private String imageSource;
 }

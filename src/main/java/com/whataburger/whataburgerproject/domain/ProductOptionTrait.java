@@ -15,9 +15,9 @@ public class ProductOptionTrait {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "product_option_trait_id")
     private Long id;
-    private int defaultSelection;
-    private double extraPrice;
-    private double extraCalories;
+    private Integer defaultSelection;
+    private Double extraPrice;
+    private Double extraCalories;
 
     @ManyToOne
     @JoinColumn(name = "product_option_id")
@@ -33,9 +33,9 @@ public class ProductOptionTrait {
     public ProductOptionTrait (
             ProductOption productOption,
             OptionTrait optionTrait,
-            int defaultSelection,
-            double extraPrice,
-            double extraCalories
+            Integer defaultSelection,
+            Double extraPrice,
+            Double extraCalories
     ) {
         this.productOption = productOption;
         this.optionTrait = optionTrait;

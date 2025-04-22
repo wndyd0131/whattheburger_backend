@@ -22,6 +22,7 @@ public class ProductService {
     private final OptionRepository optionRepository;
     private final ProductOptionRepository productOptionRepository;
     private final CategoryRepository categoryRepository;
+    private final CategoryProductRepository categoryProductRepository;
     private final CustomRuleRepository customRuleRepository;
     private final OptionTraitRepository optionTraitRepository;
     private final ProductOptionTraitRepository productOptionTraitRepository;
@@ -31,18 +32,20 @@ public class ProductService {
         Product product = productCreateRequestDTO.toEntity();
         Product newProduct = productRepository.save(product);
 
-        Long categoryId = productCreateRequestDTO.getCategoryId();
-        Category category = categoryRepository
-                .findById(categoryId)
-                .orElseThrow(() -> new CategoryNotFoundException(categoryId));
-        category.getProducts().add(product);
-        categoryRepository.save(category);
+        List<Long> categoryIds = productCreateRequestDTO.getCategoryIds();
+        for (Long categoryId : categoryIds) {
+            Category category = categoryRepository
+                    .findById(categoryId)
+                    .orElseThrow(() -> new CategoryNotFoundException(categoryId));
+            CategoryProduct categoryProduct = new CategoryProduct(category, product);
+            categoryProductRepository.save(categoryProduct);
+        }
 
         for (ProductCreateRequestDto.CustomRuleRequest customRuleRequest : productCreateRequestDTO.getCustomRuleRequests()) {
             CustomRule customRule = new CustomRule(
                     customRuleRequest.getCustomRuleName(),
                     customRuleRequest.getCustomRuleType(),
-                    customRuleRequest.getRowIndex(),
+                    customRuleRequest.getOrderIndex(),
                     customRuleRequest.getMinSelection(),
                     customRuleRequest.getMaxSelection()
             );
@@ -91,10 +94,11 @@ public class ProductService {
     }
 
     public List<ProductReadByCategoryIdResponseDto> findProductsByCategoryId(Long categoryId) {
-        Category category = categoryRepository
-                .findById(categoryId)
-                .orElseThrow(() -> new RuntimeException());
-        List<Product> products = category.getProducts();
+        List<CategoryProduct> categoryProducts = categoryProductRepository.findByCategoryId(categoryId);
+        List<Product> products = new ArrayList<>();
+        for (CategoryProduct categoryProduct : categoryProducts) {
+            products.add(categoryProduct.getProduct());
+        }
         List<ProductReadByCategoryIdResponseDto> productReadDtoList = new ArrayList<>();
         for (Product product : products) {
             productReadDtoList.add(
@@ -126,7 +130,7 @@ public class ProductService {
                             .customRuleId(customRule.getId())
                             .name(customRule.getName())
                             .customRuleType(customRule.getCustomRuleType())
-                            .rowIndex(customRule.getRowIndex())
+                            .orderIndex(customRule.getOrderIndex())
                             .minSelection(customRule.getMinSelection())
                             .maxSelection(customRule.getMaxSelection())
                             .build();

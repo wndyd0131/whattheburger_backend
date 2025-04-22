@@ -23,11 +23,8 @@ public class Category {
     @OneToMany(mappedBy = "parent")
     private List<Category> children = new ArrayList<>();
 
-    @ManyToMany
-    @JoinTable(name="CATEGORY_PRODUCT",
-            joinColumns = @JoinColumn(name="category_id"),
-            inverseJoinColumns = @JoinColumn(name="product_id"))
-    private List<Product> products = new ArrayList<>();
+    @OneToMany(mappedBy = "category")
+    private List<CategoryProduct> categoryProducts = new ArrayList<>();
 
     public Category(String name) {
         this.name = name;

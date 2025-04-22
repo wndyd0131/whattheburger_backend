@@ -38,7 +38,7 @@ public class User {
 
     @Column(nullable = false)
     private String zipcode;
-    private int point;
+    private Integer point;
 
     @OneToMany(mappedBy = "user")
     private List<Order> orderList = new ArrayList<>();

@@ -28,8 +28,9 @@ public class GlobalExceptionHandler {
                 ex.getStatus()
         );
     }
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleResourceNotFoundException(ResourceNotFoundException ex) {
+    @ExceptionHandler(ApiException.class)
+    public ResponseEntity<ErrorResponse> handleApiException(ApiException ex) {
+        ex.printStackTrace();
         ErrorResponse errorResponse = new ErrorResponse(ex.getMessage(), ex.getStatus().value());
         return new ResponseEntity<>(
                 errorResponse,

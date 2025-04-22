@@ -18,7 +18,7 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class OrderCreateRequestDto {
-    private double totalPrice;
+    private Double totalPrice;
     private List<ProductRequest> productRequests;
     private OrderType orderType;
     private PaymentMethod paymentMethod;
@@ -30,7 +30,7 @@ public class OrderCreateRequestDto {
     @Builder
     public static class ProductRequest {
         private Long productId;
-        private int quantity;
+        private Integer quantity;
         private String forWhom;
         private List<OptionRequest> optionRequests;
     }

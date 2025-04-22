@@ -15,7 +15,7 @@ import java.util.List;
 public class ProductReadByProductIdResponseDto {
     private Long productId;
     private String productName;
-    private double productPrice;
+    private Double productPrice;
     private String imageSource;
     private String briefInfo;
     private List<OptionResponse> optionResponses;
@@ -28,12 +28,12 @@ public class ProductReadByProductIdResponseDto {
         private Long optionId;
         private String name;
         private Boolean isDefault; //productOption
-        private int defaultQuantity; //productOption
-        private int maxQuantity; //productOption
-        private double extraPrice; //productOption
-        private double calories;
+        private Integer defaultQuantity; //productOption
+        private Integer maxQuantity; //productOption
+        private Double extraPrice; //productOption
+        private Double calories;
         private String imageSource;
-        private int orderIndex;
+        private Integer orderIndex;
         private CustomRuleResponse customRuleResponse;
         private List<OptionTraitResponse> optionTraitResponses;
     }
@@ -46,9 +46,9 @@ public class ProductReadByProductIdResponseDto {
         private Long customRuleId;
         private String name;
         private CustomRuleType customRuleType;
-        private int rowIndex;
-        private int minSelection;
-        private int maxSelection;
+        private Integer orderIndex;
+        private Integer minSelection;
+        private Integer maxSelection;
     }
 
     @AllArgsConstructor
@@ -58,8 +58,8 @@ public class ProductReadByProductIdResponseDto {
     public static class OptionTraitResponse {
         private Long optionTraitId;
         private String name;
-        private int defaultSelection; //productOptionTrait
-        private double extraPrice; //productOptionTrait
-        private double extraCalories; //productOptionTrait
+        private Integer defaultSelection; //productOptionTrait
+        private Double extraPrice; //productOptionTrait
+        private Double extraCalories; //productOptionTrait
     }
 }
