@@ -1,6 +1,8 @@
 package com.whataburger.whataburgerproject.controller.dto;
 
+import com.whataburger.whataburgerproject.domain.enums.CountType;
 import com.whataburger.whataburgerproject.domain.enums.CustomRuleType;
+import com.whataburger.whataburgerproject.domain.enums.MeasureType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -32,6 +34,8 @@ public class ProductReadByProductIdResponseDto {
         private Integer maxQuantity; //productOption
         private Double extraPrice; //productOption
         private Double calories;
+        private CountType countType;
+        private MeasureType measureType;
         private String imageSource;
         private Integer orderIndex;
         private CustomRuleResponse customRuleResponse;

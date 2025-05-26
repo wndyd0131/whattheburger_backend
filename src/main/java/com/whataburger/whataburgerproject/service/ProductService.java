@@ -7,6 +7,7 @@ import com.whataburger.whataburgerproject.repository.*;
 import com.whataburger.whataburgerproject.service.dto.ProductReadByCategoryIdResponseDto;
 import com.whataburger.whataburgerproject.service.exception.CategoryNotFoundException;
 import com.whataburger.whataburgerproject.service.exception.OptionNotFoundException;
+import com.whataburger.whataburgerproject.service.exception.OptionTraitNotFoundException;
 import com.whataburger.whataburgerproject.service.exception.ProductNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -31,59 +32,11 @@ public class ProductService {
     public Product createProduct(ProductCreateRequestDto productCreateRequestDTO) {
         Product product = productCreateRequestDTO.toEntity();
         Product newProduct = productRepository.save(product);
-
         List<Long> categoryIds = productCreateRequestDTO.getCategoryIds();
-        for (Long categoryId : categoryIds) {
-            Category category = categoryRepository
-                    .findById(categoryId)
-                    .orElseThrow(() -> new CategoryNotFoundException(categoryId));
-            CategoryProduct categoryProduct = new CategoryProduct(category, product);
-            categoryProductRepository.save(categoryProduct);
-        }
+        List<ProductCreateRequestDto.CustomRuleRequest> customRuleRequests = productCreateRequestDTO.getCustomRuleRequests();
 
-        for (ProductCreateRequestDto.CustomRuleRequest customRuleRequest : productCreateRequestDTO.getCustomRuleRequests()) {
-            CustomRule customRule = new CustomRule(
-                    customRuleRequest.getCustomRuleName(),
-                    customRuleRequest.getCustomRuleType(),
-                    customRuleRequest.getOrderIndex(),
-                    customRuleRequest.getMinSelection(),
-                    customRuleRequest.getMaxSelection()
-            );
-            CustomRule newCustomRule = customRuleRepository.save(customRule);
-            for (ProductCreateRequestDto.OptionRequest optionRequest : customRuleRequest.getOptionRequests()) {
-                Long optionId = optionRequest.getOptionId();
-                Option option = optionRepository
-                        .findById(optionId)
-                        .orElseThrow(() -> new OptionNotFoundException(optionId));
-
-                ProductOption productOption = new ProductOption(
-                        newProduct,
-                        option,
-                        newCustomRule,
-                        optionRequest.getIsDefault(),
-                        optionRequest.getMeasureType(),
-                        optionRequest.getDefaultQuantity(),
-                        optionRequest.getMaxQuantity(),
-                        optionRequest.getExtraPrice(),
-                        optionRequest.getOrderIndex()
-                );
-                ProductOption newProductOption = productOptionRepository.save(productOption);
-                for (ProductCreateRequestDto.OptionTraitRequest optionTraitRequest : optionRequest.getOptionTraitRequests()) {
-                    Long optionTraitId = optionTraitRequest.getOptionTraitId();
-                    OptionTrait optionTrait = optionTraitRepository
-                            .findById(optionTraitId)
-                            .orElseThrow(() -> new OptionNotFoundException(optionTraitId));
-                    ProductOptionTrait productOptionTrait = new ProductOptionTrait(
-                            newProductOption,
-                            optionTrait,
-                            optionTraitRequest.getDefaultSelection(),
-                            optionTraitRequest.getExtraPrice(),
-                            optionTraitRequest.getExtraCalories()
-                    );
-                    productOptionTraitRepository.save(productOptionTrait);
-                }
-            }
-        }
+        saveCategoryProduct(categoryIds, newProduct);
+        saveProductDetail(customRuleRequests, newProduct);
 
         return newProduct;
     }
@@ -93,7 +46,7 @@ public class ProductService {
         return products;
     }
 
-    public List<ProductReadByCategoryIdResponseDto> findProductsByCategoryId(Long categoryId) {
+    public List<ProductReadByCategoryIdResponseDto> getProductsByCategoryId(Long categoryId) {
         List<CategoryProduct> categoryProducts = categoryProductRepository.findByCategoryId(categoryId);
         List<Product> products = new ArrayList<>();
         for (CategoryProduct categoryProduct : categoryProducts) {
@@ -156,6 +109,8 @@ public class ProductService {
                     .maxQuantity(productOption.getMaxQuantity())
                     .extraPrice(productOption.getExtraPrice())
                     .calories(option.getCalories())
+                    .countType(productOption.getCountType())
+                    .measureType(productOption.getMeasureType())
                     .imageSource(option.getImageSource())
                     .orderIndex(productOption.getOrderIndex())
                     .customRuleResponse(customRuleResponse)
@@ -175,4 +130,73 @@ public class ProductService {
                 optionResponses
         );
     }
+
+    private void saveCategoryProduct(List<Long> categoryIds, Product product) {
+        for (Long categoryId : categoryIds) {
+            Category category = categoryRepository
+                    .findById(categoryId)
+                    .orElseThrow(() -> new CategoryNotFoundException(categoryId));
+            CategoryProduct categoryProduct = new CategoryProduct(category, product);
+            categoryProductRepository.save(categoryProduct);
+        }
+    }
+
+    private void saveProductDetail(List<ProductCreateRequestDto.CustomRuleRequest> customRuleRequests, Product newProduct) {
+        for (ProductCreateRequestDto.CustomRuleRequest customRuleRequest : customRuleRequests) {
+            CustomRule newCustomRule = saveCustomRule(customRuleRequest);
+            for (ProductCreateRequestDto.OptionRequest optionRequest : customRuleRequest.getOptionRequests()) {
+                Long optionId = optionRequest.getOptionId();
+                Option option = optionRepository
+                        .findById(optionId)
+                        .orElseThrow(() -> new OptionNotFoundException(optionId));
+                ProductOption newProductOption = saveOption(newProduct, newCustomRule, optionRequest, option);
+                for (ProductCreateRequestDto.OptionTraitRequest optionTraitRequest : optionRequest.getOptionTraitRequests()) {
+                    Long optionTraitId = optionTraitRequest.getOptionTraitId();
+                    OptionTrait optionTrait = optionTraitRepository
+                            .findById(optionTraitId)
+                            .orElseThrow(() -> new OptionTraitNotFoundException(optionTraitId));
+                    saveOptionTrait(newProductOption, optionTraitRequest, optionTrait);
+                }
+            }
+        }
+    }
+
+    private CustomRule saveCustomRule(ProductCreateRequestDto.CustomRuleRequest customRuleRequest) {
+        CustomRule customRule = new CustomRule(
+                customRuleRequest.getCustomRuleName(),
+                customRuleRequest.getCustomRuleType(),
+                customRuleRequest.getOrderIndex(),
+                customRuleRequest.getMinSelection(),
+                customRuleRequest.getMaxSelection()
+        );
+        return customRuleRepository.save(customRule);
+    }
+
+    private ProductOption saveOption(Product newProduct, CustomRule newCustomRule, ProductCreateRequestDto.OptionRequest optionRequest, Option option) {
+        ProductOption productOption = new ProductOption(
+                newProduct,
+                option,
+                newCustomRule,
+                optionRequest.getIsDefault(),
+                optionRequest.getCountType(),
+                optionRequest.getMeasureType(),
+                optionRequest.getDefaultQuantity(),
+                optionRequest.getMaxQuantity(),
+                optionRequest.getExtraPrice(),
+                optionRequest.getOrderIndex()
+        );
+        return productOptionRepository.save(productOption);
+    }
+
+    private void saveOptionTrait(ProductOption newProductOption, ProductCreateRequestDto.OptionTraitRequest optionTraitRequest, OptionTrait optionTrait) {
+        ProductOptionTrait productOptionTrait = new ProductOptionTrait(
+                newProductOption,
+                optionTrait,
+                optionTraitRequest.getDefaultSelection(),
+                optionTraitRequest.getExtraPrice(),
+                optionTraitRequest.getExtraCalories()
+        );
+        productOptionTraitRepository.save(productOptionTrait);
+    }
+
 }

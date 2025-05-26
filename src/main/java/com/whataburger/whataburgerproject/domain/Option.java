@@ -23,11 +23,8 @@ public class Option {
     @OneToMany(mappedBy = "option")
     private List<ProductOption> productOptions = new ArrayList<>();
 
-    @ManyToMany
-    @JoinTable(name="OPTION_OPTION_TRAIT",
-            joinColumns = @JoinColumn(name="option_id"),
-            inverseJoinColumns = @JoinColumn(name="option_trait_id"))
-    private List<OptionTrait> optionTraits = new ArrayList<>();
+    @OneToMany(mappedBy = "option")
+    private List<OptionOptionTrait> optionOptionTraits = new ArrayList<>();
 
     public Option(String name, String imageSource, Double calories) {
         this.name = name;

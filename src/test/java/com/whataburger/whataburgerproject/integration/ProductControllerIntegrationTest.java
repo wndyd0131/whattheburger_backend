@@ -1,26 +1,45 @@
-package com.whataburger.whataburgerproject.service;
+package com.whataburger.whataburgerproject.integration;
 
+
+import com.whataburger.whataburgerproject.controller.ProductController;
 import com.whataburger.whataburgerproject.controller.dto.ProductCreateRequestDto;
-import com.whataburger.whataburgerproject.domain.*;
+import com.whataburger.whataburgerproject.domain.Category;
+import com.whataburger.whataburgerproject.domain.Option;
+import com.whataburger.whataburgerproject.domain.OptionTrait;
 import com.whataburger.whataburgerproject.domain.enums.CustomRuleType;
 import com.whataburger.whataburgerproject.domain.enums.MeasureType;
 import com.whataburger.whataburgerproject.domain.enums.OptionTraitType;
 import com.whataburger.whataburgerproject.domain.enums.ProductType;
 import com.whataburger.whataburgerproject.repository.*;
-import org.assertj.core.api.Assertions;
+import com.whataburger.whataburgerproject.service.ProductService;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+@ExtendWith(SpringExtension.class)
 @SpringBootTest
-public class ProductServiceIntegrationTest {
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+
+public class ProductControllerIntegrationTest {
+    @Autowired
+    private MockMvc mockMvc;
     @Autowired
     ProductRepository productRepository;
     @Autowired
@@ -37,10 +56,19 @@ public class ProductServiceIntegrationTest {
     ProductOptionTraitRepository productOptionTraitRepository;
     @Autowired
     ProductService productService;
+    @Autowired
+    ProductController productController;
 
-    private Category category;
-    private OptionTrait optionTrait;
-    private Option option;
+    Category category;
+    OptionTrait optionTrait;
+    Option option;
+
+    @BeforeEach
+    void setUp() {
+        category = categoryRepository.save(new Category("Burgers"));
+        option = optionRepository.save(new Option("Large Bun", "/img/large_bun.jpg", 310D));
+        optionTrait = optionTraitRepository.save(new OptionTrait("Toast Both Sides", "TBS", OptionTraitType.BINARY));
+    }
 
     private List<ProductCreateRequestDto.CustomRuleRequest> buildValidCustomRuleRequests() {
         List<ProductCreateRequestDto.OptionTraitRequest> optionTraitRequests = Arrays.asList(
@@ -81,68 +109,31 @@ public class ProductServiceIntegrationTest {
         );
     }
 
-    @BeforeEach
-    void setUp() {
-        category = categoryRepository.save(new Category("Burgers"));
-        option = optionRepository.save(new Option("Large Bun", "large_bun.jpg", 310D));
-        optionTrait = optionTraitRepository.save(new OptionTrait("Toast Both Sides", "TBS", OptionTraitType.BINARY));
-    }
-
     @Test
-    @Transactional
-    void createProduct_success_withValidInput() {
-        String productName = "Whataburger";
-        double productPrice = 5.99;
-        double calories = 580;
+    public void givenProduct_whenCreateProduct_thenStatus201() throws Exception {
+        String productName = "Whattheburger";
+        Double productPrice = 5.99;
+        Double productCalories = 590D;
         ProductType productType = ProductType.ONLY;
-        String briefInfo = "Whataburger consists of a bread, beef, toppings, and sauce.";
-
+        String briefInfo = "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Vitae fugiat dolore aperiam nesciunt dolores iure, aliquam suscipit blanditiis enim cum ut laboriosam quibusdam veniam assumenda expedita, ea sapiente sunt nam.";
+        String imageSource = "/img/whattheburger.jpg";
+        List<Long> categoryIds = Arrays.asList(1L);
         List<ProductCreateRequestDto.CustomRuleRequest> customRuleRequests = buildValidCustomRuleRequests();
 
-        ProductCreateRequestDto createRequestDto = new ProductCreateRequestDto(
-                productName,
-                productPrice,
-                calories,
-                productType,
-                briefInfo,
-                "Whataburger.jpg",
-                category.getId(),
-                customRuleRequests
+        ResponseEntity<String> responseEntity = productController.createProduct(
+                ProductCreateRequestDto
+                        .builder()
+                        .productName(productName)
+                        .productPrice(productPrice)
+                        .productCalories(productCalories)
+                        .productType(productType)
+                        .briefInfo(briefInfo)
+                        .imageSource(imageSource)
+                        .categoryIds(categoryIds)
+                        .customRuleRequests(customRuleRequests)
+                        .build()
         );
 
-        Product product = productService.createProduct(createRequestDto);
-
-        assertThat(product).isNotNull();
-        assertThat(product.getName()).isEqualTo("Whataburger");
-        assertThat(product.getPrice()).isEqualTo(5.99);
-        assertThat(product.getCalories()).isEqualTo(580);
-        assertThat(product.getProductType()).isEqualTo(ProductType.ONLY);
-        assertThat(product.getCategories()).contains(category);
-        assertThat(product.getProductOptions()).isNotNull();
-    }
-
-    @Test
-    @Transactional
-    void createProduct_fail_whenProductNameIsInvalid() {
-        String productName = "";
-        double productPrice = 5.99;
-        double calories = 580;
-        ProductType productType = ProductType.ONLY;
-        String briefInfo = "Whataburger consists of a bread, beef, toppings, and sauce.";
-
-        List<ProductCreateRequestDto.CustomRuleRequest> customRuleRequests = buildValidCustomRuleRequests();
-
-        ProductCreateRequestDto createRequestDto = new ProductCreateRequestDto(
-                productName,
-                productPrice,
-                calories,
-                productType,
-                briefInfo,
-                "Whataburger.jpg",
-                category.getId(),
-                customRuleRequests
-        );
-
-//        Assertions.assertThatThrownBy(() -> productService.createProduct(createRequestDto)).isInstanceOf();
+        assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     }
 }

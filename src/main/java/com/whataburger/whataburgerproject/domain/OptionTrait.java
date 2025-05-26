@@ -21,8 +21,8 @@ public class OptionTrait {
     @Enumerated(EnumType.STRING)
     private OptionTraitType optionTraitType;
 
-    @ManyToMany(mappedBy = "optionTraits") // toasted, not-toasted
-    private List<Option> options = new ArrayList<>();
+    @OneToMany(mappedBy = "optionTrait")
+    private List<OptionOptionTrait> optionOptionTraits = new ArrayList<>();
 
     @OneToMany(mappedBy = "optionTrait")
     private List<ProductOptionTrait> productOptionTraits = new ArrayList<>();

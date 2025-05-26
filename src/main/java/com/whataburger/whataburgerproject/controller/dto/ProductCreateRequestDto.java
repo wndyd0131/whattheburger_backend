@@ -1,6 +1,7 @@
 package com.whataburger.whataburgerproject.controller.dto;
 import com.whataburger.whataburgerproject.domain.Category;
 import com.whataburger.whataburgerproject.domain.Product;
+import com.whataburger.whataburgerproject.domain.enums.CountType;
 import com.whataburger.whataburgerproject.domain.enums.MeasureType;
 import com.whataburger.whataburgerproject.domain.enums.CustomRuleType;
 import com.whataburger.whataburgerproject.domain.enums.ProductType;
@@ -42,6 +43,7 @@ public class ProductCreateRequestDto {
     public static class OptionRequest {
         private Long optionId;
         private Boolean isDefault;
+        private CountType countType;
         private MeasureType measureType;
         private Integer defaultQuantity;
         private Integer maxQuantity;

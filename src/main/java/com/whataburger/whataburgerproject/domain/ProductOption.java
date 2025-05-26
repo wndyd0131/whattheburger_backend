@@ -1,4 +1,5 @@
 package com.whataburger.whataburgerproject.domain;
+import com.whataburger.whataburgerproject.domain.enums.CountType;
 import com.whataburger.whataburgerproject.domain.enums.MeasureType;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -16,6 +17,7 @@ public class ProductOption {
     @Column(name = "product_option_id")
     private Long id;
     private Boolean isDefault;
+    private CountType countType;
     private MeasureType measureType;
     private Integer defaultQuantity;
     private Integer maxQuantity;
@@ -45,6 +47,7 @@ public class ProductOption {
             Option option,
             CustomRule customRule,
             Boolean isDefault,
+            CountType countType,
             MeasureType measureType,
             Integer defaultQuantity,
             Integer maxQuantity,
@@ -55,6 +58,7 @@ public class ProductOption {
         this.option = option;
         this.customRule = customRule;
         this.isDefault = isDefault;
+        this.countType = countType;
         this.measureType = measureType;
         this.defaultQuantity = defaultQuantity;
         this.maxQuantity = maxQuantity;
