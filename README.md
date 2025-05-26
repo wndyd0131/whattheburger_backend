@@ -1,2 +1,2 @@
-# whataburger
-renewing whataburger website
+# Whataburger Renewal
+Personal project renewing whataburger website
