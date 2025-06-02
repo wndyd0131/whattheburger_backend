@@ -2,6 +2,7 @@ package com.whattheburger.backend.controller;
 
 import com.whattheburger.backend.controller.dto.*;
 import com.whattheburger.backend.domain.*;
+import com.whattheburger.backend.service.dto.ProductReadByProductIdDto;
 import com.whattheburger.backend.service.ProductService;
 import com.whattheburger.backend.service.dto.ProductReadByCategoryIdResponseDto;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,7 +25,7 @@ public class ProductController {
     private final ProductService productService;
 
     @GetMapping("/api/v1/products")
-    public List<ProductReadResponseDto> getAllProducts() {
+    public ResponseEntity<List<ProductReadResponseDto>> getAllProducts() {
         List<Product> allProducts = productService.getAllProducts();
         List<ProductReadResponseDto> productReadResponseDtoList = new ArrayList<>();
         for (Product product : allProducts) {
@@ -39,29 +40,28 @@ public class ProductController {
                     )
             );
         }
-        return productReadResponseDtoList;
+        return ResponseEntity.ok(productReadResponseDtoList);
     }
 
     @GetMapping("/api/v1/products/{productId}")
-    public ResponseEntity<ProductReadByProductIdResponseDto> getProductById(@PathVariable("productId") Long productId) {
-        Product product = productService.getProductById(productId);
-        ProductReadByProductIdResponseDto productReadByProductIdResponseDto = ProductReadByProductIdResponseDto.toDto(product);
+    public ResponseEntity<ProductReadByProductIdDto> getProductById(@PathVariable("productId") Long productId) {
+        ProductReadByProductIdDto productDto = productService.getProductById(productId);
 
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(productReadByProductIdResponseDto);
+        return ResponseEntity.ok(productDto);
     }
 
     @GetMapping("/api/v1/products/category/{categoryId}")
-    public List<ProductReadByCategoryIdResponseDto> getProductsByCategoryId(@PathVariable("categoryId") Long categoryId) {
+    public ResponseEntity<List<ProductReadByCategoryIdResponseDto>> getProductsByCategoryId(@PathVariable("categoryId") Long categoryId) {
         List<ProductReadByCategoryIdResponseDto> productResponseDto = productService.getProductsByCategoryId(categoryId);
-        return productResponseDto;
+
+        return ResponseEntity.ok(productResponseDto);
     }
 
     @Transactional
     @PostMapping("/api/v1/products")
     public ResponseEntity<String> createProduct(@RequestBody ProductCreateRequestDto productCreateRequestDTO) {
         productService.createProduct(productCreateRequestDTO);
+
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body("Product successfully created");

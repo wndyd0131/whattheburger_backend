@@ -1,8 +1,9 @@
 package com.whattheburger.backend.controller;
 
+import com.whattheburger.backend.controller.dto.UserCreateRequestDto;
 import com.whattheburger.backend.controller.dto.UserCreateResponseDto;
-import com.whattheburger.backend.controller.dto.UserDto;
 import com.whattheburger.backend.controller.dto.UserReadResponseDTO;
+import com.whattheburger.backend.domain.User;
 import com.whattheburger.backend.service.UserService;
 import com.whattheburger.backend.service.dto.AuthUserDto;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,23 +28,22 @@ public class UserController {
         // service
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         AuthUserDto authUserDto = userService.getAuthenticatedUser(authentication);
-        return new ResponseEntity<>(
+        return ResponseEntity.ok(
                 new UserReadResponseDTO(
                         authUserDto.getFirstName(),
                         authUserDto.getLastName(),
                         authUserDto.getPhoneNum(),
                         authUserDto.getEmail(),
                         authUserDto.getZipcode()
-                ),
-                HttpStatusCode.valueOf(200)
+                )
         );
     }
 
-    @PostMapping("/api/v1/register")
-    public ResponseEntity<UserCreateResponseDto> saveUser(@RequestBody UserDto userDto) {
-        Long userId = userService.join(userDto.toEntity());
+    @PostMapping("/api/v1/signup")
+    public ResponseEntity<UserCreateResponseDto> saveUser(@RequestBody UserCreateRequestDto userDto) {
+        User user = userService.join(userDto);
         return new ResponseEntity<>(
-                new UserCreateResponseDto(userId),
+                new UserCreateResponseDto(user.getId()),
                 HttpStatusCode.valueOf(201)
         );
     }

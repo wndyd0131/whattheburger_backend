@@ -18,7 +18,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
 
         User user = userRepository.findByEmail(email).orElseThrow(
-                () -> new IllegalArgumentException("No such user")
+                () -> new UsernameNotFoundException("No such user")
         );
 
         return new UserDetailsImpl(user);

@@ -1,10 +1,11 @@
-package com.whattheburger.backend.controller.dto;
+package com.whattheburger.backend.service.dto;
 
 import com.whattheburger.backend.domain.*;
 import com.whattheburger.backend.domain.enums.CountType;
 import com.whattheburger.backend.domain.enums.CustomRuleType;
 import com.whattheburger.backend.domain.enums.MeasureType;
 
+import com.whattheburger.backend.domain.enums.OptionTraitType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -17,7 +18,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor // deserialize
 @Data // serialize
-public class ProductReadByProductIdResponseDto {
+public class ProductReadByProductIdDto {
     private Long productId;
     private String productName;
     private Double productPrice;
@@ -65,12 +66,14 @@ public class ProductReadByProductIdResponseDto {
     public static class OptionTraitResponse {
         private Long optionTraitId;
         private String name;
+        private String labelCode;
+        private OptionTraitType optionTraitType;
         private Integer defaultSelection; //productOptionTrait
         private Double extraPrice; //productOptionTrait
         private Double extraCalories; //productOptionTrait
     }
 
-    public static ProductReadByProductIdResponseDto toDto(Product product){
+    public static ProductReadByProductIdDto toDto(Product product){
         List<ProductOption> productOptions = product.getProductOptions();
         List<OptionResponse> optionResponses = new ArrayList<>();
 
@@ -96,6 +99,8 @@ public class ProductReadByProductIdResponseDto {
                                 .builder()
                                 .optionTraitId(optionTrait.getId())
                                 .name(optionTrait.getName())
+                                .labelCode(optionTrait.getLabelCode())
+                                .optionTraitType(optionTrait.getOptionTraitType())
                                 .defaultSelection(productOptionTrait.getDefaultSelection())
                                 .extraPrice(productOptionTrait.getExtraPrice())
                                 .extraCalories(productOptionTrait.getExtraCalories())
@@ -116,14 +121,11 @@ public class ProductReadByProductIdResponseDto {
                     .imageSource(option.getImageSource())
                     .orderIndex(productOption.getOrderIndex())
                     .customRuleResponse(customRuleResponse)
-                    .optionTraitResponses(
-                            optionTraitResponses
-                    )
-
+                    .optionTraitResponses(optionTraitResponses)
                     .build()
             );
         }
-        return ProductReadByProductIdResponseDto
+        return ProductReadByProductIdDto
                 .builder()
                 .productId(product.getId())
                 .productName(product.getName())

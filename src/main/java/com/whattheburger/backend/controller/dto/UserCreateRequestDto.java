@@ -10,24 +10,11 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Data
 @Builder
-public class UserDto {
+public class UserCreateRequestDto {
     private String firstName;
     private String lastName;
     private String phoneNum;
     private String zipcode;
     private String email;
     private String password;
-
-    private String password2;
-
-    public User toEntity() {
-        return new User(
-                firstName,
-                lastName,
-                phoneNum,
-                zipcode,
-                email,
-                password
-        );
-    }
 }

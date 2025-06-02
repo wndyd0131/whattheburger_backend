@@ -1,5 +1,6 @@
 package com.whattheburger.backend.service;
 
+import com.whattheburger.backend.controller.dto.UserCreateRequestDto;
 import com.whattheburger.backend.domain.User;
 import com.whattheburger.backend.security.exception.AuthenticationCredentialsNotFoundException;
 import com.whattheburger.backend.security.exception.UserPrincipalNotFoundException;
@@ -7,23 +8,42 @@ import com.whattheburger.backend.repository.UserRepository;
 import com.whattheburger.backend.security.UserDetailsImpl;
 import com.whattheburger.backend.service.dto.AuthUserDto;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional(readOnly = true) // optimization
+@Slf4j
 @RequiredArgsConstructor // auto create constructor for field with final
 public class UserService {
 
     private final UserRepository userRepository; // final causes compile error if there's no injection in constructor
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional
-    public Long join(User user) {
+    public User join(UserCreateRequestDto userDto) {
+
+        String password = encryptPassword(userDto.getPassword());
+
+        User user = new User(
+                userDto.getFirstName(),
+                userDto.getLastName(),
+                userDto.getPhoneNum(),
+                userDto.getZipcode(),
+                userDto.getEmail(),
+                password
+        );
         validateDuplicateEmail(user);
-        userRepository.save(user);
-        return user.getId();
+        User savedUser = userRepository.save(user);
+        return savedUser;
+    }
+
+    private String encryptPassword(String password) {
+        return passwordEncoder.encode(password);
     }
 
     private void validateDuplicateEmail(User user) {

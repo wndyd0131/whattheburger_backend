@@ -4,6 +4,7 @@ import com.whattheburger.backend.controller.dto.ProductCreateRequestDto;
 import com.whattheburger.backend.domain.*;
 import com.whattheburger.backend.repository.*;
 import com.whattheburger.backend.service.dto.ProductReadByCategoryIdResponseDto;
+import com.whattheburger.backend.service.dto.ProductReadByProductIdDto;
 import com.whattheburger.backend.service.exception.CategoryNotFoundException;
 import com.whattheburger.backend.service.exception.OptionNotFoundException;
 import com.whattheburger.backend.service.exception.OptionTraitNotFoundException;
@@ -66,8 +67,9 @@ public class ProductService {
         return productReadDtoList;
     }
 
-    public Product getProductById(Long productId) {
-        return productRepository.findById(productId).orElseThrow(() -> new ProductNotFoundException(productId));
+    public ProductReadByProductIdDto getProductById(Long productId) {
+        Product product = productRepository.findById(productId).orElseThrow(() -> new ProductNotFoundException(productId));
+        return ProductReadByProductIdDto.toDto(product);
     }
 
     private void saveCategoryProduct(List<Long> categoryIds, Product product) {

@@ -1,10 +1,10 @@
 package com.whattheburger.backend.controller;
 
-import com.whattheburger.backend.controller.dto.ProductReadByProductIdResponseDto;
 import com.whattheburger.backend.domain.*;
 import com.whattheburger.backend.domain.enums.*;
 import com.whattheburger.backend.security.JwtFilter;
 import com.whattheburger.backend.service.ProductService;
+import com.whattheburger.backend.service.dto.ProductReadByProductIdDto;
 import com.whattheburger.backend.util.JwtTokenUtil;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -68,6 +68,8 @@ public class ProductControllerTest {
                 .id(1L)
                 .defaultSelection(1)
                 .optionTrait(optionTrait)
+                .extraPrice(0D)
+                .extraCalories(0D)
                 .build();
         ProductOption productOption = ProductOption
                 .builder()
@@ -85,7 +87,6 @@ public class ProductControllerTest {
                 .build();
         Product product = Product
                 .builder()
-                .id(1L)
                 .name("Whattheburger")
                 .price(0D)
                 .briefInfo("")
@@ -94,15 +95,14 @@ public class ProductControllerTest {
                 .productType(ProductType.ONLY)
                 .productOptions(List.of(productOption))
                 .build();
+        ProductReadByProductIdDto productReadByProductIdDto = ProductReadByProductIdDto.toDto(product);
 
-        when(productService.getProductById(1L)).thenReturn(product);
-        when(ProductReadByProductIdResponseDto.toDto(product)).thenReturn(
-                ProductReadByProductIdResponseDto.builder()
-                        .productName("Whattheburger")
-                        .build()
-        );
-        mockMvc.perform(get("/api/v1/products/1"))
+        when(productService.getProductById(1L)).thenReturn(productReadByProductIdDto);
+
+        mockMvc.perform(get("/api/v1/products/{productId}", 1L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.productName").value("Whattheburger"));
+
+        verify(productService).getProductById(1L);
     }
 }
