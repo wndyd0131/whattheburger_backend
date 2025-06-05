@@ -5,6 +5,7 @@ import com.whattheburger.backend.domain.enums.OrderType;
 import com.whattheburger.backend.domain.enums.PaymentMethod;
 import com.whattheburger.backend.domain.enums.PaymentStatus;
 import jakarta.persistence.*;
+import lombok.Builder;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -12,12 +13,13 @@ import java.util.List;
 
 @Entity
 @Table(name = "orders")
+@Builder
 public class Order {
     @Id
     @Column(name = "order_id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private Long orderPrice;
+    private Double totalPrice;
     @Enumerated(EnumType.STRING)
     private OrderStatus orderStatus;
     @Enumerated(EnumType.STRING)
@@ -26,8 +28,9 @@ public class Order {
     private PaymentStatus paymentStatus;
     @Enumerated(EnumType.STRING)
     private PaymentMethod paymentMethod;
+    private Boolean couponApplied;
     private String orderNote;
-    private Double discountApplied;
+    private Double discountPrice;
     private Double taxAmount;
     // private Store store;
 

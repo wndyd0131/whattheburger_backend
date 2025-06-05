@@ -3,9 +3,8 @@ package com.whattheburger.backend.service.exception;
 import com.whattheburger.backend.exception.ApiException;
 import org.springframework.http.HttpStatus;
 
-public class ProductOptionTraitNotFoundException extends ApiException {
-    public ProductOptionTraitNotFoundException(Long productOptionId, Long optionTraitId) {
-        super("ProductOptionTrait with ID[" + productOptionId + ", " + optionTraitId + "] not found", HttpStatus.NOT_FOUND);
-
+public class ProductOptionTraitNotFoundException extends ResourceNotFoundException {
+    public ProductOptionTraitNotFoundException(Long productOptionTraitId) {
+        super("ProductOption with ID " + productOptionTraitId + " not found");
     }
 }

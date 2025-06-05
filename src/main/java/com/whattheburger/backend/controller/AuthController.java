@@ -24,7 +24,6 @@ public class AuthController {
 
     @PostMapping("/api/v1/login")
     public ResponseEntity<LoginResponseDto> login(@RequestBody LoginRequestDto loginRequestDto) {
-        try {
             JwtDto jwtDto = authService.authenticate(loginRequestDto.getEmail(), loginRequestDto.getPassword());
             String accessToken = jwtDto.getAccessToken();
             String refreshToken = jwtDto.getRefreshToken();
@@ -32,13 +31,5 @@ public class AuthController {
                     new LoginResponseDto(accessToken, refreshToken),
                     HttpStatusCode.valueOf(200)
             );
-        }
-        catch (UsernameNotFoundException e) {
-            throw new UserNotFoundException();
-        }
-        catch (BadCredentialsException e) {
-            throw new com.whattheburger.backend.controller.exception.BadCredentialsException();
-        }
-
     }
 }

@@ -31,7 +31,7 @@ public class ProductReadByProductIdDto {
     @NoArgsConstructor
     @Data
     public static class OptionResponse {
-        private Long optionId;
+        private Long productOptionId;
         private String name;
         private Boolean isDefault; //productOption
         private Integer defaultQuantity; //productOption
@@ -64,7 +64,7 @@ public class ProductReadByProductIdDto {
     @NoArgsConstructor
     @Data
     public static class OptionTraitResponse {
-        private Long optionTraitId;
+        private Long productOptionTraitId;
         private String name;
         private String labelCode;
         private OptionTraitType optionTraitType;
@@ -97,7 +97,7 @@ public class ProductReadByProductIdDto {
                 optionTraitResponses.add(
                         OptionTraitResponse
                                 .builder()
-                                .optionTraitId(optionTrait.getId())
+                                .productOptionTraitId(productOptionTrait.getId())
                                 .name(optionTrait.getName())
                                 .labelCode(optionTrait.getLabelCode())
                                 .optionTraitType(optionTrait.getOptionTraitType())
@@ -109,7 +109,7 @@ public class ProductReadByProductIdDto {
             }
             optionResponses.add(OptionResponse
                     .builder()
-                    .optionId(option.getId())
+                    .productOptionId(productOption.getId())
                     .name(option.getName())
                     .isDefault(productOption.getIsDefault())
                     .defaultQuantity(productOption.getDefaultQuantity())

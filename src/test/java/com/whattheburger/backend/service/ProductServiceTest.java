@@ -4,7 +4,9 @@ import com.whattheburger.backend.controller.dto.ProductCreateRequestDto;
 import com.whattheburger.backend.domain.*;
 import com.whattheburger.backend.domain.enums.*;
 import com.whattheburger.backend.repository.*;
+import com.whattheburger.backend.utils.MockEntityFactory;
 import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -31,6 +33,27 @@ public class ProductServiceTest {
 
     @InjectMocks
     ProductService productService;
+
+    Category mockCategory;
+    Option mockOption;
+    OptionTrait mockOptionTrait;
+    Product mockProduct;
+    CustomRule mockCustomRule;
+    CategoryProduct mockCategoryProduct;
+    ProductOption mockProductOption;
+    ProductOptionTrait mockProductOptionTrait;
+
+    @BeforeEach
+    void setUp() {
+        mockCategory = MockEntityFactory.createMockCategory();
+        mockOption = MockEntityFactory.createMockOption();
+        mockOptionTrait = MockEntityFactory.createMockOptionTrait();
+        mockProduct = MockEntityFactory.createMockProduct();
+        mockCustomRule = MockEntityFactory.createMockCustomRule();
+        mockCategoryProduct = MockEntityFactory.createMockCategoryProduct(mockCategory, mockProduct);
+        mockProductOption = MockEntityFactory.createMockProductOption(mockProduct, mockOption, mockCustomRule);
+        mockProductOptionTrait = MockEntityFactory.createMockProductOptionTrait(mockProductOption, mockOptionTrait);
+    }
 
     @Test
     public void givenValidRequest_whenCreateProduct_thenProductIsSavedAndReturned() throws Exception {

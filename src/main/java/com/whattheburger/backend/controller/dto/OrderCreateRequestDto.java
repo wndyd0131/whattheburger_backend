@@ -14,11 +14,14 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class OrderCreateRequestDto {
-    private Double totalPrice;
-    private List<ProductRequest> productRequests;
     private OrderType orderType;
-    private PaymentMethod paymentMethod;
     private String orderNote;
+    private PaymentMethod paymentMethod;
+    private Double totalPrice;
+    private Boolean couponApplied;
+    private Double discountPrice;
+    private List<ProductRequest> productRequests;
+    // Store
 
     @NoArgsConstructor
     @Data
@@ -28,23 +31,25 @@ public class OrderCreateRequestDto {
         private Long productId;
         private Integer quantity;
         private String forWhom;
-        private List<OptionRequest> optionRequests;
+        private List<ProductOptionRequest> productOptionRequests;
     }
 
     @NoArgsConstructor
     @Data
     @AllArgsConstructor
     @Builder
-    public static class OptionRequest {
-        private Long optionId;
-        private List<OptionTraitRequest> optionTraitRequests;
+    public static class ProductOptionRequest {
+        private Long productOptionId;
+        private Integer quantity;
+        private List<ProductOptionTraitRequest> productOptionTraitRequests;
     }
 
     @NoArgsConstructor
     @Data
     @AllArgsConstructor
     @Builder
-    public static class OptionTraitRequest {
-        private Long optionTraitId;
+    public static class ProductOptionTraitRequest {
+        private Long productOptionTraitId;
+        private Integer value;
     }
 }

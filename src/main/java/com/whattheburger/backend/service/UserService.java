@@ -2,6 +2,7 @@ package com.whattheburger.backend.service;
 
 import com.whattheburger.backend.controller.dto.UserCreateRequestDto;
 import com.whattheburger.backend.domain.User;
+import com.whattheburger.backend.security.enums.Role;
 import com.whattheburger.backend.security.exception.AuthenticationCredentialsNotFoundException;
 import com.whattheburger.backend.security.exception.UserPrincipalNotFoundException;
 import com.whattheburger.backend.repository.UserRepository;
@@ -35,7 +36,8 @@ public class UserService {
                 userDto.getPhoneNum(),
                 userDto.getZipcode(),
                 userDto.getEmail(),
-                password
+                password,
+                Role.USER
         );
         validateDuplicateEmail(user);
         User savedUser = userRepository.save(user);
@@ -58,19 +60,23 @@ public class UserService {
 
     public AuthUserDto getAuthenticatedUser(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated())
-            throw new AuthenticationCredentialsNotFoundException("Credentials not found", HttpStatus.UNAUTHORIZED);
+            throw new AuthenticationCredentialsNotFoundException("Credentials not found");
 
         Object principal = authentication.getPrincipal();
+        System.out.println("principal = " + principal.getClass().getName());
         if (principal instanceof UserDetailsImpl userDetails) {
-            return new AuthUserDto(
-                    userDetails.getFirstName(),
-                    userDetails.getLastName(),
-                    userDetails.getPhoneNum(),
-                    userDetails.getUsername(),
-                    userDetails.getZipcode()
-            );
+            return AuthUserDto
+                    .builder()
+                    .userId(userDetails.getUserId())
+                    .firstName(userDetails.getFirstName())
+                    .lastName(userDetails.getLastName())
+                    .phoneNum(userDetails.getPhoneNum())
+                    .email(userDetails.getUsername())
+                    .zipcode(userDetails.getZipcode())
+                    .role(userDetails.getRole())
+                    .build();
         }
-        throw new UserPrincipalNotFoundException("User principal not found", HttpStatus.NOT_FOUND);
+        throw new UserPrincipalNotFoundException("User principal not found");
 
     }
 }

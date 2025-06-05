@@ -30,11 +30,13 @@ public class UserController {
         AuthUserDto authUserDto = userService.getAuthenticatedUser(authentication);
         return ResponseEntity.ok(
                 new UserReadResponseDTO(
+                        authUserDto.getUserId(),
                         authUserDto.getFirstName(),
                         authUserDto.getLastName(),
                         authUserDto.getPhoneNum(),
                         authUserDto.getEmail(),
-                        authUserDto.getZipcode()
+                        authUserDto.getZipcode(),
+                        authUserDto.getRole()
                 )
         );
     }

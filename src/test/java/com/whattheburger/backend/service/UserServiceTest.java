@@ -3,6 +3,7 @@ package com.whattheburger.backend.service;
 import com.whattheburger.backend.controller.dto.UserCreateRequestDto;
 import com.whattheburger.backend.domain.User;
 import com.whattheburger.backend.repository.UserRepository;
+import com.whattheburger.backend.security.enums.Role;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,7 +48,8 @@ class UserServiceTest {
                 userDto.getPhoneNum(),
                 userDto.getZipcode(),
                 userDto.getEmail(),
-                userDto.getPassword()
+                userDto.getPassword(),
+                Role.USER
         );
         // thenAnswer: returns the index-th argument that was passed into the mocked method
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));

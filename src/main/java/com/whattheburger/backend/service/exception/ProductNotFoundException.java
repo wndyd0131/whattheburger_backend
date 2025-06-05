@@ -5,9 +5,9 @@ import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
 @Getter
-public class ProductNotFoundException extends ApiException {
+public class ProductNotFoundException extends ResourceNotFoundException {
 
     public ProductNotFoundException(Long resourceId) {
-        super("Product with ID[" + resourceId + "] not found", HttpStatus.NOT_FOUND);
+        super("Product with ID[" + resourceId + "] not found");
     }
 }
