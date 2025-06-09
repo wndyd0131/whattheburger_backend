@@ -17,7 +17,7 @@ public class OrderController {
 
     private final OrderService orderService;
 
-    @PostMapping
+    @PostMapping("/api/v1/order")
     public ResponseEntity<String> createOrder(@RequestBody OrderCreateRequestDto orderCreateRequestDto) {
             orderService.createOrder(orderCreateRequestDto);
             return new ResponseEntity<String>(

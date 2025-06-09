@@ -66,4 +66,9 @@ public class ProductController {
                 .status(HttpStatus.CREATED)
                 .body("Product successfully created");
     }
+
+    @GetMapping
+    public void getProductByIds(ProductReadByProductIdsRequestDto productRequestDto) {
+        List<Long> productIds = productRequestDto.getProductIds();
+    }
 }

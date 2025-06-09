@@ -47,7 +47,7 @@ public class AuthServiceTest {
     }
 
     @Test
-    public void givenWrongCredential_whenAuthenticate_thenException() throws Exception {
+    public void givenWrongCredential_whenAuthenticate_thenThrowException() throws Exception {
 
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class))).thenThrow(
                 new BadCredentialsException("Bad credentials")
