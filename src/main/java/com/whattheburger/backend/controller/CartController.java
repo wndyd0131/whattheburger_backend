@@ -31,16 +31,14 @@ import java.util.stream.Collectors;
 public class CartController {
 
     private final CartService cartService;
-    private final CartMapper cartMapper;
 
     @PostMapping("/api/v1/cart")
-    public ResponseEntity<String> addToCart(HttpServletRequest request, @RequestBody CartRequestDto cartRequestDto) {
-        HttpSession session = request.getSession(true);
+    public ResponseEntity<List<CartResponseDto>> addToCart(HttpSession session, @RequestBody CartRequestDto cartRequestDto) {
         String sessionId = session.getId();
         log.info("SESSION_ID: {}", sessionId);
-        cartService.saveCart(sessionId, cartRequestDto);
+        List<CartResponseDto> cartResponseDtos = cartService.saveCart(sessionId, cartRequestDto);
         return new ResponseEntity<>(
-                "Order successfully saved",
+                cartResponseDtos,
                 HttpStatus.CREATED
         );
     }
@@ -50,12 +48,7 @@ public class CartController {
         String sessionId = session.getId();
         log.info("SESSION_ID: {}", sessionId);
 
-        CartList cartList = cartService.loadCart(sessionId);
-
-        List<CartResponseDto> cartResponseDtos = cartList.getCarts()
-                .stream()
-                .map(cartMapper::toResponse)
-                .collect(Collectors.toList());
+        List<CartResponseDto> cartResponseDtos = cartService.loadCart(sessionId);
 
         return ResponseEntity.ok(cartResponseDtos);
     }

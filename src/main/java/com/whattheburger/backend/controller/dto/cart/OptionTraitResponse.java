@@ -10,14 +10,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Data
 @Builder
-public class OptionTraitDetail {
+public class OptionTraitResponse {
     private Long productOptionTraitId;
     private Integer currentValue;
-
-//    private Integer defaultValue;
-//    private Double extraCalories;
-//    private Double extraPrice;
-//    private String labelCode;
-//    private String name;
-//    private OptionTraitType optionTraitType;
+    private String labelCode;
+    private String optionTraitName;
+    private OptionTraitType optionTraitType;
 }

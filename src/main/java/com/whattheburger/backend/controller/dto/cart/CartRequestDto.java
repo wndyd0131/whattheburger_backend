@@ -13,5 +13,6 @@ import java.util.List;
 @Builder
 public class CartRequestDto {
     private Long productId;
-    private List<CustomRuleDetail> customRuleDetails;
+    private List<CustomRuleRequest> customRuleRequests;
+    private Integer quantity;
 }

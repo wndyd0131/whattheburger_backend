@@ -1,5 +1,6 @@
 package com.whattheburger.backend.controller.dto.cart;
 
+import com.whattheburger.backend.domain.enums.CustomRuleType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,14 +12,10 @@ import java.util.List;
 @NoArgsConstructor
 @Data
 @Builder
-public class CustomRuleDetail {
+public class CustomRuleResponse {
     private Long customRuleId;
-    private List<OptionDetail> optionDetails;
-
-//    private String customRuleName;
-//    private CustomRuleType customRuleType;
-//    private Integer maxSelection;
-//    private Integer minSelection;
-//    private Integer orderIndex;
+    private String customRuleName;
+    private Integer orderIndex;
 //    private Integer selectedCount;
+    private List<OptionResponse> optionResponses;
 }

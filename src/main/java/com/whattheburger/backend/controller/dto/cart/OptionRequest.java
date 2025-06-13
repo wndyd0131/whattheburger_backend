@@ -1,7 +1,5 @@
 package com.whattheburger.backend.controller.dto.cart;
 
-import com.whattheburger.backend.domain.enums.CountType;
-import com.whattheburger.backend.domain.enums.MeasureType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,11 +11,11 @@ import java.util.List;
 @NoArgsConstructor
 @Data
 @Builder
-public class OptionDetail {
+public class OptionRequest {
     private Long productOptionId;
     private Integer optionQuantity;
     private Boolean isSelected;
-    private List<OptionTraitDetail> optionTraitDetails;
+    private List<OptionTraitRequest> optionTraitRequests;
 
 //    private Double calories;
 //    private CountType countType;

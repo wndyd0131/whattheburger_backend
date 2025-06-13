@@ -12,7 +12,7 @@ import java.util.List;
 @Data
 @Builder
 public class SelectionDetail {
-    private List<CustomRuleDetail> customRuleDetails;
+    private List<CustomRuleRequest> customRuleRequests;
 //    private Double totalCalories;
 //    private Double totalExtraPrice;
 }

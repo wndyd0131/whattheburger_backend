@@ -11,8 +11,7 @@ import java.util.List;
 @NoArgsConstructor
 @Data
 @Builder
-public class CartResponseDto {
-    private ProductResponse productResponse;
-    private List<CustomRuleResponse> customRuleResponses;
-    private Integer quantity;
+public class CustomRuleRequest {
+    private Long customRuleId;
+    private List<OptionRequest> optionRequests;
 }

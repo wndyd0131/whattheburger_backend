@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Data
 @Builder
-public class ProductDetail {
+public class ProductResponse {
     private Long productId;
     private String productName;
     private ProductType productType;
