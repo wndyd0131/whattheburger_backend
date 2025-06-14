@@ -13,6 +13,12 @@ import com.whattheburger.backend.service.exception.ProductOptionTraitNotFoundExc
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.http.ResponseCookie;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -28,20 +34,48 @@ public class CartService {
     private final ProductRepository productRepository;
     private final CustomRuleRepository customRuleRepository;
     private final ProductOptionRepository productOptionRepository;
-    private  final ProductOptionTraitRepository productOptionTraitRepository;
+    private final ProductOptionTraitRepository productOptionTraitRepository;
 
-    public List<CartResponseDto> saveCart(String sessionId, CartRequestDto cartRequestDto) {
+    public List<CartResponseDto> saveCart(String cartId, CartRequestDto cartRequestDto) {
+
+        String sessionKey = cartId;
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isUser = authentication != null && authentication.isAuthenticated() && !(authentication instanceof AnonymousAuthenticationToken);
+
+        log.info("isUser {}", isUser);
+        if (isUser) {
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof UserDetails userDetails) {
+                sessionKey = userDetails.getUsername();
+            }
+            log.info("Principal {}", principal);
+        }
         Cart cart = new Cart(cartRequestDto.getProductId(), cartRequestDto.getQuantity(), cartRequestDto.getCustomRuleRequests());
-        CartList cartList = Optional.ofNullable(rt.opsForValue().get("cart:" + sessionId)).orElse(new CartList(new ArrayList<>()));
+        CartList cartList = Optional.ofNullable(rt.opsForValue().get("cart:" + sessionKey)).orElse(new CartList(new ArrayList<>()));
         log.info("CartList {}", cartList);
         cartList.getCarts().add(cart);
-        rt.opsForValue().set("cart:"+sessionId, cartList);
-        return loadCart(sessionId);
+        rt.opsForValue().set("cart:"+sessionKey, cartList);
+        return loadCart(sessionKey);
     }
 
-    public List<CartResponseDto> loadCart(String sessionId) {
+    public List<CartResponseDto> loadCart(String cartId) {
+
+        String sessionKey = cartId;
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean isUser = authentication != null && authentication.isAuthenticated() && !(authentication instanceof AnonymousAuthenticationToken);
+        log.info("isUser {}", isUser);
+        if (isUser) {
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof UserDetails userDetails) {
+                sessionKey = userDetails.getUsername();
+            }
+            log.info("Principal {}", principal);
+        }
+
         List<CartResponseDto> cartResponseDtos = new ArrayList<>();
-        CartList cartList = Optional.ofNullable(rt.opsForValue().get("cart:" + sessionId)).orElse(new CartList(new ArrayList<>()));
+        CartList cartList = Optional.ofNullable(rt.opsForValue().get("cart:" + sessionKey)).orElse(new CartList(new ArrayList<>()));
         List<Cart> carts = cartList.getCarts();
         Set<Long> customRuleIds = new HashSet<>();
         Set<Long> productOptionIds = new HashSet<>();

@@ -7,6 +7,7 @@ import com.whattheburger.backend.domain.Cart;
 import com.whattheburger.backend.domain.CartList;
 import com.whattheburger.backend.service.CartService;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -15,10 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,10 +31,11 @@ public class CartController {
     private final CartService cartService;
 
     @PostMapping("/api/v1/cart")
-    public ResponseEntity<List<CartResponseDto>> addToCart(HttpSession session, @RequestBody CartRequestDto cartRequestDto) {
-        String sessionId = session.getId();
-        log.info("SESSION_ID: {}", sessionId);
-        List<CartResponseDto> cartResponseDtos = cartService.saveCart(sessionId, cartRequestDto);
+    public ResponseEntity<List<CartResponseDto>> addToCart(
+            @RequestBody CartRequestDto cartRequestDto,
+            @CookieValue(name = "cartId") String cartId) {
+        log.info("CART_ID: {}", cartId);
+        List<CartResponseDto> cartResponseDtos = cartService.saveCart(cartId, cartRequestDto);
         return new ResponseEntity<>(
                 cartResponseDtos,
                 HttpStatus.CREATED
@@ -44,11 +43,12 @@ public class CartController {
     }
 
     @GetMapping("/api/v1/cart")
-    public ResponseEntity<List<CartResponseDto>> loadCart(HttpSession session) {
-        String sessionId = session.getId();
-        log.info("SESSION_ID: {}", sessionId);
+    public ResponseEntity<List<CartResponseDto>> loadCart(
+            @CookieValue(name = "cartId") String cartId
+    ) {
+        log.info("CART_ID: {}", cartId);
 
-        List<CartResponseDto> cartResponseDtos = cartService.loadCart(sessionId);
+        List<CartResponseDto> cartResponseDtos = cartService.loadCart(cartId);
 
         return ResponseEntity.ok(cartResponseDtos);
     }

@@ -2,6 +2,7 @@ package com.whattheburger.backend.security;
 
 import com.whattheburger.backend.domain.User;
 import com.whattheburger.backend.security.enums.Role;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -10,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 
+@Slf4j
 public class UserDetailsImpl implements UserDetails {
 
     private User user;
@@ -21,7 +23,9 @@ public class UserDetailsImpl implements UserDetails {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         Collection<GrantedAuthority> authorities = new ArrayList<>();
+        log.info("Auth");
         for (String role : user.getRole().getRoles().split(",")) {
+            log.info("Role assigned: {}", role);
             authorities.add(new SimpleGrantedAuthority(role));
         }
         return authorities;

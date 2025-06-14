@@ -11,8 +11,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.AuthenticationEntryPoint;
@@ -21,6 +24,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Collection;
 
 @Component
 @RequiredArgsConstructor
@@ -47,8 +51,10 @@ public class JwtFilter extends OncePerRequestFilter {
                 log.info("email: {}", email);
             }
 
+
             if (!email.isEmpty() && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(email); // get user from database
+
                 if (email.equals(userDetails.getUsername()) && jwtTokenUtil.validateToken(token)) {
 
                     // Set authentication to SecurityContext
@@ -58,6 +64,7 @@ public class JwtFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
                 }
             }
+
             filterChain.doFilter(request, response); // go to next filter
         } catch (io.jsonwebtoken.security.SecurityException | MalformedJwtException e) {
             log.error("Invalid JWT signature.");
