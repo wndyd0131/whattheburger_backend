@@ -10,6 +10,7 @@ import com.whattheburger.backend.service.exception.CustomRuleNotFoundException;
 import com.whattheburger.backend.service.exception.ProductNotFoundException;
 import com.whattheburger.backend.service.exception.ProductOptionNotFoundException;
 import com.whattheburger.backend.service.exception.ProductOptionTraitNotFoundException;
+import com.whattheburger.backend.service.exception.cart.InvalidCartIndexException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -36,11 +37,10 @@ public class CartService {
     private final ProductOptionRepository productOptionRepository;
     private final ProductOptionTraitRepository productOptionTraitRepository;
 
-    public List<CartResponseDto> saveCart(String cartId, CartRequestDto cartRequestDto) {
+    public List<CartResponseDto> saveCart(String cartId, Authentication authentication, CartRequestDto cartRequestDto) {
 
         String sessionKey = cartId;
 
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         boolean isUser = authentication != null && authentication.isAuthenticated() && !(authentication instanceof AnonymousAuthenticationToken);
 
         log.info("isUser {}", isUser);
@@ -56,14 +56,13 @@ public class CartService {
         log.info("CartList {}", cartList);
         cartList.getCarts().add(cart);
         rt.opsForValue().set("cart:"+sessionKey, cartList);
-        return loadCart(sessionKey);
+        return loadCart(sessionKey, authentication);
     }
 
-    public List<CartResponseDto> loadCart(String cartId) {
+    public List<CartResponseDto> loadCart(String cartId, Authentication authentication) {
 
         String sessionKey = cartId;
 
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         boolean isUser = authentication != null && authentication.isAuthenticated() && !(authentication instanceof AnonymousAuthenticationToken);
         log.info("isUser {}", isUser);
         if (isUser) {
@@ -188,5 +187,32 @@ public class CartService {
         log.info("CART SIZE: {}", cartResponseDtos.size());
 
         return cartResponseDtos;
+    }
+
+    public List<CartResponseDto> deleteItem(String cartId, int cartIdx, Authentication authentication) {
+        String sessionKey = cartId;
+
+        boolean isUser = authentication != null && authentication.isAuthenticated() && !(authentication instanceof AnonymousAuthenticationToken);
+        log.info("isUser {}", isUser);
+        if (isUser) {
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof UserDetails userDetails) {
+                sessionKey = userDetails.getUsername();
+            }
+            log.info("Principal {}", principal);
+        }
+
+        List<CartResponseDto> cartResponseDtos = new ArrayList<>();
+        CartList cartList = Optional.ofNullable(rt.opsForValue().get("cart:" + sessionKey)).orElse(new CartList(new ArrayList<>()));
+        List<Cart> carts = cartList.getCarts();
+        log.info("CartList {}", cartList);
+        if (cartIdx >= 0 && cartIdx < carts.size()) {
+            carts.remove(cartIdx);
+            rt.opsForValue().set("cart:"+sessionKey, cartList);
+        } else {
+            throw new InvalidCartIndexException(cartIdx);
+        }
+
+        return loadCart(sessionKey, authentication);
     }
 }

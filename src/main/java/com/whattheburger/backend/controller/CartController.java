@@ -2,25 +2,16 @@ package com.whattheburger.backend.controller;
 
 import com.whattheburger.backend.controller.dto.cart.CartRequestDto;
 import com.whattheburger.backend.controller.dto.cart.CartResponseDto;
-import com.whattheburger.backend.controller.mapper.CartMapper;
-import com.whattheburger.backend.domain.Cart;
-import com.whattheburger.backend.domain.CartList;
 import com.whattheburger.backend.service.CartService;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequiredArgsConstructor
@@ -33,9 +24,11 @@ public class CartController {
     @PostMapping("/api/v1/cart")
     public ResponseEntity<List<CartResponseDto>> addToCart(
             @RequestBody CartRequestDto cartRequestDto,
-            @CookieValue(name = "cartId") String cartId) {
+            @CookieValue(name = "cartId") String cartId,
+            Authentication authentication
+            ) {
         log.info("CART_ID: {}", cartId);
-        List<CartResponseDto> cartResponseDtos = cartService.saveCart(cartId, cartRequestDto);
+        List<CartResponseDto> cartResponseDtos = cartService.saveCart(cartId, authentication, cartRequestDto);
         return new ResponseEntity<>(
                 cartResponseDtos,
                 HttpStatus.CREATED
@@ -44,12 +37,25 @@ public class CartController {
 
     @GetMapping("/api/v1/cart")
     public ResponseEntity<List<CartResponseDto>> loadCart(
-            @CookieValue(name = "cartId") String cartId
+            @CookieValue(name = "cartId") String cartId,
+            Authentication authentication
     ) {
         log.info("CART_ID: {}", cartId);
 
-        List<CartResponseDto> cartResponseDtos = cartService.loadCart(cartId);
+        List<CartResponseDto> cartResponseDtos = cartService.loadCart(cartId, authentication);
 
         return ResponseEntity.ok(cartResponseDtos);
+    }
+
+    @DeleteMapping("/api/v1/cart/{idx}")
+    public ResponseEntity<List<CartResponseDto>> removeItem(
+            @PathVariable("idx") int cartIdx,
+            @CookieValue(name = "cartId") String cartId,
+            Authentication authentication
+    ) {
+        List<CartResponseDto> cartResponseDtos = cartService.deleteItem(cartId, cartIdx, authentication);
+        return ResponseEntity.ok(
+                cartResponseDtos
+        );
     }
 }
