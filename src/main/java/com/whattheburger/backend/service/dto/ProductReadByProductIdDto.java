@@ -1,11 +1,8 @@
 package com.whattheburger.backend.service.dto;
 
 import com.whattheburger.backend.domain.*;
-import com.whattheburger.backend.domain.enums.CountType;
-import com.whattheburger.backend.domain.enums.CustomRuleType;
-import com.whattheburger.backend.domain.enums.MeasureType;
+import com.whattheburger.backend.domain.enums.*;
 
-import com.whattheburger.backend.domain.enums.OptionTraitType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,6 +10,7 @@ import lombok.NoArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @AllArgsConstructor
 @Builder
@@ -43,7 +41,20 @@ public class ProductReadByProductIdDto {
         private String imageSource;
         private Integer orderIndex;
         private CustomRuleResponse customRuleResponse;
+        private List<OptionQuantityResponse> optionQuantities;
         private List<OptionTraitResponse> optionTraitResponses;
+    }
+
+    @AllArgsConstructor
+    @Builder
+    @NoArgsConstructor
+    @Data
+    public static class OptionQuantityResponse {
+        private Long optionQuantityId;
+        private QuantityType label;
+        private String value;
+        private Double extraPrice;
+        private Double extraCalories;
     }
 
     @AllArgsConstructor
@@ -79,6 +90,18 @@ public class ProductReadByProductIdDto {
 
         for (ProductOption productOption : productOptions) {
             Option option = productOption.getOption();
+            List<OptionQuantityResponse> optionQuantityResponses = option.getOptionQuantities()
+                    .stream()
+                    .map(optionQuantity -> OptionQuantityResponse
+                            .builder()
+                            .optionQuantityId(optionQuantity.getId())
+                            .label(optionQuantity.getQuantity().getLabel())
+                            .value(optionQuantity.getQuantity().getValue())
+                            .extraPrice(optionQuantity.getExtraPrice())
+                            .extraCalories(optionQuantity.getExtraCalories())
+                            .build()
+                    )
+                    .collect(Collectors.toList());
             List<ProductOptionTrait> productOptionTraits = productOption.getProductOptionTraits();
             List<OptionTraitResponse> optionTraitResponses = new ArrayList<>();
             CustomRule customRule = productOption.getCustomRule();
@@ -114,6 +137,7 @@ public class ProductReadByProductIdDto {
                     .isDefault(productOption.getIsDefault())
                     .defaultQuantity(productOption.getDefaultQuantity())
                     .maxQuantity(productOption.getMaxQuantity())
+                    .optionQuantities(optionQuantityResponses)
                     .extraPrice(productOption.getExtraPrice())
                     .calories(option.getCalories())
                     .countType(productOption.getCountType())

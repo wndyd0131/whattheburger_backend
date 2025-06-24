@@ -27,6 +27,9 @@ public class Option {
     @OneToMany(mappedBy = "option")
     private List<ProductOption> productOptions = new ArrayList<>();
 
+    @OneToMany(mappedBy = "option")
+    private List<OptionQuantity> optionQuantities = new ArrayList<>();
+
     public Option(String name, String imageSource, Double calories) {
         this.name = name;
         this.imageSource = imageSource;

@@ -19,4 +19,8 @@ public class Cart {
         this.quantity = quantity;
         this.customRuleRequests = customRuleRequests;
     }
+
+    public void updateCustomRules(List<CustomRuleRequest> customRuleRequests) {
+        this.customRuleRequests = customRuleRequests;
+    }
 }

@@ -59,6 +59,7 @@ public class CartService {
         return loadCart(sessionKey, authentication);
     }
 
+
     public List<CartResponseDto> loadCart(String cartId, Authentication authentication) {
 
         String sessionKey = cartId;
@@ -188,6 +189,33 @@ public class CartService {
 
         return cartResponseDtos;
     }
+    public List<CartResponseDto> modifyItem(String cartId, int cartIdx, CartModifyRequestDto cartRequestDto, Authentication authentication) {
+        String sessionKey = cartId;
+
+        boolean isUser = authentication != null && authentication.isAuthenticated() && !(authentication instanceof AnonymousAuthenticationToken);
+
+        log.info("isUser {}", isUser);
+        if (isUser) {
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof UserDetails userDetails) {
+                sessionKey = userDetails.getUsername();
+            }
+            log.info("Principal {}", principal);
+        }
+//        Cart cart = new Cart(cartRequestDto.getProductId(), cartRequestDto.getQuantity(), cartRequestDto.getCustomRuleRequests());
+        CartList cartList = Optional.ofNullable(rt.opsForValue().get("cart:" + sessionKey)).orElse(new CartList(new ArrayList<>()));
+        log.info("CartList {}", cartList);
+        List<Cart> carts = cartList.getCarts();
+
+        if (cartIdx >= 0 && cartIdx < carts.size()) {
+            Cart cart = carts.get(cartIdx);
+            cart.updateCustomRules(cartRequestDto.getCustomRuleRequests());
+            rt.opsForValue().set("cart:"+sessionKey, cartList);
+        } else {
+            throw new InvalidCartIndexException(cartIdx);
+        }
+        return loadCart(sessionKey, authentication);
+    }
 
     public List<CartResponseDto> deleteItem(String cartId, int cartIdx, Authentication authentication) {
         String sessionKey = cartId;
@@ -202,7 +230,6 @@ public class CartService {
             log.info("Principal {}", principal);
         }
 
-        List<CartResponseDto> cartResponseDtos = new ArrayList<>();
         CartList cartList = Optional.ofNullable(rt.opsForValue().get("cart:" + sessionKey)).orElse(new CartList(new ArrayList<>()));
         List<Cart> carts = cartList.getCarts();
         log.info("CartList {}", cartList);

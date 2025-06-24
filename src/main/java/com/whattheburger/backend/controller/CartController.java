@@ -1,5 +1,6 @@
 package com.whattheburger.backend.controller;
 
+import com.whattheburger.backend.controller.dto.cart.CartModifyRequestDto;
 import com.whattheburger.backend.controller.dto.cart.CartRequestDto;
 import com.whattheburger.backend.controller.dto.cart.CartResponseDto;
 import com.whattheburger.backend.service.CartService;
@@ -45,6 +46,19 @@ public class CartController {
         List<CartResponseDto> cartResponseDtos = cartService.loadCart(cartId, authentication);
 
         return ResponseEntity.ok(cartResponseDtos);
+    }
+
+    @PatchMapping("/api/v1/cart/{idx}")
+    public ResponseEntity<List<CartResponseDto>> modifyItem(
+            @RequestBody CartModifyRequestDto cartRequestDto,
+            @PathVariable("idx") int cartIdx,
+            @CookieValue(name = "cartId") String cartId,
+            Authentication authentication
+    ) {
+        List<CartResponseDto> cartResponseDtos = cartService.modifyItem(cartId, cartIdx, cartRequestDto, authentication);
+        return ResponseEntity.ok(
+                cartResponseDtos
+        );
     }
 
     @DeleteMapping("/api/v1/cart/{idx}")
