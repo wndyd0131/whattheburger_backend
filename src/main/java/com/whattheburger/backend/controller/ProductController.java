@@ -1,6 +1,7 @@
 package com.whattheburger.backend.controller;
 
 import com.whattheburger.backend.controller.dto.*;
+import com.whattheburger.backend.controller.dto.product.ProductCreateRequestDto;
 import com.whattheburger.backend.domain.*;
 import com.whattheburger.backend.service.dto.ProductReadByProductIdDto;
 import com.whattheburger.backend.service.ProductService;
@@ -12,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -59,7 +61,12 @@ public class ProductController {
 
     @Transactional
     @PostMapping("/api/v1/products")
-    public ResponseEntity<String> createProduct(@RequestBody ProductCreateRequestDto productCreateRequestDTO) {
+    public ResponseEntity<String> createProduct(
+            @RequestPart("productBlob") ProductCreateRequestDto productCreateRequestDTO,
+            @RequestPart("productImage") MultipartFile productImage
+    ) {
+
+        log.info("Product Image {}", productImage.getOriginalFilename());
         productService.createProduct(productCreateRequestDTO);
 
         return ResponseEntity

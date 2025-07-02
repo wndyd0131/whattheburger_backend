@@ -1,4 +1,4 @@
-package com.whattheburger.backend.controller.dto;
+package com.whattheburger.backend.controller.dto.product;
 import com.whattheburger.backend.domain.Product;
 import com.whattheburger.backend.domain.enums.CountType;
 import com.whattheburger.backend.domain.enums.MeasureType;
@@ -48,6 +48,7 @@ public class ProductCreateRequestDto {
         private Integer maxQuantity;
         private Double extraPrice;
         private Integer orderIndex;
+        private List<QuantityDto> quantityDetails;
         private List<OptionTraitRequest> optionTraitRequests;
     }
 

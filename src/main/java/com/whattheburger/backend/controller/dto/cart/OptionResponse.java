@@ -22,4 +22,5 @@ public class OptionResponse {
     private MeasureType measureType;
     private String optionName;
     private Integer orderIndex;
+    private QuantityDetailResponse quantityDetailResponse;
 }

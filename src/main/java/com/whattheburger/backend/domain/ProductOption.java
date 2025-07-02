@@ -46,6 +46,9 @@ public class ProductOption {
     @JoinColumn(name = "custom_rule_id")
     private CustomRule customRule;
 
+    @OneToMany(mappedBy = "productOption")
+    private List<ProductOptionOptionQuantity> productOptionOptionQuantities = new ArrayList<>();
+
     public ProductOption(
             Product product,
             Option option,

@@ -3,6 +3,9 @@ package com.whattheburger.backend.domain;
 import jakarta.persistence.*;
 import lombok.Getter;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Getter
 public class OptionQuantity {
@@ -10,7 +13,6 @@ public class OptionQuantity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "option_quantity_id")
     private Long id;
-    private Double extraPrice;
     private Double extraCalories;
 
     @ManyToOne
@@ -20,4 +22,7 @@ public class OptionQuantity {
     @ManyToOne
     @JoinColumn(name = "quantity_id")
     private Quantity quantity;
+
+    @OneToMany(mappedBy = "optionQuantity")
+    private List<ProductOptionOptionQuantity> productOptionOptionQuantities = new ArrayList<>();
 }

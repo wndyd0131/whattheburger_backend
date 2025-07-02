@@ -1,5 +1,6 @@
 package com.whattheburger.backend.controller.dto.cart;
 
+import jakarta.annotation.Nullable;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,6 +17,7 @@ public class OptionRequest {
     private Integer optionQuantity;
     private Boolean isSelected;
     private List<OptionTraitRequest> optionTraitRequests;
+    private QuantityDetailRequest quantityDetailRequest;
 
 //    private Double calories;
 //    private CountType countType;

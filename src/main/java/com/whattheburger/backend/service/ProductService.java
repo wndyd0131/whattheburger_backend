@@ -1,15 +1,14 @@
 package com.whattheburger.backend.service;
 
-import com.whattheburger.backend.controller.dto.ProductCreateRequestDto;
+import com.whattheburger.backend.controller.dto.product.ProductCreateRequestDto;
+import com.whattheburger.backend.controller.dto.product.QuantityDto;
 import com.whattheburger.backend.domain.*;
 import com.whattheburger.backend.repository.*;
 import com.whattheburger.backend.service.dto.ProductReadByCategoryIdResponseDto;
 import com.whattheburger.backend.service.dto.ProductReadByProductIdDto;
-import com.whattheburger.backend.service.exception.CategoryNotFoundException;
-import com.whattheburger.backend.service.exception.OptionNotFoundException;
-import com.whattheburger.backend.service.exception.OptionTraitNotFoundException;
-import com.whattheburger.backend.service.exception.ProductNotFoundException;
+import com.whattheburger.backend.service.exception.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +17,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ProductService {
     private final ProductRepository productRepository;
     private final OptionRepository optionRepository;
@@ -27,6 +27,8 @@ public class ProductService {
     private final CustomRuleRepository customRuleRepository;
     private final OptionTraitRepository optionTraitRepository;
     private final ProductOptionTraitRepository productOptionTraitRepository;
+    private final OptionQuantityRepository optionQuantityRepository;
+    private final ProductOptionOptionQuantityRepository productOptionOptionQuantityRepository;
 
     @Transactional
     public Product createProduct(ProductCreateRequestDto productCreateRequestDTO) {
@@ -126,7 +128,22 @@ public class ProductService {
                 optionRequest.getExtraPrice(),
                 optionRequest.getOrderIndex()
         );
-        return productOptionRepository.save(productOption);
+
+        ProductOption savedProductOption = productOptionRepository.save(productOption);
+
+        optionRequest.getQuantityDetails().stream().forEach(quantityDetail -> {
+            log.info("Quantity id {}", quantityDetail.getId());
+            OptionQuantity optionQuantity = optionQuantityRepository.findById(quantityDetail.getId())
+                    .orElseThrow(() -> new OptionQuantityNotFoundException(quantityDetail.getId()));
+            ProductOptionOptionQuantity productOptionOptionQuantity = new ProductOptionOptionQuantity(
+                    savedProductOption,
+                    optionQuantity,
+                    quantityDetail.getExtraPrice(),
+                    quantityDetail.getIsDefault()
+            );
+            productOptionOptionQuantityRepository.save(productOptionOptionQuantity);
+        });
+        return savedProductOption;
     }
 
     private void saveOptionTrait(ProductOption newProductOption, ProductCreateRequestDto.OptionTraitRequest optionTraitRequest, OptionTrait optionTrait) {

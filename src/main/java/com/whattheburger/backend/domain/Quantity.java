@@ -14,8 +14,9 @@ public class Quantity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "quantity_id")
     private Long id;
-    private QuantityType label;
-    private String value;
+    @Enumerated(EnumType.STRING)
+    private QuantityType quantityType;
+    private String labelCode;
 
     @OneToMany(mappedBy = "quantity")
     private List<OptionQuantity> optionQuantities = new ArrayList<>();

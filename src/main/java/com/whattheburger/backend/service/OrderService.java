@@ -1,13 +1,11 @@
 package com.whattheburger.backend.service;
 
 import com.whattheburger.backend.controller.dto.OrderCreateRequestDto;
-import com.whattheburger.backend.controller.dto.ProductCreateRequestDto;
 import com.whattheburger.backend.domain.*;
 import com.whattheburger.backend.repository.*;
 import com.whattheburger.backend.service.exception.ProductNotFoundException;
 import com.whattheburger.backend.service.exception.ProductOptionNotFoundException;
 import com.whattheburger.backend.service.exception.ProductOptionTraitNotFoundException;
-import com.whattheburger.backend.service.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

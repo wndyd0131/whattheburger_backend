@@ -1,6 +1,6 @@
 package com.whattheburger.backend.service;
 
-import com.whattheburger.backend.controller.dto.ProductCreateRequestDto;
+import com.whattheburger.backend.controller.dto.product.ProductCreateRequestDto;
 import com.whattheburger.backend.domain.*;
 import com.whattheburger.backend.domain.enums.*;
 import com.whattheburger.backend.repository.*;

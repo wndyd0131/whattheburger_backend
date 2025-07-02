@@ -2,23 +2,14 @@ package com.whattheburger.backend.service;
 
 import com.whattheburger.backend.controller.dto.cart.*;
 import com.whattheburger.backend.domain.*;
-import com.whattheburger.backend.repository.CustomRuleRepository;
-import com.whattheburger.backend.repository.ProductOptionRepository;
-import com.whattheburger.backend.repository.ProductOptionTraitRepository;
-import com.whattheburger.backend.repository.ProductRepository;
-import com.whattheburger.backend.service.exception.CustomRuleNotFoundException;
-import com.whattheburger.backend.service.exception.ProductNotFoundException;
-import com.whattheburger.backend.service.exception.ProductOptionNotFoundException;
-import com.whattheburger.backend.service.exception.ProductOptionTraitNotFoundException;
+import com.whattheburger.backend.repository.*;
+import com.whattheburger.backend.service.exception.*;
 import com.whattheburger.backend.service.exception.cart.InvalidCartIndexException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -36,6 +27,7 @@ public class CartService {
     private final CustomRuleRepository customRuleRepository;
     private final ProductOptionRepository productOptionRepository;
     private final ProductOptionTraitRepository productOptionTraitRepository;
+    private final ProductOptionOptionQuantityRepository productOptionOptionQuantityRepository;
 
     public List<CartResponseDto> saveCart(String cartId, Authentication authentication, CartRequestDto cartRequestDto) {
 
@@ -52,6 +44,7 @@ public class CartService {
             log.info("Principal {}", principal);
         }
         Cart cart = new Cart(cartRequestDto.getProductId(), cartRequestDto.getQuantity(), cartRequestDto.getCustomRuleRequests());
+
         CartList cartList = Optional.ofNullable(rt.opsForValue().get("cart:" + sessionKey)).orElse(new CartList(new ArrayList<>()));
         log.info("CartList {}", cartList);
         cartList.getCarts().add(cart);
@@ -80,21 +73,28 @@ public class CartService {
         Set<Long> customRuleIds = new HashSet<>();
         Set<Long> productOptionIds = new HashSet<>();
         Set<Long> productOptionTraitIds = new HashSet<>();
+        Set<Long> productOptionOptionQuantityIds = new HashSet<>();
 
         Set<Long> productIds = carts
                 .stream().map(Cart::getProductId).collect(Collectors.toSet());
         Map<Long, Product> productMap = productRepository.findAllById(productIds)
                 .stream().collect(Collectors.toMap(Product::getId, Function.identity()));
 
-
+        log.info("CART_LENGTH {}", carts.size());
         for (Cart cart : carts) {
             List<CustomRuleRequest> customRuleRequests = cart.getCustomRuleRequests();
             for (CustomRuleRequest customRuleRequest : customRuleRequests) {
                 customRuleIds.add(customRuleRequest.getCustomRuleId());
                 List<OptionRequest> optionRequests = customRuleRequest.getOptionRequests();
                 for (OptionRequest optionRequest : optionRequests) {
+                    log.info("JAM_ID {}", optionRequest.getQuantityDetailRequest());
                     productOptionIds.add(optionRequest.getProductOptionId());
+
+                    Optional.ofNullable(optionRequest.getQuantityDetailRequest())
+                            .ifPresent(quantityDetailRequest -> productOptionOptionQuantityIds.add(quantityDetailRequest.getId()));
+
                     List<OptionTraitRequest> optionTraitRequests = optionRequest.getOptionTraitRequests();
+
                     for (OptionTraitRequest optionTraitRequest : optionTraitRequests) {
                         productOptionTraitIds.add(optionTraitRequest.getProductOptionTraitId());
                     }
@@ -108,6 +108,9 @@ public class CartService {
                 .stream().collect(Collectors.toMap(ProductOption::getId, Function.identity()));
         Map<Long, ProductOptionTrait> productOptionTraitMap = productOptionTraitRepository.findAllById(productOptionTraitIds)
                 .stream().collect(Collectors.toMap(ProductOptionTrait::getId, Function.identity()));
+        Map<Long, ProductOptionOptionQuantity> quantityMap = productOptionOptionQuantityRepository.findAllById(productOptionOptionQuantityIds)
+                .stream().collect(Collectors.toMap(ProductOptionOptionQuantity::getId, Function.identity()));
+
 
         for (Cart cart : carts) {
             Long productId = cart.getProductId();
@@ -133,10 +136,27 @@ public class CartService {
                 List<OptionResponse> optionResponses = new ArrayList<>();
                 log.info("customRuleName: {}", customRule.getName());
                 for (OptionRequest optionRequest : optionRequests) {
-                        Long productOptionId = optionRequest.getProductOptionId();
-                        ProductOption productOption = Optional.ofNullable(productOptionMap.get(productOptionId))
-                                .orElseThrow(() -> new ProductOptionNotFoundException(productOptionId));
-                        List<OptionTraitRequest> optionTraitRequests = optionRequest.getOptionTraitRequests();
+                    log.info("POOQ_ID {}", optionRequest.getQuantityDetailRequest());
+                    Long productOptionId = optionRequest.getProductOptionId();
+
+                    ProductOption productOption = Optional.ofNullable(productOptionMap.get(productOptionId))
+                            .orElseThrow(() -> new ProductOptionNotFoundException(productOptionId));
+
+                    log.info("quantityDetailRequest {}", optionRequest.getQuantityDetailRequest());
+                    QuantityDetailResponse quantityDetailResponse = Optional.ofNullable(optionRequest.getQuantityDetailRequest())
+                            .map(quantityDetailRequest -> {
+                                log.info("POOQID {}", quantityDetailRequest);
+
+                                ProductOptionOptionQuantity productOptionOptionQuantity = Optional.ofNullable(quantityMap.get(quantityDetailRequest.getId()))
+                                        .orElseThrow(() -> new POOQuantityNotFoundException(quantityDetailRequest.getId()));
+                                return new QuantityDetailResponse(
+                                        productOptionOptionQuantity.getId(),
+                                        productOptionOptionQuantity.getOptionQuantity().getQuantity().getQuantityType()
+                                );
+                            })
+                            .orElse(null);
+
+                    List<OptionTraitRequest> optionTraitRequests = optionRequest.getOptionTraitRequests();
                         List<OptionTraitResponse> optionTraitResponses = new ArrayList<>();
                         log.info("productOptionName: {}", productOption.getOption().getName());
                         for (OptionTraitRequest optionTraitRequest : optionTraitRequests) {
@@ -162,7 +182,8 @@ public class CartService {
                                         productOption.getCountType(),
                                         productOption.getMeasureType(),
                                         productOption.getOption().getName(),
-                                        productOption.getOrderIndex()
+                                        productOption.getOrderIndex(),
+                                        quantityDetailResponse
                                 )
                         );
                 }
