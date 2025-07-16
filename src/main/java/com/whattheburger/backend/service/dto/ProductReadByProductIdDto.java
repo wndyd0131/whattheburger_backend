@@ -85,7 +85,7 @@ public class ProductReadByProductIdDto {
         private Double extraCalories; //productOptionTrait
     }
 
-    public static ProductReadByProductIdDto toDto(Product product){
+    public static ProductReadByProductIdDto toDto(Product product, String imageSource){
         List<ProductOption> productOptions = product.getProductOptions();
         List<OptionResponse> optionResponses = new ArrayList<>();
 
@@ -157,7 +157,7 @@ public class ProductReadByProductIdDto {
                 .productId(product.getId())
                 .productName(product.getName())
                 .productPrice(product.getPrice())
-                .imageSource(product.getImageSource())
+                .imageSource(imageSource)
                 .briefInfo(product.getBriefInfo())
                 .optionResponses(optionResponses)
                 .build();

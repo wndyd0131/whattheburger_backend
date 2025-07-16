@@ -1,5 +1,6 @@
-package com.whattheburger.backend.domain;
+package com.whattheburger.backend.domain.cart;
 
+import com.whattheburger.backend.domain.cart.Cart;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 

@@ -3,6 +3,9 @@ package com.whattheburger.backend.controller;
 import com.whattheburger.backend.controller.dto.*;
 import com.whattheburger.backend.controller.dto.product.ProductCreateRequestDto;
 import com.whattheburger.backend.domain.*;
+import com.whattheburger.backend.dto_mapper.ProductDtoMapper;
+import com.whattheburger.backend.service.S3Service;
+import com.whattheburger.backend.service.dto.product.ProductCreateDto;
 import com.whattheburger.backend.service.dto.ProductReadByProductIdDto;
 import com.whattheburger.backend.service.ProductService;
 import com.whattheburger.backend.service.dto.ProductReadByCategoryIdResponseDto;
@@ -15,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,6 +30,7 @@ import java.util.List;
 public class ProductController {
 
     private final ProductService productService;
+    private final ProductDtoMapper productDtoMapper;
 
     @GetMapping("/api/v1/products")
     public ResponseEntity<List<ProductReadResponseDto>> getAllProducts() {
@@ -64,10 +70,13 @@ public class ProductController {
     public ResponseEntity<String> createProduct(
             @RequestPart("productBlob") ProductCreateRequestDto productCreateRequestDTO,
             @RequestPart("productImage") MultipartFile productImage
-    ) {
+    ) throws IOException {
 
         log.info("Product Image {}", productImage.getOriginalFilename());
-        productService.createProduct(productCreateRequestDTO);
+
+        ProductCreateDto productDto = productDtoMapper.fromControllerDto(productCreateRequestDTO);
+
+        productService.createProduct(productDto, productImage);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)

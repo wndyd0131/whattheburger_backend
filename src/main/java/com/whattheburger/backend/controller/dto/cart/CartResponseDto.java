@@ -12,7 +12,6 @@ import java.util.List;
 @Data
 @Builder
 public class CartResponseDto {
-    private ProductResponse productResponse;
-    private List<CustomRuleResponse> customRuleResponses;
-    private Integer quantity;
+    private List<CartResponse> cartResponses;
+    private Double totalPrice;
 }

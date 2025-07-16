@@ -1,9 +1,13 @@
 package com.whattheburger.backend.service;
 
+import com.amazonaws.services.s3.model.S3Object;
 import com.whattheburger.backend.controller.dto.product.ProductCreateRequestDto;
-import com.whattheburger.backend.controller.dto.product.QuantityDto;
 import com.whattheburger.backend.domain.*;
 import com.whattheburger.backend.repository.*;
+import com.whattheburger.backend.service.dto.product.CustomRuleRequest;
+import com.whattheburger.backend.service.dto.product.OptionRequest;
+import com.whattheburger.backend.service.dto.product.OptionTraitRequest;
+import com.whattheburger.backend.service.dto.product.ProductCreateDto;
 import com.whattheburger.backend.service.dto.ProductReadByCategoryIdResponseDto;
 import com.whattheburger.backend.service.dto.ProductReadByProductIdDto;
 import com.whattheburger.backend.service.exception.*;
@@ -11,7 +15,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,12 +36,17 @@ public class ProductService {
     private final OptionQuantityRepository optionQuantityRepository;
     private final ProductOptionOptionQuantityRepository productOptionOptionQuantityRepository;
 
+    private final S3Service s3Service;
+
     @Transactional
-    public Product createProduct(ProductCreateRequestDto productCreateRequestDTO) {
-        Product product = productCreateRequestDTO.toEntity();
+    public Product createProduct(ProductCreateDto productDto, MultipartFile imageSource) throws IOException {
+        String s3Key = s3Service.uploadFile(imageSource); // upload product image to S3
+
+        Product product = productDto.toEntity();
+        product.changeImageSource(s3Key);
         Product newProduct = productRepository.save(product);
-        List<Long> categoryIds = productCreateRequestDTO.getCategoryIds();
-        List<ProductCreateRequestDto.CustomRuleRequest> customRuleRequests = productCreateRequestDTO.getCustomRuleRequests();
+        List<Long> categoryIds = productDto.getCategoryIds();
+        List<CustomRuleRequest> customRuleRequests = productDto.getCustomRuleRequests();
 
         saveCategoryProduct(categoryIds, newProduct);
         saveProductDetail(customRuleRequests, newProduct);
@@ -61,6 +72,7 @@ public class ProductService {
                             product.getId(),
                             product.getName(),
                             product.getPrice(),
+                            product.getCalories(),
                             product.getImageSource(),
                             product.getBriefInfo()
                     )
@@ -71,7 +83,13 @@ public class ProductService {
 
     public ProductReadByProductIdDto getProductById(Long productId) {
         Product product = productRepository.findById(productId).orElseThrow(() -> new ProductNotFoundException(productId));
-        return ProductReadByProductIdDto.toDto(product);
+        String publicUrl = null;
+        try {
+            publicUrl = s3Service.getPublicUrl(product.getImageSource());
+        } catch (Exception e) {
+            log.error("Failed to load file from S3 {}", e.getMessage(), e);
+        }
+        return ProductReadByProductIdDto.toDto(product, publicUrl);
     }
 
     private void saveCategoryProduct(List<Long> categoryIds, Product product) {
@@ -84,16 +102,16 @@ public class ProductService {
         }
     }
 
-    private void saveProductDetail(List<ProductCreateRequestDto.CustomRuleRequest> customRuleRequests, Product newProduct) {
-        for (ProductCreateRequestDto.CustomRuleRequest customRuleRequest : customRuleRequests) {
+    private void saveProductDetail(List<CustomRuleRequest> customRuleRequests, Product newProduct) {
+        for (CustomRuleRequest customRuleRequest : customRuleRequests) {
             CustomRule newCustomRule = saveCustomRule(customRuleRequest);
-            for (ProductCreateRequestDto.OptionRequest optionRequest : customRuleRequest.getOptionRequests()) {
+            for (OptionRequest optionRequest : customRuleRequest.getOptionRequests()) {
                 Long optionId = optionRequest.getOptionId();
                 Option option = optionRepository
                         .findById(optionId)
                         .orElseThrow(() -> new OptionNotFoundException(optionId));
                 ProductOption newProductOption = saveOption(newProduct, newCustomRule, optionRequest, option);
-                for (ProductCreateRequestDto.OptionTraitRequest optionTraitRequest : optionRequest.getOptionTraitRequests()) {
+                for (OptionTraitRequest optionTraitRequest : optionRequest.getOptionTraitRequests()) {
                     Long optionTraitId = optionTraitRequest.getOptionTraitId();
                     OptionTrait optionTrait = optionTraitRepository
                             .findById(optionTraitId)
@@ -104,7 +122,7 @@ public class ProductService {
         }
     }
 
-    private CustomRule saveCustomRule(ProductCreateRequestDto.CustomRuleRequest customRuleRequest) {
+    private CustomRule saveCustomRule(CustomRuleRequest customRuleRequest) {
         CustomRule customRule = new CustomRule(
                 customRuleRequest.getCustomRuleName(),
                 customRuleRequest.getCustomRuleType(),
@@ -115,7 +133,7 @@ public class ProductService {
         return customRuleRepository.save(customRule);
     }
 
-    private ProductOption saveOption(Product newProduct, CustomRule newCustomRule, ProductCreateRequestDto.OptionRequest optionRequest, Option option) {
+    private ProductOption saveOption(Product newProduct, CustomRule newCustomRule, OptionRequest optionRequest, Option option) {
         ProductOption productOption = new ProductOption(
                 newProduct,
                 option,
@@ -146,7 +164,7 @@ public class ProductService {
         return savedProductOption;
     }
 
-    private void saveOptionTrait(ProductOption newProductOption, ProductCreateRequestDto.OptionTraitRequest optionTraitRequest, OptionTrait optionTrait) {
+    private void saveOptionTrait(ProductOption newProductOption, OptionTraitRequest optionTraitRequest, OptionTrait optionTrait) {
         ProductOptionTrait productOptionTrait = new ProductOptionTrait(
                 newProductOption,
                 optionTrait,

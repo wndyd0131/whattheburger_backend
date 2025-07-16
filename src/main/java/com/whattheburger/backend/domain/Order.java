@@ -1,11 +1,10 @@
 package com.whattheburger.backend.domain;
 
-import com.whattheburger.backend.domain.enums.OrderStatus;
-import com.whattheburger.backend.domain.enums.OrderType;
-import com.whattheburger.backend.domain.enums.PaymentMethod;
-import com.whattheburger.backend.domain.enums.PaymentStatus;
+import com.whattheburger.backend.domain.enums.*;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -13,6 +12,8 @@ import java.util.List;
 
 @Entity
 @Table(name = "orders")
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class Order {
     @Id
@@ -28,9 +29,9 @@ public class Order {
     private PaymentStatus paymentStatus;
     @Enumerated(EnumType.STRING)
     private PaymentMethod paymentMethod;
-    private Boolean couponApplied;
     private String orderNote;
-    private Double discountPrice;
+    @Enumerated
+    private DiscountType discountType;
     private Double taxAmount;
     // private Store store;
 
@@ -43,6 +44,4 @@ public class Order {
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-
-
 }

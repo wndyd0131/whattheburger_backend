@@ -1,9 +1,8 @@
 package com.whattheburger.backend.controller.mapper;
 
 import com.whattheburger.backend.controller.dto.cart.*;
-import com.whattheburger.backend.domain.Cart;
+import com.whattheburger.backend.domain.cart.Cart;
 import com.whattheburger.backend.domain.Product;
-import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -1,24 +1,25 @@
 package com.whattheburger.backend.service;
 
-import com.whattheburger.backend.controller.dto.OrderCreateRequestDto;
+import com.whattheburger.backend.controller.dto.order.OrderCreateRequestDto;
+import com.whattheburger.backend.controller.dto.order.ProductOptionRequest;
+import com.whattheburger.backend.controller.dto.order.ProductOptionTraitRequest;
+import com.whattheburger.backend.controller.dto.order.ProductRequest;
 import com.whattheburger.backend.domain.*;
 import com.whattheburger.backend.domain.enums.OrderType;
 import com.whattheburger.backend.domain.enums.PaymentMethod;
 import com.whattheburger.backend.repository.*;
 import com.whattheburger.backend.service.exception.ProductNotFoundException;
-import com.whattheburger.backend.utils.MockEntityFactory;
+import com.whattheburger.backend.service.exception.ProductOptionNotFoundException;
+import com.whattheburger.backend.utils.*;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import static org.mockito.Mockito.*;
 
@@ -54,14 +55,7 @@ public class OrderServiceTest {
 
     @BeforeEach
     void setUp() {
-        mockCategory = MockEntityFactory.createMockCategory();
-        mockOption = MockEntityFactory.createMockOption();
-        mockOptionTrait = MockEntityFactory.createMockOptionTrait();
-        mockProduct = MockEntityFactory.createMockProduct();
-        mockCustomRule = MockEntityFactory.createMockCustomRule();
-        mockCategoryProduct = MockEntityFactory.createMockCategoryProduct(mockCategory, mockProduct);
-        mockProductOption = MockEntityFactory.createMockProductOption(mockProduct, mockOption, mockCustomRule);
-        mockProductOptionTrait = MockEntityFactory.createMockProductOptionTrait(mockProductOption, mockOptionTrait);
+        initMock();
     }
 
     @Test
@@ -70,11 +64,9 @@ public class OrderServiceTest {
                 .builder()
                 .id(1L)
                 .orderType(OrderType.DELIVERY)
-                .orderNote("order note")
+                .orderNote("")
                 .paymentMethod(PaymentMethod.CASH)
                 .totalPrice(0D)
-                .discountPrice(0D)
-                .couponApplied(true)
                 .build();
         OrderProduct mockOrderProduct = OrderProduct
                 .builder()
@@ -106,7 +98,7 @@ public class OrderServiceTest {
         when(orderProductOptionRepository.save(any(OrderProductOption.class))).thenReturn(mockOrderProductOption);
         when(orderProductOptionTraitRepository.save(any(OrderProductOptionTrait.class))).thenReturn(mockOrderProductOptionTrait);
 
-        OrderCreateRequestDto orderCreateRequestDto = createOrderCreateRequest();
+        OrderCreateRequestDto orderCreateRequestDto = MockOrderRequestFactory.createOrderCreateRequest();
         Order order = orderService.createOrder(orderCreateRequestDto);
 
         Assertions.assertNotNull(order);
@@ -123,7 +115,7 @@ public class OrderServiceTest {
 
         when(productRepository.findAllById(any(Iterable.class))).thenReturn(mockProducts);
 
-        OrderCreateRequestDto orderCreateRequestDto = createOrderCreateRequest();
+        OrderCreateRequestDto orderCreateRequestDto = MockOrderRequestFactory.createOrderCreateRequest();
 
         Assertions.assertThrows(ProductNotFoundException.class, () ->
                 orderService.createOrder(orderCreateRequestDto)
@@ -132,43 +124,14 @@ public class OrderServiceTest {
         verify(productRepository).findAllById(any(Iterable.class));
     }
 
-    private OrderCreateRequestDto createOrderCreateRequest() {
-        return OrderCreateRequestDto
-                .builder()
-                .orderType(OrderType.DELIVERY)
-                .orderNote("order note")
-                .paymentMethod(PaymentMethod.CASH)
-                .totalPrice(0D)
-                .couponApplied(true)
-                .discountPrice(0D)
-                .productRequests(
-                        List.of(
-                                OrderCreateRequestDto.ProductRequest
-                                        .builder()
-                                        .productId(1L)
-                                        .quantity(1)
-                                        .forWhom("")
-                                        .productOptionRequests(
-                                                List.of(
-                                                        OrderCreateRequestDto.ProductOptionRequest
-                                                        .builder()
-                                                        .productOptionId(1L)
-                                                        .quantity(1)
-                                                        .productOptionTraitRequests(
-                                                                List.of(OrderCreateRequestDto.ProductOptionTraitRequest
-                                                                        .builder()
-                                                                        .productOptionTraitId(1L)
-                                                                        .value(0)
-                                                                        .build()
-                                                                )
-                                                        )
-                                                        .build()
-                                                )
-                                        )
-                                        .build()
-                        )
-
-                )
-                .build();
+    private void initMock() {
+        mockCategory = MockCategoryFactory.createMockCategory();
+        mockOption = MockOptionFactory.createMockOption();
+        mockOptionTrait = MockOptionTraitFactory.createMockOptionTrait();
+        mockProduct = MockProductFactory.createMockProduct();
+        mockCustomRule = MockCustomRuleFactory.createMockCustomRule();
+        mockCategoryProduct = MockProductFactory.createMockCategoryProduct(mockCategory, mockProduct);
+        mockProductOption = MockOptionFactory.createMockProductOption(mockProduct, mockOption, mockCustomRule);
+        mockProductOptionTrait = MockOptionTraitFactory.createMockProductOptionTrait(mockProductOption, mockOptionTrait);
     }
 }

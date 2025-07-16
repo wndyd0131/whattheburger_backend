@@ -1,6 +1,6 @@
 package com.whattheburger.backend.controller;
 
-import com.whattheburger.backend.controller.dto.OrderCreateRequestDto;
+import com.whattheburger.backend.controller.dto.order.OrderCreateRequestDto;
 import com.whattheburger.backend.service.OrderService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;

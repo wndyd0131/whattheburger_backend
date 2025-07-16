@@ -95,7 +95,7 @@ public class ProductControllerTest {
                 .productType(ProductType.ONLY)
                 .productOptions(List.of(productOption))
                 .build();
-        ProductReadByProductIdDto productReadByProductIdDto = ProductReadByProductIdDto.toDto(product);
+        ProductReadByProductIdDto productReadByProductIdDto = ProductReadByProductIdDto.toDto(product, null);
 
         when(productService.getProductById(1L)).thenReturn(productReadByProductIdDto);
 

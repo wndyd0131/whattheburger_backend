@@ -1,4 +1,4 @@
-package com.whattheburger.backend.domain;
+package com.whattheburger.backend.domain.cart;
 
 import com.whattheburger.backend.controller.dto.cart.CustomRuleRequest;
 import lombok.Getter;

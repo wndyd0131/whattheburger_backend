@@ -18,7 +18,6 @@ public class ProductCreateRequestDto {
     private Double productCalories;
     private ProductType productType;
     private String briefInfo;
-    private String imageSource;
     private List<Long> categoryIds;
     private List<CustomRuleRequest> customRuleRequests;
 
@@ -61,9 +60,5 @@ public class ProductCreateRequestDto {
         private Integer defaultSelection;
         private Double extraPrice;
         private Double extraCalories;
-    }
-
-    public Product toEntity() {
-        return new Product(productName, productPrice, briefInfo, imageSource, productCalories, productType);
     }
 }

@@ -1,10 +1,13 @@
 package com.whattheburger.backend.service;
 
-import com.whattheburger.backend.controller.dto.product.ProductCreateRequestDto;
 import com.whattheburger.backend.domain.*;
 import com.whattheburger.backend.domain.enums.*;
 import com.whattheburger.backend.repository.*;
-import com.whattheburger.backend.utils.MockEntityFactory;
+import com.whattheburger.backend.service.dto.product.CustomRuleRequest;
+import com.whattheburger.backend.service.dto.product.OptionRequest;
+import com.whattheburger.backend.service.dto.product.OptionTraitRequest;
+import com.whattheburger.backend.service.dto.product.ProductCreateDto;
+import com.whattheburger.backend.utils.*;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,14 +48,7 @@ public class ProductServiceTest {
 
     @BeforeEach
     void setUp() {
-        mockCategory = MockEntityFactory.createMockCategory();
-        mockOption = MockEntityFactory.createMockOption();
-        mockOptionTrait = MockEntityFactory.createMockOptionTrait();
-        mockProduct = MockEntityFactory.createMockProduct();
-        mockCustomRule = MockEntityFactory.createMockCustomRule();
-        mockCategoryProduct = MockEntityFactory.createMockCategoryProduct(mockCategory, mockProduct);
-        mockProductOption = MockEntityFactory.createMockProductOption(mockProduct, mockOption, mockCustomRule);
-        mockProductOptionTrait = MockEntityFactory.createMockProductOptionTrait(mockProductOption, mockOptionTrait);
+        initMock();
     }
 
     @Test
@@ -75,7 +71,6 @@ public class ProductServiceTest {
         Product mockProduct = new Product(
                 "Whattheburger",
                 5.99D,
-                "",
                 "",
                 590D,
                 ProductType.ONLY
@@ -122,7 +117,7 @@ public class ProductServiceTest {
         when(customRuleRepository.save(any(CustomRule.class))).thenReturn(mockCustomRule);
 
 
-        List<ProductCreateRequestDto.OptionTraitRequest> optionTraitRequests = Arrays.asList(ProductCreateRequestDto.OptionTraitRequest
+        List<OptionTraitRequest> optionTraitRequests = Arrays.asList(OptionTraitRequest
                 .builder()
                 .optionTraitId(optionTraitId)
                 .defaultSelection(0)
@@ -131,7 +126,7 @@ public class ProductServiceTest {
                 .build()
         );
 
-        List<ProductCreateRequestDto.OptionRequest> optionRequests = Arrays.asList(ProductCreateRequestDto.OptionRequest
+        List<OptionRequest> optionRequests = Arrays.asList(OptionRequest
                 .builder()
                 .optionId(optionId)
                 .isDefault(true)
@@ -145,7 +140,7 @@ public class ProductServiceTest {
                 .build()
         );
 
-        List<ProductCreateRequestDto.CustomRuleRequest> customRuleRequests = Arrays.asList(ProductCreateRequestDto.CustomRuleRequest
+        List<CustomRuleRequest> customRuleRequests = Arrays.asList(CustomRuleRequest
                 .builder()
                 .customRuleName("")
                 .customRuleType(CustomRuleType.UNIQUE)
@@ -157,7 +152,7 @@ public class ProductServiceTest {
         );
 
         Product product = productService.createProduct(
-                ProductCreateRequestDto.
+                ProductCreateDto.
                         builder()
                         .productName("Whattheburger")
                         .productPrice(5.99D)
@@ -168,6 +163,7 @@ public class ProductServiceTest {
                         .categoryIds(Arrays.asList(categoryId))
                         .customRuleRequests(customRuleRequests)
                         .build()
+                , null
         );
 
         verify(categoryRepository).findById(categoryId);
@@ -186,5 +182,16 @@ public class ProductServiceTest {
     @Test
     public void givenProductId_whenReadProduct_thenReturn() throws Exception {
 
+    }
+
+    private void initMock() {
+        mockCategory = MockCategoryFactory.createMockCategory();
+        mockOption = MockOptionFactory.createMockOption();
+        mockOptionTrait = MockOptionTraitFactory.createMockOptionTrait();
+        mockProduct = MockProductFactory.createMockProduct();
+        mockCustomRule = MockCustomRuleFactory.createMockCustomRule();
+        mockCategoryProduct = MockProductFactory.createMockCategoryProduct(mockCategory, mockProduct);
+        mockProductOption = MockOptionFactory.createMockProductOption(mockProduct, mockOption, mockCustomRule);
+        mockProductOptionTrait = MockOptionTraitFactory.createMockProductOptionTrait(mockProductOption, mockOptionTrait);
     }
 }

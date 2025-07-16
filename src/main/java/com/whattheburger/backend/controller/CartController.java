@@ -23,13 +23,13 @@ public class CartController {
     private final CartService cartService;
 
     @PostMapping("/api/v1/cart")
-    public ResponseEntity<List<CartResponseDto>> addToCart(
+    public ResponseEntity<CartResponseDto> addToCart(
             @RequestBody CartRequestDto cartRequestDto,
             @CookieValue(name = "cartId") String cartId,
             Authentication authentication
             ) {
         log.info("CART_ID: {}", cartId);
-        List<CartResponseDto> cartResponseDtos = cartService.saveCart(cartId, authentication, cartRequestDto);
+        CartResponseDto cartResponseDtos = cartService.saveCart(cartId, authentication, cartRequestDto);
         return new ResponseEntity<>(
                 cartResponseDtos,
                 HttpStatus.CREATED
@@ -37,39 +37,47 @@ public class CartController {
     }
 
     @GetMapping("/api/v1/cart")
-    public ResponseEntity<List<CartResponseDto>> loadCart(
+    public ResponseEntity<CartResponseDto> loadCart(
             @CookieValue(name = "cartId") String cartId,
             Authentication authentication
     ) {
         log.info("CART_ID: {}", cartId);
 
-        List<CartResponseDto> cartResponseDtos = cartService.loadCart(cartId, authentication);
+        CartResponseDto cartResponseDto = cartService.loadCart(cartId, authentication);
 
-        return ResponseEntity.ok(cartResponseDtos);
+        return ResponseEntity.ok(cartResponseDto);
+    }
+
+    @PostMapping("/api/v1/cart/checkout-preview")
+    public ResponseEntity<CartResponseDto> preview(
+            @CookieValue(name = "cartId") String cartId,
+            Authentication authentication
+    ) {
+        return null;
     }
 
     @PatchMapping("/api/v1/cart/{idx}")
-    public ResponseEntity<List<CartResponseDto>> modifyItem(
+    public ResponseEntity<CartResponseDto> modifyItem(
             @RequestBody CartModifyRequestDto cartRequestDto,
             @PathVariable("idx") int cartIdx,
             @CookieValue(name = "cartId") String cartId,
             Authentication authentication
     ) {
-        List<CartResponseDto> cartResponseDtos = cartService.modifyItem(cartId, cartIdx, cartRequestDto, authentication);
+        CartResponseDto cartResponseDto = cartService.modifyItem(cartId, cartIdx, cartRequestDto, authentication);
         return ResponseEntity.ok(
-                cartResponseDtos
+                cartResponseDto
         );
     }
 
     @DeleteMapping("/api/v1/cart/{idx}")
-    public ResponseEntity<List<CartResponseDto>> removeItem(
+    public ResponseEntity<CartResponseDto> removeItem(
             @PathVariable("idx") int cartIdx,
             @CookieValue(name = "cartId") String cartId,
             Authentication authentication
     ) {
-        List<CartResponseDto> cartResponseDtos = cartService.deleteItem(cartId, cartIdx, authentication);
+        CartResponseDto cartResponseDto = cartService.deleteItem(cartId, cartIdx, authentication);
         return ResponseEntity.ok(
-                cartResponseDtos
+                cartResponseDto
         );
     }
 }

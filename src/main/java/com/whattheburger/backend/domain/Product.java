@@ -32,19 +32,24 @@ public class Product {
     @OneToMany(mappedBy = "product")
     private List<CategoryProduct> categoryProducts = new ArrayList<>();
 
+    @OneToMany(mappedBy = "product")
+    private List<StoreProduct> storeProducts = new ArrayList<>();
+
     public Product(
             String name,
             Double price,
             String briefInfo,
-            String imageSource,
             Double calories,
             ProductType productType
     ) {
         this.name = name;
         this.price = price;
         this.briefInfo = briefInfo;
-        this.imageSource = imageSource;
         this.calories = calories;
         this.productType = productType;
+    }
+
+    public void changeImageSource(String imageSource) {
+        this.imageSource = imageSource;
     }
 }

@@ -10,9 +10,10 @@ import lombok.NoArgsConstructor;
 @Data
 @Builder
 public class ProductReadByCategoryIdResponseDto {
-    private Long productId;
-    private String productName;
-    private Double productPrice;
+    private Long id;
+    private String name;
+    private Double price;
+    private Double calories;
     private String imageSource;
     private String briefInfo;
 }
