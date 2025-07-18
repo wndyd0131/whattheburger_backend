@@ -11,6 +11,7 @@ import com.whattheburger.backend.service.exception.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.util.*;
 
 @Component
@@ -272,7 +273,7 @@ public class CartDtoMapper {
             ProcessedCartDto processedCartDto
     ) {
         List<ValidatedCartDto> validatedCartDtos = processedCartDto.getCartDtos();
-        Double totalPrice = processedCartDto.getTotalPrice();
+        BigDecimal totalPrice = processedCartDto.getTotalPrice();
 
         List<CartResponse> cartResponses = validatedCartDtos.stream()
                 .map(this::toCartResponse)

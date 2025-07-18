@@ -19,6 +19,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static org.mockito.Mockito.*;
@@ -66,7 +67,7 @@ public class OrderServiceTest {
                 .orderType(OrderType.DELIVERY)
                 .orderNote("")
                 .paymentMethod(PaymentMethod.CASH)
-                .totalPrice(0D)
+                .totalPrice(BigDecimal.ZERO)
                 .build();
         OrderProduct mockOrderProduct = OrderProduct
                 .builder()

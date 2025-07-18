@@ -5,6 +5,7 @@ import com.whattheburger.backend.domain.CategoryProduct;
 import com.whattheburger.backend.domain.Product;
 import com.whattheburger.backend.domain.enums.ProductType;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 
 public class MockProductFactory {
@@ -13,7 +14,7 @@ public class MockProductFactory {
                 .builder()
                 .id(1L)
                 .name("Whattheburger")
-                .price(5.99D)
+                .price(new BigDecimal(5.99))
                 .briefInfo("")
                 .imageSource("")
                 .calories(590D)

@@ -6,6 +6,7 @@ import com.whattheburger.backend.domain.enums.CustomRuleType;
 import com.whattheburger.backend.domain.enums.ProductType;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @AllArgsConstructor
@@ -14,7 +15,7 @@ import java.util.List;
 @Builder
 public class ProductCreateRequestDto {
     private String productName;
-    private Double productPrice;
+    private BigDecimal productPrice;
     private Double productCalories;
     private ProductType productType;
     private String briefInfo;
@@ -45,7 +46,7 @@ public class ProductCreateRequestDto {
         private MeasureType measureType;
         private Integer defaultQuantity;
         private Integer maxQuantity;
-        private Double extraPrice;
+        private BigDecimal extraPrice;
         private Integer orderIndex;
         private List<QuantityDto> quantityDetails;
         private List<OptionTraitRequest> optionTraitRequests;
@@ -58,7 +59,7 @@ public class ProductCreateRequestDto {
     public static class OptionTraitRequest {
         private Long optionTraitId;
         private Integer defaultSelection;
-        private Double extraPrice;
+        private BigDecimal extraPrice;
         private Double extraCalories;
     }
 }

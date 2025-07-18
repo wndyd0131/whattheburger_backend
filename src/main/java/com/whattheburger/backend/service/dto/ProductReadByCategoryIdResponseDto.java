@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
@@ -12,7 +14,7 @@ import lombok.NoArgsConstructor;
 public class ProductReadByCategoryIdResponseDto {
     private Long id;
     private String name;
-    private Double price;
+    private BigDecimal price;
     private Double calories;
     private String imageSource;
     private String briefInfo;

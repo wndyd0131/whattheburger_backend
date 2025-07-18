@@ -8,6 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @NoArgsConstructor
@@ -18,7 +19,7 @@ public class OrderCreateRequestDto {
     private OrderType orderType;
     private String orderNote;
     private PaymentMethod paymentMethod;
-    private Double totalPrice;
+    private BigDecimal totalPrice;
     private List<ProductRequest> productRequests;
     // Coupon
     // Store

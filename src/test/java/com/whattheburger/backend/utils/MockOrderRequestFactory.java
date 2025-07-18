@@ -7,6 +7,7 @@ import com.whattheburger.backend.controller.dto.order.ProductRequest;
 import com.whattheburger.backend.domain.enums.OrderType;
 import com.whattheburger.backend.domain.enums.PaymentMethod;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public class MockOrderRequestFactory {
@@ -16,7 +17,7 @@ public class MockOrderRequestFactory {
                 .orderType(OrderType.DELIVERY)
                 .orderNote("order note")
                 .paymentMethod(PaymentMethod.CASH)
-                .totalPrice(0D)
+                .totalPrice(BigDecimal.ZERO)
                 .productRequests(
                         List.of(
                                 ProductRequest

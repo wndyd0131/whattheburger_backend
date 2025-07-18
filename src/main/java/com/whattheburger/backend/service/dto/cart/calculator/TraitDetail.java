@@ -6,12 +6,14 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
 @Builder
 public class TraitDetail {
-    private Double price;
+    private BigDecimal price;
     private Integer defaultSelection;
     private Integer requestedSelection;
     private OptionTraitType optionTraitType;

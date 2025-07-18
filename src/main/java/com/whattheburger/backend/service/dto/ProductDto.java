@@ -9,6 +9,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @AllArgsConstructor
@@ -29,7 +30,7 @@ public class ProductDto {
         private Boolean isDefault; //productOption
         private Integer defaultQuantity; //productOption
         private Integer maxQuantity; //productOption
-        private Double extraPrice; //productOption
+        private BigDecimal extraPrice; //productOption
         private Double calories;
         private CountType countType;
         private MeasureType measureType;

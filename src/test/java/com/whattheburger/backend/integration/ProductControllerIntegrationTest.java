@@ -24,6 +24,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
 
@@ -75,7 +76,7 @@ public class ProductControllerIntegrationTest {
                         .optionTraitId(optionTrait.getId())
                         .defaultSelection(0)
                         .extraCalories(0D)
-                        .extraPrice(1D)
+                        .extraPrice(BigDecimal.valueOf(1))
                         .build()
         );
 
@@ -88,7 +89,7 @@ public class ProductControllerIntegrationTest {
                         .measureType(MeasureType.COUNT)
                         .defaultQuantity(1)
                         .maxQuantity(1)
-                        .extraPrice(0D)
+                        .extraPrice(BigDecimal.ZERO)
                         .orderIndex(0)
                         .optionTraitRequests(optionTraitRequests)
                         .build()

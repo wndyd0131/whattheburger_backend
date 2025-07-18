@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public class CartCalculatorTest {
@@ -17,7 +18,7 @@ public class CartCalculatorTest {
     @Test
     public void givenCalculatorDto_whenCalculate_thenReturnExpectedValue() {
         CalculatorDto mockCalculatorDto = MockCalculatorDtoFactory.createMockCalculatorDto();
-        Double totalPrice = cartCalculator.calculate(mockCalculatorDto);
+        BigDecimal totalPrice = cartCalculator.calculate(mockCalculatorDto);
 
         Assertions.assertEquals(totalPrice, 98.34D);
     }

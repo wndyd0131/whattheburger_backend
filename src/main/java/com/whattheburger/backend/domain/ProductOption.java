@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,7 +26,8 @@ public class ProductOption {
     private MeasureType measureType;
     private Integer defaultQuantity;
     private Integer maxQuantity;
-    private Double extraPrice;
+    @Column(precision = 10, scale = 2)
+    private BigDecimal extraPrice;
     private Integer orderIndex;
 
     @ManyToOne
@@ -58,7 +60,7 @@ public class ProductOption {
             MeasureType measureType,
             Integer defaultQuantity,
             Integer maxQuantity,
-            Double extraPrice,
+            BigDecimal extraPrice,
             Integer orderIndex
     ) {
         this.product = product;

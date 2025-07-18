@@ -16,6 +16,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -70,7 +71,7 @@ public class ProductServiceTest {
         );
         Product mockProduct = new Product(
                 "Whattheburger",
-                5.99D,
+                new BigDecimal("5.99"),
                 "",
                 590D,
                 ProductType.ONLY
@@ -95,14 +96,14 @@ public class ProductServiceTest {
                 MeasureType.COUNT,
                 0,
                 0,
-                0D,
+                BigDecimal.ZERO,
                 0
         );
         ProductOptionTrait mockProductOptionTrait = new ProductOptionTrait(
                 mockProductOption,
                 mockOptionTrait,
                 0,
-                0D,
+                BigDecimal.ZERO,
                 0D
         );
 
@@ -121,7 +122,7 @@ public class ProductServiceTest {
                 .builder()
                 .optionTraitId(optionTraitId)
                 .defaultSelection(0)
-                .extraPrice(0D)
+                .extraPrice(BigDecimal.ZERO)
                 .extraCalories(0D)
                 .build()
         );
@@ -134,7 +135,7 @@ public class ProductServiceTest {
                 .measureType(MeasureType.COUNT)
                 .defaultQuantity(0)
                 .maxQuantity(0)
-                .extraPrice(0D)
+                .extraPrice(BigDecimal.ZERO)
                 .orderIndex(0)
                 .optionTraitRequests(optionTraitRequests)
                 .build()
@@ -155,7 +156,7 @@ public class ProductServiceTest {
                 ProductCreateDto.
                         builder()
                         .productName("Whattheburger")
-                        .productPrice(5.99D)
+                        .productPrice(new BigDecimal("5.99"))
                         .productCalories(590D)
                         .productType(ProductType.ONLY)
                         .briefInfo("")

@@ -1,5 +1,7 @@
 package com.whattheburger.backend.domain.cart;
 
+import java.math.BigDecimal;
+
 public interface PriceCalculator<T> {
-    Double calculateTotalPrice(T detail);
+    BigDecimal calculateTotalPrice(T detail);
 }

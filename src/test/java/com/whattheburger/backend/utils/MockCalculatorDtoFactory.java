@@ -4,6 +4,7 @@ import com.whattheburger.backend.domain.enums.OptionTraitType;
 import com.whattheburger.backend.service.dto.cart.calculator.*;
 import org.springframework.boot.context.properties.bind.Name;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public class MockCalculatorDtoFactory {
@@ -11,7 +12,7 @@ public class MockCalculatorDtoFactory {
     public static CalculatorDto createMockCalculatorDto() {
         ProductDetail productDetail1 = ProductDetail
                 .builder()
-                .basePrice(5.49)
+                .basePrice(new BigDecimal("5.49"))
                 .quantity(3)
                 .optionDetails(
                         List.of(
@@ -25,13 +26,13 @@ public class MockCalculatorDtoFactory {
                                                                 .optionTraitType(OptionTraitType.BINARY)
                                                                 .defaultSelection(0)
                                                                 .requestedSelection(1)
-                                                                .price(0D)
+                                                                .price(BigDecimal.ZERO)
                                                                 .build()
                                                 )
                                         )
                                         .quantityDetail(null)
                                         .quantity(1)
-                                        .price(0D)
+                                        .price(BigDecimal.ZERO)
                                         .defaultQuantity(1)
                                         .isDefault(true)
                                         .build(),
@@ -45,13 +46,13 @@ public class MockCalculatorDtoFactory {
                                                                 .optionTraitType(OptionTraitType.BINARY)
                                                                 .defaultSelection(0)
                                                                 .requestedSelection(0)
-                                                                .price(0D)
+                                                                .price(BigDecimal.ZERO)
                                                                 .build()
                                                 )
                                         )
                                         .quantityDetail(null)
                                         .quantity(1) // fake
-                                        .price(0D)
+                                        .price(BigDecimal.ZERO)
                                         .defaultQuantity(1)
                                         .isDefault(false)
                                         .build(),
@@ -63,7 +64,7 @@ public class MockCalculatorDtoFactory {
                                         )
                                         .quantityDetail(null)
                                         .quantity(0)
-                                        .price(0D)
+                                        .price(BigDecimal.ZERO)
                                         .defaultQuantity(1)
                                         .isDefault(false)
                                         .build(),
@@ -75,7 +76,7 @@ public class MockCalculatorDtoFactory {
                                         )
                                         .quantityDetail(null)
                                         .quantity(3)
-                                        .price(2D)
+                                        .price(BigDecimal.valueOf(2))
                                         .defaultQuantity(1)
                                         .isDefault(true)
                                         .build(),
@@ -87,7 +88,7 @@ public class MockCalculatorDtoFactory {
                                         )
                                         .quantityDetail(null)
                                         .quantity(0)
-                                        .price(0.6D)
+                                        .price(new BigDecimal("0.6"))
                                         .defaultQuantity(1)
                                         .isDefault(false)
                                         .build(),
@@ -99,7 +100,7 @@ public class MockCalculatorDtoFactory {
                                         )
                                         .quantityDetail(null)
                                         .quantity(4)
-                                        .price(0.6D)
+                                        .price(new BigDecimal("0.6"))
                                         .defaultQuantity(1)
                                         .isDefault(false)
                                         .build(),
@@ -111,7 +112,7 @@ public class MockCalculatorDtoFactory {
                                         )
                                         .quantityDetail(null)
                                         .quantity(5)
-                                        .price(0.5D)
+                                        .price(new BigDecimal("0.5"))
                                         .defaultQuantity(1)
                                         .isDefault(false)
                                         .build(),
@@ -123,7 +124,7 @@ public class MockCalculatorDtoFactory {
                                         )
                                         .quantityDetail(null)
                                         .quantity(4) // fake
-                                        .price(1.3D)
+                                        .price(new BigDecimal("1.3"))
                                         .defaultQuantity(1)
                                         .isDefault(false)
                                         .build(),
@@ -136,13 +137,13 @@ public class MockCalculatorDtoFactory {
                                         .quantityDetail(
                                                 QuantityDetail
                                                         .builder()
-                                                        .price(0D)
+                                                        .price(BigDecimal.ZERO)
                                                         .requestedId(1L)
                                                         .defaultId(1L)
                                                         .build()
                                         )
                                         .quantity(1)
-                                        .price(0D)
+                                        .price(BigDecimal.ZERO)
                                         .defaultQuantity(1)
                                         .isDefault(true)
                                         .build(),
@@ -155,13 +156,13 @@ public class MockCalculatorDtoFactory {
                                         .quantityDetail(
                                                 QuantityDetail
                                                         .builder()
-                                                        .price(0D)
+                                                        .price(BigDecimal.ZERO)
                                                         .requestedId(1L)
                                                         .defaultId(2L)
                                                         .build()
                                         )
                                         .quantity(1)
-                                        .price(0D)
+                                        .price(BigDecimal.ZERO)
                                         .defaultQuantity(1)
                                         .isDefault(true)
                                         .build(),
@@ -174,13 +175,13 @@ public class MockCalculatorDtoFactory {
                                         .quantityDetail(
                                                 QuantityDetail
                                                         .builder()
-                                                        .price(0D)
+                                                        .price(BigDecimal.ZERO)
                                                         .requestedId(1L)
                                                         .defaultId(1L)
                                                         .build()
                                         )
                                         .quantity(1)
-                                        .price(0D)
+                                        .price(BigDecimal.ZERO)
                                         .defaultQuantity(1)
                                         .isDefault(true)
                                         .build(),
@@ -193,13 +194,13 @@ public class MockCalculatorDtoFactory {
                                         .quantityDetail(
                                                 QuantityDetail
                                                         .builder()
-                                                        .price(1D)
+                                                        .price(BigDecimal.valueOf(1))
                                                         .requestedId(2L)
                                                         .defaultId(1L)
                                                         .build()
                                         )
                                         .quantity(1)
-                                        .price(1D)
+                                        .price(BigDecimal.valueOf(1))
                                         .defaultQuantity(1)
                                         .isDefault(false)
                                         .build()

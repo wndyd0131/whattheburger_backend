@@ -13,6 +13,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static org.mockito.Mockito.*;
@@ -68,7 +69,7 @@ public class ProductControllerTest {
                 .id(1L)
                 .defaultSelection(1)
                 .optionTrait(optionTrait)
-                .extraPrice(0D)
+                .extraPrice(BigDecimal.ZERO)
                 .extraCalories(0D)
                 .build();
         ProductOption productOption = ProductOption
@@ -78,7 +79,7 @@ public class ProductControllerTest {
                 .isDefault(true)
                 .defaultQuantity(1)
                 .maxQuantity(1)
-                .extraPrice(0D)
+                .extraPrice(BigDecimal.ZERO)
                 .measureType(MeasureType.COUNT)
                 .orderIndex(0)
                 .option(option)
@@ -88,7 +89,7 @@ public class ProductControllerTest {
         Product product = Product
                 .builder()
                 .name("Whattheburger")
-                .price(0D)
+                .price(BigDecimal.ZERO)
                 .briefInfo("")
                 .imageSource("")
                 .calories(0D)

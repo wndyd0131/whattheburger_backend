@@ -8,6 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @NoArgsConstructor
@@ -21,7 +22,7 @@ public class OptionRequest {
     private MeasureType measureType;
     private Integer defaultQuantity;
     private Integer maxQuantity;
-    private Double extraPrice;
+    private BigDecimal extraPrice;
     private Integer orderIndex;
     private List<QuantityDto> quantityDetails;
     private List<OptionTraitRequest> optionTraitRequests;

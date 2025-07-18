@@ -8,6 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -19,7 +20,7 @@ import java.util.stream.Collectors;
 public class ProductReadByProductIdDto {
     private Long productId;
     private String productName;
-    private Double productPrice;
+    private BigDecimal productPrice;
     private String imageSource;
     private String briefInfo;
     private List<OptionResponse> optionResponses;
@@ -34,7 +35,7 @@ public class ProductReadByProductIdDto {
         private Boolean isDefault; //productOption
         private Integer defaultQuantity; //productOption
         private Integer maxQuantity; //productOption
-        private Double extraPrice; //productOption
+        private BigDecimal extraPrice; //productOption
         private Double calories;
         private CountType countType;
         private MeasureType measureType;
@@ -53,7 +54,7 @@ public class ProductReadByProductIdDto {
         private Long id;
         private QuantityType quantityType;
         private String labelCode;
-        private Double extraPrice;
+        private BigDecimal extraPrice;
         private Double extraCalories;
         private Boolean isDefault; // ProductOptionOptionQuantity
     }
@@ -81,7 +82,7 @@ public class ProductReadByProductIdDto {
         private String labelCode;
         private OptionTraitType optionTraitType;
         private Integer defaultSelection; //productOptionTrait
-        private Double extraPrice; //productOptionTrait
+        private BigDecimal extraPrice; //productOptionTrait
         private Double extraCalories; //productOptionTrait
     }
 

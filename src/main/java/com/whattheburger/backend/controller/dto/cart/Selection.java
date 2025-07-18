@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @AllArgsConstructor
@@ -14,5 +15,5 @@ import java.util.List;
 public class Selection {
     private List<CustomRuleRequest> customRuleRequests;
     private Double totalCalories;
-    private Double totalExtraPrice;
+    private BigDecimal totalExtraPrice;
 }

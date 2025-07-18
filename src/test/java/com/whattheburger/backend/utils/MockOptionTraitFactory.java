@@ -5,6 +5,7 @@ import com.whattheburger.backend.domain.ProductOption;
 import com.whattheburger.backend.domain.ProductOptionTrait;
 import com.whattheburger.backend.domain.enums.OptionTraitType;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 
 public class MockOptionTraitFactory {
@@ -25,7 +26,7 @@ public class MockOptionTraitFactory {
                 .productOption(mockProductOption)
                 .optionTrait(mockOptionTrait)
                 .defaultSelection(0)
-                .extraPrice(0D)
+                .extraPrice(BigDecimal.ZERO)
                 .extraCalories(0D)
                 .build();
         mockProductOption.getProductOptionTraits().add(productOptionTrait);

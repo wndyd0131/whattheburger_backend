@@ -2,6 +2,8 @@ package com.whattheburger.backend.controller.dto;
 
 import lombok.*;
 
+import java.math.BigDecimal;
+
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -10,7 +12,7 @@ import lombok.*;
 public class ProductCreateResponseDTO {
     private Long id;
     private String name;
-    private Double price;
+    private BigDecimal price;
     private String briefInfo;
     private String imageSource;
 }

@@ -5,18 +5,19 @@ import com.whattheburger.backend.service.dto.cart.calculator.OptionDetail;
 import com.whattheburger.backend.service.dto.cart.calculator.TraitDetail;
 import lombok.extern.slf4j.Slf4j;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Slf4j
 public class TraitCalculator implements PriceCalculator<List<TraitDetail>> {
     @Override
-    public Double calculateTotalPrice(List<TraitDetail> traitDetails) {
+    public BigDecimal calculateTotalPrice(List<TraitDetail> traitDetails) {
         // handle based on is default
-        double traitTotalPrice = traitDetails.stream()
+        BigDecimal traitTotalPrice = traitDetails.stream()
                 .filter(this::shouldIncludeForPricing)
-                .mapToDouble(this::calculatePrice)
+                .map(this::calculatePrice)
                 .peek(value -> log.info("trait value {}", value))
-                .sum();
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         return traitTotalPrice;
     }
 
@@ -29,7 +30,7 @@ public class TraitCalculator implements PriceCalculator<List<TraitDetail>> {
         return true;
     }
 
-    private Double calculatePrice(TraitDetail trait) {
+    private BigDecimal calculatePrice(TraitDetail trait) {
         return trait.getPrice();
     }
 }

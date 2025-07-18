@@ -21,6 +21,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -92,7 +93,7 @@ public class CartService {
                 quantityMap
         );
 
-        Double totalPrice = cartCalculator.calculate(calculatorDto);
+        BigDecimal totalPrice = cartCalculator.calculate(calculatorDto);
 
         return new ProcessedCartDto(
                 validatedCartDtos,

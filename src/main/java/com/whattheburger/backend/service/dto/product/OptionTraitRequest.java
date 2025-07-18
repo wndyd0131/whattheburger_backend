@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @NoArgsConstructor
 @Data
 @AllArgsConstructor
@@ -12,6 +14,6 @@ import lombok.NoArgsConstructor;
 public class OptionTraitRequest {
     private Long optionTraitId;
     private Integer defaultSelection;
-    private Double extraPrice;
+    private BigDecimal extraPrice;
     private Double extraCalories;
 }

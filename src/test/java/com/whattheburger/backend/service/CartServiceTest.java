@@ -24,6 +24,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.security.core.Authentication;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -112,7 +113,7 @@ public class CartServiceTest {
         ProcessedCartDto processedCartDto = ProcessedCartDto
                 .builder()
                 .cartDtos(validatedCartDtos)
-                .totalPrice(0D)
+                .totalPrice(BigDecimal.ZERO)
                 .build();
 
 
@@ -120,7 +121,7 @@ public class CartServiceTest {
                 .builder()
                 .productId(1L)
                 .productName("Whattheburger")
-                .productPrice(5.99D)
+                .productPrice(new BigDecimal("5.99"))
                 .imageSource("")
                 .productType(ProductType.ONLY)
                 .build();
@@ -170,7 +171,7 @@ public class CartServiceTest {
         CartResponseDto cartResponseDto = CartResponseDto
                 .builder()
                 .cartResponses(cartResponses)
-                .totalPrice(0D)
+                .totalPrice(BigDecimal.ZERO)
                 .build();
 
         when(rt.opsForValue()).thenReturn(valueOperations);

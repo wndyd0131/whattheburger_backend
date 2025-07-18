@@ -1,10 +1,13 @@
 package com.whattheburger.backend.controller.dto.product;
 
 import com.whattheburger.backend.domain.enums.QuantityType;
+import jakarta.persistence.Column;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -14,5 +17,5 @@ public class QuantityDto {
     private Long id;
     private QuantityType quantityType;
     private Boolean isDefault;
-    private Double extraPrice;
+    private BigDecimal extraPrice;
 }

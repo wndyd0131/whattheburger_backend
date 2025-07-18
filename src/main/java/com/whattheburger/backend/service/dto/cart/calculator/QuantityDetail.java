@@ -5,12 +5,14 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
 @Builder
 public class QuantityDetail {
-    private Double price;
+    private BigDecimal price;
     private Long requestedId;
     private Long defaultId;
 }

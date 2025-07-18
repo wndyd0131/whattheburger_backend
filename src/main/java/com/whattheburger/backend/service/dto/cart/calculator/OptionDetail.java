@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @AllArgsConstructor
@@ -12,7 +13,7 @@ import java.util.List;
 @Data
 @Builder
 public class OptionDetail {
-    private Double price;
+    private BigDecimal price;
     private Integer quantity;
     private Boolean isSelected;
     private Boolean isDefault;

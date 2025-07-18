@@ -3,6 +3,7 @@ import com.whattheburger.backend.domain.enums.ProductType;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,7 +17,8 @@ public class Product {
     @Column(name = "product_id")
     private Long id;
     private String name;
-    private Double price;
+    @Column(precision = 10, scale = 2)
+    private BigDecimal price;
     private String briefInfo;
     private String imageSource;
     private Double calories;
@@ -37,7 +39,7 @@ public class Product {
 
     public Product(
             String name,
-            Double price,
+            BigDecimal price,
             String briefInfo,
             Double calories,
             ProductType productType

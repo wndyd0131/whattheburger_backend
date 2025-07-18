@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,7 +21,8 @@ public class ProductOptionTrait {
     @Column(name = "product_option_trait_id")
     private Long id;
     private Integer defaultSelection;
-    private Double extraPrice;
+    @Column(precision = 10, scale = 2)
+    private BigDecimal extraPrice;
     private Double extraCalories;
 
     @ManyToOne
@@ -38,7 +40,7 @@ public class ProductOptionTrait {
             ProductOption productOption,
             OptionTrait optionTrait,
             Integer defaultSelection,
-            Double extraPrice,
+            BigDecimal extraPrice,
             Double extraCalories
     ) {
         this.productOption = productOption;

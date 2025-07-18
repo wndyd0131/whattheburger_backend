@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,7 +21,8 @@ public class Order {
     @Column(name = "order_id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private Double totalPrice;
+    @Column(precision = 10, scale = 2)
+    private BigDecimal totalPrice;
     @Enumerated(EnumType.STRING)
     private OrderStatus orderStatus;
     @Enumerated(EnumType.STRING)
@@ -32,7 +34,8 @@ public class Order {
     private String orderNote;
     @Enumerated
     private DiscountType discountType;
-    private Double taxAmount;
+    @Column(precision = 10, scale = 2)
+    private BigDecimal taxAmount;
     // private Store store;
 
     @ManyToOne
