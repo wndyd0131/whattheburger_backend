@@ -41,7 +41,7 @@ public class CartValidatorTest {
     }
     @Test
     void givenCartAndMaps_whenValidate_thenReturnExpectedDto() {
-        CartList mockCartList = MockCartFactory.createMockCartList();
+        CartList mockCartList = MockCartFactory.createCartList();
         List<Cart> carts = mockCartList.getCarts();
         List<ValidatedCartDto> resultDto = cartValidator.validate(
                 carts,

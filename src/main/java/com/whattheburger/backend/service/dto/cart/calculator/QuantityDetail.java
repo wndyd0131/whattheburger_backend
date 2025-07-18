@@ -11,4 +11,6 @@ import lombok.NoArgsConstructor;
 @Builder
 public class QuantityDetail {
     private Double price;
+    private Long requestedId;
+    private Long defaultId;
 }

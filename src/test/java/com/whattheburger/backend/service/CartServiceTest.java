@@ -68,34 +68,7 @@ public class CartServiceTest {
     @Test
     public void givenExistingCart_whenLoadCart_thenReturnsExpectedDto() throws Exception {
         String cartId = "1";
-        CartList mockCartList = new CartList(
-                List.of(new Cart(
-                        1L,
-                        1,
-                        List.of(
-                                new CustomRuleRequest(
-                                        1L,
-                                        List.of(
-                                                new OptionRequest(
-                                                        1L,
-                                                        1,
-                                                        true,
-                                                        List.of(
-                                                                new OptionTraitRequest(
-                                                                        1L,
-                                                                        1
-                                                                )
-                                                        ),
-                                                        new QuantityDetailRequest(
-                                                                1L
-                                                        )
-                                                )
-                                        )
-                                )
-                        )
-                )
-                )
-        );
+        CartList mockCartList = MockCartFactory.createCartList();
 
         ValidatedProduct validatedProduct = ValidatedProduct
                 .builder()

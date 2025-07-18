@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 @Builder
 public class TraitDetail {
     private Double price;
-    private Integer value;
+    private Integer defaultSelection;
+    private Integer requestedSelection;
     private OptionTraitType optionTraitType;
 }

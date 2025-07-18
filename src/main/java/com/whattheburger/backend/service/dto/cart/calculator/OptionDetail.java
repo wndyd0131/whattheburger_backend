@@ -14,6 +14,9 @@ import java.util.List;
 public class OptionDetail {
     private Double price;
     private Integer quantity;
+    private Boolean isSelected;
+    private Boolean isDefault;
+    private Integer defaultQuantity;
     private QuantityDetail quantityDetail;
     private List<TraitDetail> traitDetails;
 }

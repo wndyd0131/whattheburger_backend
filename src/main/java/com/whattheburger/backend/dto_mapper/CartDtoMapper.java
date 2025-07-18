@@ -138,23 +138,40 @@ public class CartDtoMapper {
                     List<com.whattheburger.backend.service.dto.cart.calculator.OptionDetail> optionDetails = cart.getCustomRuleRequests().stream()
                             .flatMap(customRuleRequest -> customRuleRequest.getOptionRequests().stream())
                             .map(optionRequest -> {
-                                QuantityDetailRequest quantityDetailRequest = optionRequest.getQuantityDetailRequest();
+                                ProductOption productOption = productOptionMap.get(optionRequest.getProductOptionId());
                                 // quantity handling
-                                com.whattheburger.backend.service.dto.cart.calculator.QuantityDetail quantityDetail = new com.whattheburger.backend.service.dto.cart.calculator.QuantityDetail(quantityMap.get(quantityDetailRequest.getId()).getExtraPrice());
+                                com.whattheburger.backend.service.dto.cart.calculator.QuantityDetail quantityDetail = Optional.ofNullable(optionRequest.getQuantityDetailRequest())
+                                        .map(quantityDetailRequest -> {
+                                            ProductOptionOptionQuantity productOptionOptionQuantity = productOption.getProductOptionOptionQuantities().stream()
+                                                    .filter(pooQuantity -> pooQuantity.getIsDefault())
+                                                    .findFirst()
+                                                    .orElseThrow(() -> new IllegalStateException("Missing default uncountable quantity value for productOption " + productOption.getId()));
+                                            return new com.whattheburger.backend.service.dto.cart.calculator.QuantityDetail(
+                                                    quantityMap.get(quantityDetailRequest.getId()).getExtraPrice(),
+                                                    quantityDetailRequest.getId(),
+                                                    productOptionOptionQuantity.getId()
+                                            );
+                                                }
+                                        ).orElse(null);
                                 List<TraitDetail> traitDetails = optionRequest.getOptionTraitRequests().stream()
                                         .map(optionTraitRequest -> {
                                             ProductOptionTrait optionTrait = productOptionTraitMap.get(optionTraitRequest.getProductOptionTraitId());
                                             return new TraitDetail(
                                                     optionTrait.getExtraPrice(),
+                                                    optionTrait.getDefaultSelection(),
                                                     optionTraitRequest.getCurrentValue(),
                                                     optionTrait.getOptionTrait().getOptionTraitType()
                                             );
                                         })
                                         .toList();
+
                                 return com.whattheburger.backend.service.dto.cart.calculator.OptionDetail
                                         .builder()
-                                        .price(product.getPrice())
-                                        .quantity(0)
+                                        .price(productOption.getExtraPrice())
+                                        .isDefault(productOption.getIsDefault())
+                                        .defaultQuantity(productOption.getDefaultQuantity())
+                                        .isSelected(optionRequest.getIsSelected())
+                                        .quantity(optionRequest.getOptionQuantity())
                                         .quantityDetail(quantityDetail)
                                         .traitDetails(traitDetails)
                                         .build();

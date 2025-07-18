@@ -10,7 +10,7 @@ import com.whattheburger.backend.domain.cart.CartList;
 import java.util.List;
 
 public class MockCartFactory {
-    public static CartList createMockCartList() {
+    public static CartList createCartList() {
         return getCartList(
                 1L,
                 1,
