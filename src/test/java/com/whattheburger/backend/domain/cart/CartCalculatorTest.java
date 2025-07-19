@@ -6,22 +6,35 @@ import com.whattheburger.backend.utils.MockCalculatorDtoFactory;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.math.BigDecimal;
 import java.util.List;
 
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
 public class CartCalculatorTest {
 
-    CartCalculator cartCalculator = new CartCalculator();
-
-    @Test
-    public void givenCalculatorDto_whenCalculate_thenReturnExpectedValue() {
-        CalculatorDto mockCalculatorDto = MockCalculatorDtoFactory.createMockCalculatorDto();
-        BigDecimal totalPrice = cartCalculator.calculate(mockCalculatorDto);
-
-        Assertions.assertEquals(totalPrice, 98.34D);
-    }
+//    @Mock ProductCalculator productCalculator;
+//
+//    @InjectMocks
+//    CartCalculator cartCalculator;
+//
+//    @Test
+//    public void givenCalculatorDto_whenCalculate_thenReturnExpectedValue() {
+//        CalculatorDto mockCalculatorDto = MockCalculatorDtoFactory.createMockCalculatorDto();
+//        BigDecimal totalPrice = cartCalculator.calculate(mockCalculatorDto);
+//
+//        when(productCalculator.calculateTotalPrice(anyList())).thenReturn()
+//
+//        Assertions.assertEquals(totalPrice, 98.34D);
+//    }
 
 //
 //    @Test

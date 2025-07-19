@@ -3,23 +3,18 @@ package com.whattheburger.backend.domain.cart;
 
 import com.whattheburger.backend.service.dto.cart.calculator.OptionDetail;
 import com.whattheburger.backend.service.dto.cart.calculator.TraitDetail;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.List;
 
 @Slf4j
+@Component
+@RequiredArgsConstructor
 public class OptionCalculator implements PriceCalculator<List<OptionDetail>>{
-    private final TraitCalculator traitCalculator = new TraitCalculator();
-
-//    @Override
-//    public Double calculateTotalPrice(List<OptionDetail> optionDetails) {
-//        double totalPrice = optionDetails.stream()
-//                .mapToDouble(this::calculatePrice)
-//                .peek(value -> log.info("option value {}", value))
-//                .sum();
-//        return totalPrice;
-//    }
+    private final TraitCalculator traitCalculator;
 
     @Override
     public BigDecimal calculateTotalPrice(List<OptionDetail> optionDetails) {

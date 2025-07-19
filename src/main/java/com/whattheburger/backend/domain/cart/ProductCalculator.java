@@ -1,14 +1,18 @@
 package com.whattheburger.backend.domain.cart;
 
 import com.whattheburger.backend.service.dto.cart.calculator.ProductDetail;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.List;
 
 @Slf4j
+@Component
+@RequiredArgsConstructor
 public class ProductCalculator implements PriceCalculator<List<ProductDetail>> {
-    private final OptionCalculator optionCalculator = new OptionCalculator();
+    private final OptionCalculator optionCalculator;
 
     @Override
     public BigDecimal calculateTotalPrice(List<ProductDetail> productDetails) {

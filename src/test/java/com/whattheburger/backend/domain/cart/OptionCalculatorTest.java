@@ -54,7 +54,7 @@ public class OptionCalculatorTest {
                         .isDefault(true)
                         .build()
         );
-//        when(traitCalculator.calculateTotalPrice(any(List.class))).thenReturn(BigDecimal.ZERO);
+        when(traitCalculator.calculateTotalPrice(any(List.class))).thenReturn(BigDecimal.ZERO);
         BigDecimal totalPrice = optionCalculator.calculateTotalPrice(mockOptionDetails);
         Assertions.assertEquals(BigDecimal.valueOf(27.95), totalPrice); // 4 * 4.99 + 1 * 7.99 = 27.95
     }
@@ -101,7 +101,7 @@ public class OptionCalculatorTest {
                         .isDefault(true)
                         .build()
         );
-//        when(traitCalculator.calculateTotalPrice(any(List.class))).thenReturn(BigDecimal.ZERO);
+        when(traitCalculator.calculateTotalPrice(any(List.class))).thenReturn(BigDecimal.ZERO);
         BigDecimal totalPrice = optionCalculator.calculateTotalPrice(mockOptionDetails);
         Assertions.assertEquals(BigDecimal.valueOf(1.19), totalPrice); // 0 + 1.19 = 1.19
     }
@@ -141,7 +141,7 @@ public class OptionCalculatorTest {
                         .isDefault(false)
                         .build()
         );
-//        when(traitCalculator.calculateTotalPrice(any(List.class))).thenReturn(BigDecimal.ZERO);
+        when(traitCalculator.calculateTotalPrice(any(List.class))).thenReturn(BigDecimal.ZERO);
         BigDecimal totalPrice = optionCalculator.calculateTotalPrice(mockOptionDetails);
         Assertions.assertEquals(BigDecimal.valueOf(41.91), totalPrice); // 4.99 * 7 + 3.99 + 2.99 = 41.91
     }

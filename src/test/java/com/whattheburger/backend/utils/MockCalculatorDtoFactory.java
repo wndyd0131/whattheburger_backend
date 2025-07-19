@@ -214,6 +214,26 @@ public class MockCalculatorDtoFactory {
                 )
         );
     }
+
+    public static List<ProductDetail> createMockProductDetails() {
+        ProductDetail productDetail1 = ProductDetail
+                .builder()
+                .basePrice(BigDecimal.valueOf(5.49))
+                .optionDetails(List.of())
+                .quantity(3)
+                .build();
+        ProductDetail productDetail2 = ProductDetail
+                .builder()
+                .basePrice(BigDecimal.valueOf(9.99))
+                .optionDetails(List.of())
+                .quantity(2)
+                .build();
+        // total: $36.45
+        return List.of(
+                productDetail1,
+                productDetail2
+        );
+    }
 //    public static CalculatorDto createMockCalculatorDto(List<ProductDetail> productDetails) {
 //        return new CalculatorDto(productDetails);
 //    }
