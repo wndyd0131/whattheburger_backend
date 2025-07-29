@@ -1,13 +1,11 @@
 package com.whattheburger.backend.dto_mapper;
 
 import com.whattheburger.backend.controller.dto.cart.*;
+import com.whattheburger.backend.controller.dto.cart.QuantityDetail;
 import com.whattheburger.backend.domain.*;
-import com.whattheburger.backend.domain.cart.Cart;
 import com.whattheburger.backend.service.dto.cart.*;
-import com.whattheburger.backend.service.dto.cart.ProductDetail;
-import com.whattheburger.backend.service.dto.cart.calculator.CalculatorDto;
-import com.whattheburger.backend.service.dto.cart.calculator.TraitDetail;
-import com.whattheburger.backend.service.exception.*;
+import com.whattheburger.backend.service.dto.cart.calculator.*;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -16,6 +14,7 @@ import java.util.*;
 
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class CartDtoMapper {
 //    public List<ValidatedCartDto> toValidatedCartDtos(
 //            List<Cart> carts,
@@ -125,162 +124,316 @@ public class CartDtoMapper {
 //        return validatedCartDtos;
 //    }
 
-    public CalculatorDto toCalculatorDto(
-            List<Cart> carts,
-            Map<Long, Product> productMap,
-            Map<Long, CustomRule> customRuleMap,
-            Map<Long, ProductOption> productOptionMap,
-            Map<Long, ProductOptionTrait> productOptionTraitMap,
-            Map<Long, ProductOptionOptionQuantity> quantityMap
-    ) {
-        List<com.whattheburger.backend.service.dto.cart.calculator.ProductDetail> productDetails = carts.stream()
-                .map(cart -> {
-                    Product product = productMap.get(cart.getProductId());
-                    List<com.whattheburger.backend.service.dto.cart.calculator.OptionDetail> optionDetails = cart.getCustomRuleRequests().stream()
-                            .flatMap(customRuleRequest -> customRuleRequest.getOptionRequests().stream())
-                            .map(optionRequest -> {
-                                ProductOption productOption = productOptionMap.get(optionRequest.getProductOptionId());
-                                // quantity handling
-                                com.whattheburger.backend.service.dto.cart.calculator.QuantityDetail quantityDetail = Optional.ofNullable(optionRequest.getQuantityDetailRequest())
-                                        .map(quantityDetailRequest -> {
-                                            ProductOptionOptionQuantity productOptionOptionQuantity = productOption.getProductOptionOptionQuantities().stream()
-                                                    .filter(pooQuantity -> pooQuantity.getIsDefault())
-                                                    .findFirst()
-                                                    .orElseThrow(() -> new IllegalStateException("Missing default uncountable quantity value for productOption " + productOption.getId()));
-                                            return new com.whattheburger.backend.service.dto.cart.calculator.QuantityDetail(
-                                                    quantityMap.get(quantityDetailRequest.getId()).getExtraPrice(),
-                                                    quantityDetailRequest.getId(),
-                                                    productOptionOptionQuantity.getId()
-                                            );
-                                                }
-                                        ).orElse(null);
-                                List<TraitDetail> traitDetails = optionRequest.getOptionTraitRequests().stream()
-                                        .map(optionTraitRequest -> {
-                                            ProductOptionTrait optionTrait = productOptionTraitMap.get(optionTraitRequest.getProductOptionTraitId());
-                                            return new TraitDetail(
-                                                    optionTrait.getExtraPrice(),
-                                                    optionTrait.getDefaultSelection(),
-                                                    optionTraitRequest.getCurrentValue(),
-                                                    optionTrait.getOptionTrait().getOptionTraitType()
-                                            );
-                                        })
-                                        .toList();
-
-                                return com.whattheburger.backend.service.dto.cart.calculator.OptionDetail
-                                        .builder()
-                                        .price(productOption.getExtraPrice())
-                                        .isDefault(productOption.getIsDefault())
-                                        .defaultQuantity(productOption.getDefaultQuantity())
-                                        .isSelected(optionRequest.getIsSelected())
-                                        .quantity(optionRequest.getOptionQuantity())
-                                        .quantityDetail(quantityDetail)
-                                        .traitDetails(traitDetails)
-                                        .build();
-                            })
-                            .toList();
-                    return new com.whattheburger.backend.service.dto.cart.calculator.ProductDetail(
-                            product.getPrice(),
-                            cart.getQuantity(),
-                            optionDetails
-                    );
-                })
-                .toList();
-
-        return CalculatorDto
-                .builder()
-                .productDetails(productDetails)
-                .build();
-    }
-
-    public CartResponse toCartResponse(
-            ValidatedCartDto validatedCartDto
+    public ProcessedProductDto toProcessedProductDto(
+            ValidatedCartDto validatedCartDto,
+            ProductCalcDetail productCalcDetail
     ) {
         ValidatedProduct validatedProduct = validatedCartDto.getValidatedProduct();
+        if (!(validatedProduct.getProduct().getId().equals(productCalcDetail.getProductId())))
+            throw new IllegalStateException("validated cart and calculated cart are different in id");
         List<ValidatedCustomRule> validatedCustomRules = validatedCartDto.getValidatedCustomRules();
+        List<CustomRuleCalcDetail> customRuleCalcDetails = productCalcDetail.getCustomRuleCalcDetails();
+        if (validatedCustomRules.size() != customRuleCalcDetails.size())
+            throw new IllegalStateException("validated cart and calculated cart are different in length");
+        List<ProcessedCustomRuleDto> processedCustomRuleDtos = new ArrayList<>();
+        for (int j = 0; j < validatedCustomRules.size(); j++) {
+            ValidatedCustomRule validatedCustomRule = validatedCustomRules.get(j);
+            CustomRuleCalcDetail customRuleCalcDetail = customRuleCalcDetails.get(j);
+            if (!(validatedCustomRule.getCustomRule().getId().equals(customRuleCalcDetail.getCustomRuleId())))
+                throw new IllegalStateException("validated cart and calculated cart are different in id");
 
-        Product product = validatedProduct.getProduct();
-
-        ProductResponse productResponse = new ProductResponse(
-                product.getId(),
-                product.getName(),
-                product.getProductType(),
-                product.getPrice(),
-                product.getImageSource()
-        );
-        List<CustomRuleResponse> customRuleResponses = new ArrayList<>();
-
-        for (ValidatedCustomRule validatedCustomRule : validatedCustomRules) {
-            CustomRule customRule = validatedCustomRule.getCustomRule();
             List<ValidatedOption> validatedOptions = validatedCustomRule.getValidatedOptions();
-            List<OptionResponse> optionResponses = new ArrayList<>();
-            for (ValidatedOption validatedOption : validatedOptions) {
-                ProductOption productOption = validatedOption.getProductOption();
+            List<OptionCalcDetail> optionCalcDetails = customRuleCalcDetail.getOptionCalcDetails();
+            if (validatedOptions.size() != optionCalcDetails.size())
+                throw new IllegalStateException("validated cart and calculated cart are different in length");
+            List<ProcessedOptionDto> processedOptionDtos = new ArrayList<>();
+            for (int k = 0; k < validatedOptions.size(); k++) {
+                ValidatedOption validatedOption = validatedOptions.get(k);
+                OptionCalcDetail optionCalcDetail = optionCalcDetails.get(k);
+                if (!(validatedOption.getProductOption().getId().equals(optionCalcDetail.getProductOptionId())))
+                    throw new IllegalStateException("validated cart and calculated cart are different in id");
 
-                QuantityDetailResponse quantityDetailResponse = Optional.ofNullable(validatedOption.getValidatedQuantity())
+                ProcessedQuantityDto processedQuantityDto = Optional.ofNullable(validatedOption.getValidatedQuantity())
                         .map(validatedQuantity ->
+                                Optional.ofNullable(optionCalcDetail.getQuantityCalcDetail())
+                                        .map(quantityCalcDetail -> {
+                                            if (!(validatedQuantity.getSelectedId().equals(quantityCalcDetail.getRequestedId())))
+                                                throw new IllegalStateException("validated quantity and calculated quantity have different ids [" + validatedQuantity.getSelectedId() + "]" + "vs." + "[" + quantityCalcDetail.getRequestedId() + "]");
+                                            return new ProcessedQuantityDto(
+                                                    validatedQuantity.getProductOptionOptionQuantities(),
+                                                    quantityCalcDetail.getRequestedId()
+                                            );
+                                        })
+                                        .orElseGet(() -> {
+                                            if (optionCalcDetail.getQuantityCalcDetail() == null)
+                                                return null;
+                                            throw new IllegalStateException("validated cart and calculated cart are different in id");
+                                        })
+                        )
+                        .orElseGet(() -> {
+                            if (optionCalcDetail.getQuantityCalcDetail() == null)
+                                return null;
+                            throw new IllegalStateException("validated cart and calculated cart are different in id");
+                        });
+
+                List<ValidatedTrait> validatedTraits = validatedOption.getValidatedTraits();
+                List<TraitCalcDetail> traitCalcDetails = optionCalcDetail.getTraitCalcDetails();
+                if (validatedTraits.size() != traitCalcDetails.size())
+                    throw new IllegalStateException("validated cart and calculated cart are different in length");
+                List<ProcessedTraitDto> processedTraitDtos = new ArrayList<>();
+                for (int l = 0; l < validatedTraits.size(); l++) {
+                    ValidatedTrait validatedTrait = validatedTraits.get(l);
+                    TraitCalcDetail traitCalcDetail = traitCalcDetails.get(l);
+                    if (!(validatedTrait.getProductOptionTrait().getId().equals(traitCalcDetail.getProductOptionTraitId())))
+                        throw new IllegalStateException("validated cart and calculated cart are different in id");
+
+                    ProcessedTraitDto processedTraitDto = new ProcessedTraitDto(
+                            validatedTrait.getProductOptionTrait(),
+                            validatedTrait.getCurrentValue(),
+                            traitCalcDetail.getPrice()
+                    );
+                    processedTraitDtos.add(processedTraitDto);
+                }
+                ProcessedOptionDto processedOptionDto = new ProcessedOptionDto(
+                        validatedOption.getProductOption(),
+                        validatedOption.getQuantity(),
+                        validatedOption.getIsSelected(),
+                        processedQuantityDto,
+                        processedTraitDtos,
+                        optionCalcDetail.getTraitTotalPrice()
+                );
+                processedOptionDtos.add(processedOptionDto);
+            }
+            ProcessedCustomRuleDto processedCustomRuleDto = new ProcessedCustomRuleDto(
+                    validatedCustomRule.getCustomRule(),
+                    processedOptionDtos,
+                    customRuleCalcDetail.getOptionTotalPrice()
+            );
+            processedCustomRuleDtos.add(processedCustomRuleDto);
+        }
+        ProcessedProductDto processedProductDto = new ProcessedProductDto(
+                validatedProduct.getProduct(),
+                validatedProduct.getQuantity(),
+                processedCustomRuleDtos,
+                productCalcDetail.getCalculatedProductPrice(),
+                productCalcDetail.getCustomRuleTotalPrice()
+        );
+        return processedProductDto;
+    }
+
+    public ProcessedCartDto toProcessedCartDto(
+            List<ValidatedCartDto> validatedCartDtos,
+            CalculatedCartDto calculatedCartDto
+    ) {
+        List<ProductCalcDetail> productCalcDetails = calculatedCartDto.getProductCalcDetails();
+        BigDecimal cartTotalPrice = calculatedCartDto.getTotalPrice();
+
+        if (validatedCartDtos.size() != productCalcDetails.size())
+            throw new IllegalStateException("validated cart and calculated cart are different in length");
+        List<ProcessedProductDto> processedProductDtos = new ArrayList<>();
+        for (int i = 0; i < validatedCartDtos.size(); i++) {
+            ValidatedCartDto validatedCartDto = validatedCartDtos.get(i);
+            ProductCalcDetail productCalcDetail = productCalcDetails.get(i);
+
+            ProcessedProductDto processedProductDto = toProcessedProductDto(validatedCartDto, productCalcDetail);
+
+            processedProductDtos.add(processedProductDto);
+        }
+
+        return new ProcessedCartDto(
+                processedProductDtos,
+                cartTotalPrice
+        );
+    }
+//
+//    public CalculatorDto toCalculatorDto(
+//            List<Cart> carts,
+//            Map<Long, Product> productMap,
+//            Map<Long, CustomRule> customRuleMap,
+//            Map<Long, ProductOption> productOptionMap,
+//            Map<Long, ProductOptionTrait> productOptionTraitMap,
+//            Map<Long, ProductOptionOptionQuantity> quantityMap
+//    ) {
+//        List<ProductCalcDetail> productCalcDetails = carts.stream()
+//                .map(cart -> {
+//                    Product product = productMap.get(cart.getProductId());
+//                    List<OptionCalcDetail> optionCalcDetails = cart.getCustomRuleRequests().stream()
+//                            .flatMap(customRuleRequest -> customRuleRequest.getOptionRequests().stream())
+//                            .map(optionRequest -> {
+//                                ProductOption productOption = productOptionMap.get(optionRequest.getProductOptionId());
+//                                // quantity handling
+//                                QuantityCalcDetail quantityCalcDetail = Optional.ofNullable(optionRequest.getQuantityDetailRequest())
+//                                        .map(quantityDetailRequest -> {
+//                                            ProductOptionOptionQuantity productOptionOptionQuantity = productOption.getProductOptionOptionQuantities().stream()
+//                                                    .filter(pooQuantity -> pooQuantity.getIsDefault())
+//                                                    .findFirst()
+//                                                    .orElseThrow(() -> new IllegalStateException("Missing default uncountable quantity value for productOption " + productOption.getId()));
+//                                            return new QuantityCalcDetail(
+//                                                    quantityMap.get(quantityDetailRequest.getId()).getExtraPrice(),
+//                                                    quantityDetailRequest.getId(),
+//                                                    productOptionOptionQuantity.getId()
+//                                            );
+//                                                }
+//                                        ).orElse(null);
+//                                List<TraitCalcDetail> traitCalcDetails = optionRequest.getOptionTraitRequests().stream()
+//                                        .map(optionTraitRequest -> {
+//                                            ProductOptionTrait optionTrait = productOptionTraitMap.get(optionTraitRequest.getProductOptionTraitId());
+//                                            log.info("trait detail trait id {}", optionTrait.getId());
+//
+//                                            TraitCalcDetail traitCalcDetail = new TraitCalcDetail(
+//                                                    optionTrait.getExtraPrice(),
+//                                                    optionTrait.getDefaultSelection(),
+//                                                    optionTraitRequest.getCurrentValue(),
+//                                                    optionTrait.getOptionTrait().getOptionTraitType()
+//                                            );
+//                                            traitCalculator.calculateTotalPrice()
+//                                            new CalculatedTraitDto();
+//                                        })
+//                                        .toList();
+//
+//                                return OptionCalcDetail
+//                                        .builder()
+//                                        .price(productOption.getExtraPrice())
+//                                        .isDefault(productOption.getIsDefault())
+//                                        .defaultQuantity(productOption.getDefaultQuantity())
+//                                        .isSelected(optionRequest.getIsSelected())
+//                                        .quantity(optionRequest.getOptionQuantity())
+//                                        .quantityCalcDetail(quantityCalcDetail)
+//                                        .traitCalcDetails(traitCalcDetails)
+//                                        .build();
+//                            })
+//                            .toList();
+//                    return new ProductCalcDetail(
+//                            product.getPrice(),
+//                            cart.getQuantity(),
+//                            optionCalcDetails
+//                    );
+//                })
+//                .toList();
+//
+//        return CalculatorDto
+//                .builder()
+//                .productCalcDetails(productCalcDetails)
+//                .build();
+//    }
+
+    public ProductResponseDto toProductResponse(
+            ProcessedProductDto processedProductDto
+    ) {
+
+        Product product = processedProductDto.getProduct();
+        List<ProcessedCustomRuleDto> processedCustomRuleDtos = processedProductDto.getProcessedCustomRuleDtos();
+
+        List<CustomRuleResponseDto> customRuleResponses = new ArrayList<>();
+        for (ProcessedCustomRuleDto processedCustomRuleDto : processedCustomRuleDtos) {
+            CustomRule customRule = processedCustomRuleDto.getCustomRule();
+            BigDecimal customRuleTotalPrice = processedCustomRuleDto.getCalculatedCustomRulePrice();
+            List<ProcessedOptionDto> processedOptionDtos = processedCustomRuleDto.getProcessedOptionDtos();
+            List<OptionResponseDto> optionResponses = new ArrayList<>();
+            for (ProcessedOptionDto processedOptionDto : processedOptionDtos) {
+                ProductOption productOption = processedOptionDto.getProductOption();
+
+                QuantityDetailResponse quantityDetailResponse = Optional.ofNullable(processedOptionDto.getProcessedQuantityDto())
+                        .map(processedQuantityDto ->
                                 new QuantityDetailResponse(
-                                        validatedQuantity.getProductOptionOptionQuantity().getId(),
-                                        validatedQuantity.getProductOptionOptionQuantity().getOptionQuantity().getQuantity().getQuantityType()
+                                        processedQuantityDto.getProductOptionOptionQuantities().stream()
+                                                        .map(optionQuantity -> new QuantityDetail(
+                                                                optionQuantity.getId(),
+                                                                optionQuantity.getOptionQuantity().getQuantity().getLabelCode(),
+                                                                optionQuantity.getExtraPrice(),
+                                                                optionQuantity.getOptionQuantity().getExtraCalories(),
+                                                                optionQuantity.getIsDefault(),
+                                                                optionQuantity.getOptionQuantity().getQuantity().getQuantityType()
+                                                        )).toList(),
+                                        processedQuantityDto.getSelectedId()
                                 ))
                         .orElse(null);
 
-                List<ValidatedTrait> validatedTraits = validatedOption.getValidatedTraits();
-                List<OptionTraitResponse> optionTraitResponses = new ArrayList<>();
+                List<ProcessedTraitDto> processedTraitDtos = processedOptionDto.getProcessedTraitDtos();
+                List<OptionTraitResponseDto> optionTraitResponses = new ArrayList<>();
 
-                for (ValidatedTrait validatedTrait : validatedTraits) {
-                    ProductOptionTrait productOptionTrait = validatedTrait.getProductOptionTrait();
+                for (ProcessedTraitDto processedTraitDto : processedTraitDtos) {
+                    ProductOptionTrait productOptionTrait = processedTraitDto.getProductOptionTrait();
                     optionTraitResponses.add(
-                            new OptionTraitResponse(
-                                    productOptionTrait.getId(),
-                                    validatedTrait.getCurrentValue(),
-                                    productOptionTrait.getOptionTrait().getLabelCode(),
-                                    productOptionTrait.getOptionTrait().getName(),
-                                    productOptionTrait.getOptionTrait().getOptionTraitType()
-                            )
+                            OptionTraitResponseDto
+                                    .builder()
+                                    .productOptionTraitId(productOptionTrait.getId())
+                                    .baseCalories(productOptionTrait.getExtraCalories())
+                                    .basePrice(productOptionTrait.getExtraPrice())
+                                    .currentValue(processedTraitDto.getCurrentValue())
+                                    .labelCode(productOptionTrait.getOptionTrait().getLabelCode())
+                                    .defaultSelection(productOptionTrait.getDefaultSelection())
+                                    .optionTraitName(productOptionTrait.getOptionTrait().getName())
+                                    .optionTraitType(productOptionTrait.getOptionTrait().getOptionTraitType())
+                                    .traitTotalPrice(processedTraitDto.getCalculatedTraitPrice())
+                                    .build()
                     );
                 }
                 optionResponses.add(
-                        new OptionResponse(
-                                productOption.getId(),
-                                validatedOption.getQuantity(),
-                                validatedOption.getIsSelected(),
-                                optionTraitResponses,
-                                productOption.getCountType(),
-                                productOption.getMeasureType(),
-                                productOption.getOption().getName(),
-                                productOption.getOrderIndex(),
-                                quantityDetailResponse
-                        )
+                        OptionResponseDto
+                                .builder()
+                                .productOptionId(productOption.getId())
+                                .baseCalories(productOption.getOption().getCalories())
+                                .basePrice(productOption.getExtraPrice())
+                                .countType(productOption.getCountType())
+                                .defaultQuantity(productOption.getDefaultQuantity())
+                                .imageSource(productOption.getOption().getImageSource())
+                                .isDefault(productOption.getIsDefault())
+                                .isSelected(processedOptionDto.getIsSelected())
+                                .maxQuantity(productOption.getMaxQuantity())
+                                .measureType(productOption.getMeasureType())
+                                .optionName(productOption.getOption().getName())
+                                .optionQuantity(processedOptionDto.getQuantity())
+                                .optionTotalPrice(processedOptionDto.getCalculatedOptionPrice())
+                                .optionTraitResponses(optionTraitResponses)
+                                .orderIndex(productOption.getOrderIndex())
+                                .quantityDetailResponse(quantityDetailResponse)
+                                .build()
                 );
             }
             customRuleResponses.add(
-                    new CustomRuleResponse(
-                            customRule.getId(),
-                            customRule.getName(),
-                            customRule.getOrderIndex(),
-                            optionResponses
-                    )
+                    CustomRuleResponseDto
+                            .builder()
+                            .customRuleId(customRule.getId())
+                            .optionResponses(optionResponses)
+                            .customRuleName(customRule.getName())
+                            .customRuleTotalPrice(customRuleTotalPrice)
+                            .customRuleType(customRule.getCustomRuleType())
+                            .maxSelection(customRule.getMaxSelection())
+                            .minSelection(customRule.getMinSelection())
+                            .orderIndex(customRule.getOrderIndex())
+                            .build()
             );
         }
+        ProductResponseDto productResponse = ProductResponseDto
+                .builder()
+                .customRuleResponses(customRuleResponses)
+                .basePrice(product.getPrice())
+                .productId(product.getId())
+                .productName(product.getName())
+                .briefInfo(product.getBriefInfo())
+                .calories(product.getCalories())
+                .productExtraPrice(processedProductDto.getCalculatedExtraPrice())
+                .productTotalPrice(processedProductDto.getCalculatedProductPrice())
+                .productType(product.getProductType())
+                .imageSource(product.getImageSource())
+                .quantity(processedProductDto.getQuantity())
+                .build();
 
-        return new CartResponse(
-                productResponse,
-                customRuleResponses,
-                validatedCartDto.getQuantity()
-        );
+        return productResponse;
     }
     public CartResponseDto toCartResponseDto(
             ProcessedCartDto processedCartDto
     ) {
-        List<ValidatedCartDto> validatedCartDtos = processedCartDto.getCartDtos();
-        BigDecimal totalPrice = processedCartDto.getTotalPrice();
+        List<ProcessedProductDto> processedProductDtos = processedCartDto.getProcessedProductDtos();
+        BigDecimal cartTotalPrice = processedCartDto.getTotalPrice();
 
-        List<CartResponse> cartResponses = validatedCartDtos.stream()
-                .map(this::toCartResponse)
+        List<ProductResponseDto> productResponses = processedProductDtos.stream()
+                .map(this::toProductResponse)
                 .toList();
         return new CartResponseDto(
-                cartResponses,
-                totalPrice
+                productResponses,
+                cartTotalPrice
         );
     }
 }

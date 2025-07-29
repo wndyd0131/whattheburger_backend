@@ -12,8 +12,15 @@ import java.util.List;
 @NoArgsConstructor
 @Data
 @Builder
-public class ProductDetail {
+public class ProductCalcDetail {
+    private Long productId;
     private BigDecimal basePrice;
     private Integer quantity;
-    private List<OptionDetail> optionDetails;
+    private List<CustomRuleCalcDetail> customRuleCalcDetails;
+    private BigDecimal customRuleTotalPrice;
+    private BigDecimal calculatedProductPrice;
+
+    public void changeCalculatedProductPrice(BigDecimal price) {
+        this.calculatedProductPrice = price;
+    }
 }

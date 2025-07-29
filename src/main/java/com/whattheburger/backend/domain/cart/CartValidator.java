@@ -16,99 +16,110 @@ import java.util.Optional;
 @Component
 @Slf4j
 public class CartValidator {
-    public List<ValidatedCartDto> validate(
+    public List<ValidatedCartDto> validate (
             List<Cart> carts,
             Map<Long, Product> productMap,
             Map<Long, CustomRule> customRuleMap,
             Map<Long, ProductOption> productOptionMap,
             Map<Long, ProductOptionTrait> productOptionTraitMap,
             Map<Long, ProductOptionOptionQuantity> quantityMap
-    ) {
-        List<ValidatedCartDto> cartDtos = new ArrayList<>();
+    ) throws ResourceNotFoundException {
+        List<ValidatedCartDto> validatedCartDtos = new ArrayList<>();
 
         for (Cart cart : carts) {
-            Long productId = cart.getProductId();
-            log.info("Cart {}", productId);
-            Product product = Optional.ofNullable(productMap.get(productId))
-                    .orElseThrow(() -> new ProductNotFoundException(productId));
+            ValidatedCartDto validatedCartDto = validate(cart, productMap, customRuleMap, productOptionMap, productOptionTraitMap, quantityMap);
 
-            ValidatedProduct validatedProduct = new ValidatedProduct(
-                    product
-            );
+            validatedCartDtos.add(validatedCartDto);
+        }
+        return validatedCartDtos;
+    }
 
-            List<CustomRuleRequest> customRuleRequests = cart.getCustomRuleRequests();
-            List<ValidatedCustomRule> validatedCustomRules = new ArrayList<>();
+    public ValidatedCartDto validate(
+            Cart cart,
+            Map<Long, Product> productMap,
+            Map<Long, CustomRule> customRuleMap,
+            Map<Long, ProductOption> productOptionMap,
+            Map<Long, ProductOptionTrait> productOptionTraitMap,
+            Map<Long, ProductOptionOptionQuantity> quantityMap
+    ) {
+        Long productId = cart.getProductId();
+        log.info("Product Id {}", productId);
+        Product product = Optional.ofNullable(productMap.get(productId))
+                .orElseThrow(() -> new ProductNotFoundException(productId));
 
-            for (CustomRuleRequest customRuleRequest : customRuleRequests) {
-                Long customRuleId = customRuleRequest.getCustomRuleId();
-                CustomRule customRule = Optional.ofNullable(customRuleMap.get(customRuleId))
-                        .orElseThrow(() -> new CustomRuleNotFoundException(customRuleId));
-                List<OptionRequest> optionRequests = customRuleRequest.getOptionRequests();
-                List<ValidatedOption> validatedOptions = new ArrayList<>();
-                log.info("customRuleName: {}", customRule.getName());
-                for (OptionRequest optionRequest : optionRequests) {
-                    log.info("POOQ_ID {}", optionRequest.getQuantityDetailRequest());
-                    Long productOptionId = optionRequest.getProductOptionId();
+        ValidatedProduct validatedProduct = new ValidatedProduct(
+                product,
+                cart.getQuantity() // product quantity
+        );
 
-                    ProductOption productOption = Optional.ofNullable(productOptionMap.get(productOptionId))
-                            .orElseThrow(() -> new ProductOptionNotFoundException(productOptionId));
+        List<CustomRuleRequest> customRuleRequests = cart.getCustomRuleRequests();
+        List<ValidatedCustomRule> validatedCustomRules = new ArrayList<>();
 
-                    log.info("quantityDetailRequest {}", optionRequest.getQuantityDetailRequest());
+        for (CustomRuleRequest customRuleRequest : customRuleRequests) {
+            Long customRuleId = customRuleRequest.getCustomRuleId();
+            CustomRule customRule = Optional.ofNullable(customRuleMap.get(customRuleId))
+                    .orElseThrow(() -> new CustomRuleNotFoundException(customRuleId));
+            List<OptionRequest> optionRequests = customRuleRequest.getOptionRequests();
+            List<ValidatedOption> validatedOptions = new ArrayList<>();
+            log.info("customRuleName: {}", customRule.getName());
+            for (OptionRequest optionRequest : optionRequests) {
+                log.info("POOQ_ID {}", optionRequest.getQuantityDetailRequest());
+                Long productOptionId = optionRequest.getProductOptionId();
 
-                    ValidatedQuantity validatedQuantity = Optional.ofNullable(optionRequest.getQuantityDetailRequest())
-                            .map(quantityDetailRequest -> {
-                                log.info("POOQID {}", quantityDetailRequest);
+                ProductOption productOption = Optional.ofNullable(productOptionMap.get(productOptionId))
+                        .orElseThrow(() -> new ProductOptionNotFoundException(productOptionId));
 
-                                ProductOptionOptionQuantity productOptionOptionQuantity = Optional.ofNullable(quantityMap.get(quantityDetailRequest.getId()))
-                                        .orElseThrow(() -> new POOQuantityNotFoundException(quantityDetailRequest.getId()));
-                                return new ValidatedQuantity(
-                                        productOptionOptionQuantity
-                                );
-                            })
-                            .orElse(null);
+                log.info("quantityDetailRequest {}", optionRequest.getQuantityDetailRequest());
+
+                ValidatedQuantity validatedQuantity = Optional.ofNullable(optionRequest.getQuantityDetailRequest())
+                        .map(quantityDetailRequest -> {
+                            log.info("POOQID {}", quantityDetailRequest);
+
+                            Optional.ofNullable(quantityMap.get(quantityDetailRequest.getId()))
+                                    .orElseThrow(() -> new POOQuantityNotFoundException(quantityDetailRequest.getId()));
+                            return new ValidatedQuantity(
+                                    productOption.getProductOptionOptionQuantities(),
+                                    quantityDetailRequest.getId()
+                            );
+                        }).orElse(null);
 
 
-                    List<OptionTraitRequest> optionTraitRequests = optionRequest.getOptionTraitRequests();
-                    List<ValidatedTrait> validatedTraits = new ArrayList<>();
+                List<OptionTraitRequest> optionTraitRequests = optionRequest.getOptionTraitRequests();
+                List<ValidatedTrait> validatedTraits = new ArrayList<>();
 
-                    log.info("productOptionName: {}", productOption.getOption().getName());
-                    for (OptionTraitRequest optionTraitRequest : optionTraitRequests) {
-                        Long productOptionTraitId = optionTraitRequest.getProductOptionTraitId();
-                        ProductOptionTrait productOptionTrait = Optional.ofNullable(productOptionTraitMap.get(productOptionTraitId))
-                                .orElseThrow(() -> new ProductOptionTraitNotFoundException(productOptionTraitId));
-                        validatedTraits.add(
-                                new ValidatedTrait(
-                                        productOptionTrait,
-                                        optionTraitRequest.getCurrentValue()
-                                )
-                        );
-                    }
-                    validatedOptions.add(
-                            new ValidatedOption(
-                                    productOption,
-                                    validatedTraits,
-                                    optionRequest.getIsSelected(),
-                                    optionRequest.getOptionQuantity(),
-                                    validatedQuantity
+                log.info("productOptionName: {}", productOption.getOption().getName());
+                for (OptionTraitRequest optionTraitRequest : optionTraitRequests) {
+                    Long productOptionTraitId = optionTraitRequest.getProductOptionTraitId();
+                    ProductOptionTrait productOptionTrait = Optional.ofNullable(productOptionTraitMap.get(productOptionTraitId))
+                            .orElseThrow(() -> new ProductOptionTraitNotFoundException(productOptionTraitId));
+                    validatedTraits.add(
+                            new ValidatedTrait(
+                                    productOptionTrait,
+                                    optionTraitRequest.getCurrentValue()
                             )
                     );
                 }
-                validatedCustomRules.add(
-                        new ValidatedCustomRule(
-                                customRule,
-                                validatedOptions
+                validatedOptions.add(
+                        new ValidatedOption(
+                                productOption,
+                                validatedTraits,
+                                optionRequest.getIsSelected(),
+                                optionRequest.getOptionQuantity(),
+                                validatedQuantity
                         )
                 );
             }
-
-            cartDtos.add(
-                    new ValidatedCartDto(
-                            validatedProduct,
-                            validatedCustomRules,
-                            cart.getQuantity()
+            validatedCustomRules.add(
+                    new ValidatedCustomRule(
+                            customRule,
+                            validatedOptions
                     )
             );
         }
-        return cartDtos;
+
+        return new ValidatedCartDto(
+                validatedProduct,
+                validatedCustomRules
+        );
     }
 }

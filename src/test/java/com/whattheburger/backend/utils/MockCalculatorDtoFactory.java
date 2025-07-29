@@ -2,7 +2,6 @@ package com.whattheburger.backend.utils;
 
 import com.whattheburger.backend.domain.enums.OptionTraitType;
 import com.whattheburger.backend.service.dto.cart.calculator.*;
-import org.springframework.boot.context.properties.bind.Name;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -10,230 +9,242 @@ import java.util.List;
 public class MockCalculatorDtoFactory {
 
     public static CalculatorDto createMockCalculatorDto() {
-        ProductDetail productDetail1 = ProductDetail
+        ProductCalcDetail productCalcDetail1 = ProductCalcDetail
                 .builder()
                 .basePrice(new BigDecimal("5.49"))
                 .quantity(3)
-                .optionDetails(
+                .customRuleCalcDetails(
                         List.of(
-                                OptionDetail // Large bun
+                                CustomRuleCalcDetail
                                         .builder()
-                                        .isSelected(true)
-                                        .traitDetails(
+                                        .customRuleId(1L)
+                                        .optionCalcDetails(
                                                 List.of(
-                                                        TraitDetail
+                                                        OptionCalcDetail // Large bun
                                                                 .builder()
-                                                                .optionTraitType(OptionTraitType.BINARY)
-                                                                .defaultSelection(0)
-                                                                .requestedSelection(1)
+                                                                .isSelected(true)
+                                                                .traitCalcDetails(
+                                                                        List.of(
+                                                                                TraitCalcDetail
+                                                                                        .builder()
+                                                                                        .optionTraitType(OptionTraitType.BINARY)
+                                                                                        .defaultSelection(0)
+                                                                                        .requestedSelection(1)
+                                                                                        .price(BigDecimal.ZERO)
+                                                                                        .build()
+                                                                        )
+                                                                )
+                                                                .quantityCalcDetail(null)
+                                                                .quantity(1)
                                                                 .price(BigDecimal.ZERO)
+                                                                .defaultQuantity(1)
+                                                                .isDefault(true)
+                                                                .build(),
+                                                        OptionCalcDetail // Small bun
+                                                                .builder()
+                                                                .isSelected(false)
+                                                                .traitCalcDetails(
+                                                                        List.of(
+                                                                                TraitCalcDetail
+                                                                                        .builder()
+                                                                                        .optionTraitType(OptionTraitType.BINARY)
+                                                                                        .defaultSelection(0)
+                                                                                        .requestedSelection(0)
+                                                                                        .price(BigDecimal.ZERO)
+                                                                                        .build()
+                                                                        )
+                                                                )
+                                                                .quantityCalcDetail(null)
+                                                                .quantity(1) // fake
+                                                                .price(BigDecimal.ZERO)
+                                                                .defaultQuantity(1)
+                                                                .isDefault(false)
+                                                                .build(),
+                                                        OptionCalcDetail // Texas Toast
+                                                                .builder()
+                                                                .isSelected(false)
+                                                                .traitCalcDetails(
+                                                                        List.of()
+                                                                )
+                                                                .quantityCalcDetail(null)
+                                                                .quantity(0)
+                                                                .price(BigDecimal.ZERO)
+                                                                .defaultQuantity(1)
+                                                                .isDefault(false)
+                                                                .build(),
+                                                        OptionCalcDetail // Beef
+                                                                .builder()
+                                                                .isSelected(true)
+                                                                .traitCalcDetails(
+                                                                        List.of()
+                                                                )
+                                                                .quantityCalcDetail(null)
+                                                                .quantity(3)
+                                                                .price(BigDecimal.valueOf(2))
+                                                                .defaultQuantity(1)
+                                                                .isDefault(true)
+                                                                .build(),
+                                                        OptionCalcDetail // American Cheese
+                                                                .builder()
+                                                                .isSelected(false)
+                                                                .traitCalcDetails(
+                                                                        List.of()
+                                                                )
+                                                                .quantityCalcDetail(null)
+                                                                .quantity(0)
+                                                                .price(new BigDecimal("0.6"))
+                                                                .defaultQuantity(1)
+                                                                .isDefault(false)
+                                                                .build(),
+                                                        OptionCalcDetail // Jack Cheese
+                                                                .builder()
+                                                                .isSelected(true)
+                                                                .traitCalcDetails(
+                                                                        List.of()
+                                                                )
+                                                                .quantityCalcDetail(null)
+                                                                .quantity(4)
+                                                                .price(new BigDecimal("0.6"))
+                                                                .defaultQuantity(1)
+                                                                .isDefault(false)
+                                                                .build(),
+                                                        OptionCalcDetail // Bacon Slices
+                                                                .builder()
+                                                                .isSelected(true)
+                                                                .traitCalcDetails(
+                                                                        List.of()
+                                                                )
+                                                                .quantityCalcDetail(null)
+                                                                .quantity(5)
+                                                                .price(new BigDecimal("0.5"))
+                                                                .defaultQuantity(1)
+                                                                .isDefault(false)
+                                                                .build(),
+                                                        OptionCalcDetail // Avocado
+                                                                .builder()
+                                                                .isSelected(false)
+                                                                .traitCalcDetails(
+                                                                        List.of()
+                                                                )
+                                                                .quantityCalcDetail(null)
+                                                                .quantity(4) // fake
+                                                                .price(new BigDecimal("1.3"))
+                                                                .defaultQuantity(1)
+                                                                .isDefault(false)
+                                                                .build(),
+                                                        OptionCalcDetail // Tomato
+                                                                .builder()
+                                                                .isSelected(true)
+                                                                .traitCalcDetails(
+                                                                        List.of()
+                                                                )
+                                                                .quantityCalcDetail(
+                                                                        QuantityCalcDetail
+                                                                                .builder()
+                                                                                .price(BigDecimal.ZERO)
+                                                                                .requestedId(1L)
+                                                                                .defaultId(1L)
+                                                                                .build()
+                                                                )
+                                                                .quantity(1)
+                                                                .price(BigDecimal.ZERO)
+                                                                .defaultQuantity(1)
+                                                                .isDefault(true)
+                                                                .build(),
+                                                        OptionCalcDetail // Pickle
+                                                                .builder()
+                                                                .isSelected(true)
+                                                                .traitCalcDetails(
+                                                                        List.of()
+                                                                )
+                                                                .quantityCalcDetail(
+                                                                        QuantityCalcDetail
+                                                                                .builder()
+                                                                                .price(BigDecimal.ZERO)
+                                                                                .requestedId(1L)
+                                                                                .defaultId(2L)
+                                                                                .build()
+                                                                )
+                                                                .quantity(1)
+                                                                .price(BigDecimal.ZERO)
+                                                                .defaultQuantity(1)
+                                                                .isDefault(true)
+                                                                .build(),
+                                                        OptionCalcDetail // Mustard
+                                                                .builder()
+                                                                .isSelected(true)
+                                                                .traitCalcDetails(
+                                                                        List.of()
+                                                                )
+                                                                .quantityCalcDetail(
+                                                                        QuantityCalcDetail
+                                                                                .builder()
+                                                                                .price(BigDecimal.ZERO)
+                                                                                .requestedId(1L)
+                                                                                .defaultId(1L)
+                                                                                .build()
+                                                                )
+                                                                .quantity(1)
+                                                                .price(BigDecimal.ZERO)
+                                                                .defaultQuantity(1)
+                                                                .isDefault(true)
+                                                                .build(),
+                                                        OptionCalcDetail // Creamy Pepper Sauce
+                                                                .builder()
+                                                                .isSelected(true)
+                                                                .traitCalcDetails(
+                                                                        List.of()
+                                                                )
+                                                                .quantityCalcDetail(
+                                                                        QuantityCalcDetail
+                                                                                .builder()
+                                                                                .price(BigDecimal.valueOf(1))
+                                                                                .requestedId(2L)
+                                                                                .defaultId(1L)
+                                                                                .build()
+                                                                )
+                                                                .quantity(1)
+                                                                .price(BigDecimal.valueOf(1))
+                                                                .defaultQuantity(1)
+                                                                .isDefault(false)
                                                                 .build()
                                                 )
                                         )
-                                        .quantityDetail(null)
-                                        .quantity(1)
-                                        .price(BigDecimal.ZERO)
-                                        .defaultQuantity(1)
-                                        .isDefault(true)
-                                        .build(),
-                                OptionDetail // Small bun
-                                        .builder()
-                                        .isSelected(false)
-                                        .traitDetails(
-                                                List.of(
-                                                        TraitDetail
-                                                                .builder()
-                                                                .optionTraitType(OptionTraitType.BINARY)
-                                                                .defaultSelection(0)
-                                                                .requestedSelection(0)
-                                                                .price(BigDecimal.ZERO)
-                                                                .build()
-                                                )
-                                        )
-                                        .quantityDetail(null)
-                                        .quantity(1) // fake
-                                        .price(BigDecimal.ZERO)
-                                        .defaultQuantity(1)
-                                        .isDefault(false)
-                                        .build(),
-                                OptionDetail // Texas Toast
-                                        .builder()
-                                        .isSelected(false)
-                                        .traitDetails(
-                                                List.of()
-                                        )
-                                        .quantityDetail(null)
-                                        .quantity(0)
-                                        .price(BigDecimal.ZERO)
-                                        .defaultQuantity(1)
-                                        .isDefault(false)
-                                        .build(),
-                                OptionDetail // Beef
-                                        .builder()
-                                        .isSelected(true)
-                                        .traitDetails(
-                                                List.of()
-                                        )
-                                        .quantityDetail(null)
-                                        .quantity(3)
-                                        .price(BigDecimal.valueOf(2))
-                                        .defaultQuantity(1)
-                                        .isDefault(true)
-                                        .build(),
-                                OptionDetail // American Cheese
-                                        .builder()
-                                        .isSelected(false)
-                                        .traitDetails(
-                                                List.of()
-                                        )
-                                        .quantityDetail(null)
-                                        .quantity(0)
-                                        .price(new BigDecimal("0.6"))
-                                        .defaultQuantity(1)
-                                        .isDefault(false)
-                                        .build(),
-                                OptionDetail // Jack Cheese
-                                        .builder()
-                                        .isSelected(true)
-                                        .traitDetails(
-                                                List.of()
-                                        )
-                                        .quantityDetail(null)
-                                        .quantity(4)
-                                        .price(new BigDecimal("0.6"))
-                                        .defaultQuantity(1)
-                                        .isDefault(false)
-                                        .build(),
-                                OptionDetail // Bacon Slices
-                                        .builder()
-                                        .isSelected(true)
-                                        .traitDetails(
-                                                List.of()
-                                        )
-                                        .quantityDetail(null)
-                                        .quantity(5)
-                                        .price(new BigDecimal("0.5"))
-                                        .defaultQuantity(1)
-                                        .isDefault(false)
-                                        .build(),
-                                OptionDetail // Avocado
-                                        .builder()
-                                        .isSelected(false)
-                                        .traitDetails(
-                                                List.of()
-                                        )
-                                        .quantityDetail(null)
-                                        .quantity(4) // fake
-                                        .price(new BigDecimal("1.3"))
-                                        .defaultQuantity(1)
-                                        .isDefault(false)
-                                        .build(),
-                                OptionDetail // Tomato
-                                        .builder()
-                                        .isSelected(true)
-                                        .traitDetails(
-                                                List.of()
-                                        )
-                                        .quantityDetail(
-                                                QuantityDetail
-                                                        .builder()
-                                                        .price(BigDecimal.ZERO)
-                                                        .requestedId(1L)
-                                                        .defaultId(1L)
-                                                        .build()
-                                        )
-                                        .quantity(1)
-                                        .price(BigDecimal.ZERO)
-                                        .defaultQuantity(1)
-                                        .isDefault(true)
-                                        .build(),
-                                OptionDetail // Pickle
-                                        .builder()
-                                        .isSelected(true)
-                                        .traitDetails(
-                                                List.of()
-                                        )
-                                        .quantityDetail(
-                                                QuantityDetail
-                                                        .builder()
-                                                        .price(BigDecimal.ZERO)
-                                                        .requestedId(1L)
-                                                        .defaultId(2L)
-                                                        .build()
-                                        )
-                                        .quantity(1)
-                                        .price(BigDecimal.ZERO)
-                                        .defaultQuantity(1)
-                                        .isDefault(true)
-                                        .build(),
-                                OptionDetail // Mustard
-                                        .builder()
-                                        .isSelected(true)
-                                        .traitDetails(
-                                                List.of()
-                                        )
-                                        .quantityDetail(
-                                                QuantityDetail
-                                                        .builder()
-                                                        .price(BigDecimal.ZERO)
-                                                        .requestedId(1L)
-                                                        .defaultId(1L)
-                                                        .build()
-                                        )
-                                        .quantity(1)
-                                        .price(BigDecimal.ZERO)
-                                        .defaultQuantity(1)
-                                        .isDefault(true)
-                                        .build(),
-                                OptionDetail // Creamy Pepper Sauce
-                                        .builder()
-                                        .isSelected(true)
-                                        .traitDetails(
-                                                List.of()
-                                        )
-                                        .quantityDetail(
-                                                QuantityDetail
-                                                        .builder()
-                                                        .price(BigDecimal.valueOf(1))
-                                                        .requestedId(2L)
-                                                        .defaultId(1L)
-                                                        .build()
-                                        )
-                                        .quantity(1)
-                                        .price(BigDecimal.valueOf(1))
-                                        .defaultQuantity(1)
-                                        .isDefault(false)
+                                        .optionTotalPrice(BigDecimal.ZERO)
                                         .build()
                         )
-                )
-                .build(); // $16.39
+                ).build();
+
         return new CalculatorDto(
                 List.of(
-                        productDetail1,
-                        productDetail1
+                        productCalcDetail1,
+                        productCalcDetail1
                 )
         );
     }
 
-    public static List<ProductDetail> createMockProductDetails() {
-        ProductDetail productDetail1 = ProductDetail
+    public static List<ProductCalcDetail> createMockProductCalcDetails() {
+        ProductCalcDetail productCalcDetail1 = ProductCalcDetail
                 .builder()
                 .basePrice(BigDecimal.valueOf(5.49))
-                .optionDetails(List.of())
+                .customRuleCalcDetails(List.of())
+                .customRuleTotalPrice(BigDecimal.valueOf(2.99))
                 .quantity(3)
-                .build();
-        ProductDetail productDetail2 = ProductDetail
+                .build(); // 25.44
+        ProductCalcDetail productCalcDetail2 = ProductCalcDetail
                 .builder()
                 .basePrice(BigDecimal.valueOf(9.99))
-                .optionDetails(List.of())
-                .quantity(2)
+                .customRuleCalcDetails(List.of())
+                .customRuleTotalPrice(BigDecimal.valueOf(5.64))
+                .quantity(2) // 31.26
                 .build();
-        // total: $36.45
+        // total: $56.70
         return List.of(
-                productDetail1,
-                productDetail2
+                productCalcDetail1,
+                productCalcDetail2
         );
     }
+
 //    public static CalculatorDto createMockCalculatorDto(List<ProductDetail> productDetails) {
 //        return new CalculatorDto(productDetails);
 //    }

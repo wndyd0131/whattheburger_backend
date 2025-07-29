@@ -1,15 +1,12 @@
 package com.whattheburger.backend.domain.cart;
 
-import com.whattheburger.backend.domain.enums.OptionTraitType;
-import com.whattheburger.backend.service.dto.cart.calculator.OptionDetail;
-import com.whattheburger.backend.service.dto.cart.calculator.QuantityDetail;
-import com.whattheburger.backend.service.dto.cart.calculator.TraitDetail;
+import com.whattheburger.backend.service.dto.cart.calculator.OptionCalcDetail;
+import com.whattheburger.backend.service.dto.cart.calculator.QuantityCalcDetail;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
@@ -20,56 +17,56 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 public class OptionCalculatorTest {
 
-    @Mock
-    TraitCalculator traitCalculator;
-
-    @InjectMocks
-    OptionCalculator optionCalculator;
+    OptionCalculator optionCalculator = new OptionCalculator();
 
     @Test
     public void givenCountableOptionDetail_whenCalculate_thenReturnExpectedPrice() {
-        List<OptionDetail> mockOptionDetails = List.of(
-                OptionDetail // Large bun
+        List<OptionCalcDetail> mockOptionCalcDetails = List.of(
+                OptionCalcDetail
                         .builder()
+                        .productOptionId(1L)
                         .isSelected(true)
-                        .traitDetails(
+                        .traitCalcDetails(
                                 List.of()
                         )
-                        .quantityDetail(null)
+                        .quantityCalcDetail(null)
                         .quantity(5)
+                        .traitTotalPrice(BigDecimal.ZERO)
                         .price(new BigDecimal("4.99"))
                         .defaultQuantity(1)
                         .isDefault(true)
-                        .build(),
-                OptionDetail // Small bun
+                        .build(), // 19.96 + 0 = 19.96
+                OptionCalcDetail
                         .builder()
+                        .productOptionId(2L)
                         .isSelected(true)
-                        .traitDetails(
+                        .traitCalcDetails(
                                 List.of()
                         )
-                        .quantityDetail(null)
+                        .quantityCalcDetail(null)
                         .quantity(3)
                         .price(new BigDecimal("7.99"))
                         .defaultQuantity(2)
                         .isDefault(true)
-                        .build()
+                        .traitTotalPrice(new BigDecimal("1.97"))
+                        .build() // 7.99 + 1.97 = 9.96
         );
-        when(traitCalculator.calculateTotalPrice(any(List.class))).thenReturn(BigDecimal.ZERO);
-        BigDecimal totalPrice = optionCalculator.calculateTotalPrice(mockOptionDetails);
-        Assertions.assertEquals(BigDecimal.valueOf(27.95), totalPrice); // 4 * 4.99 + 1 * 7.99 = 27.95
+
+        BigDecimal totalPrice = optionCalculator.calculateTotalPrice(mockOptionCalcDetails);
+        Assertions.assertEquals(BigDecimal.valueOf(29.92), totalPrice); // 19.96 + 9.96 =
     }
 
     @Test
     public void givenUncountableOptionDetail_whenCalculate_thenReturnExpectedPrice() {
-        List<OptionDetail> mockOptionDetails = List.of(
-                OptionDetail // Large bun
+        List<OptionCalcDetail> mockOptionCalcDetails = List.of(
+                OptionCalcDetail
                         .builder()
                         .isSelected(true)
-                        .traitDetails(
+                        .traitCalcDetails(
                                 List.of()
                         )
-                        .quantityDetail(
-                                QuantityDetail
+                        .quantityCalcDetail(
+                                QuantityCalcDetail
                                         .builder()
                                         .price(BigDecimal.valueOf(2))
                                         .requestedId(1L)
@@ -80,15 +77,16 @@ public class OptionCalculatorTest {
                         .price(BigDecimal.ZERO)
                         .defaultQuantity(1)
                         .isDefault(true)
-                        .build(),
-                OptionDetail // Small bun
+                        .traitTotalPrice(BigDecimal.ZERO)
+                        .build(), // basePrice(0) + quantityPrice(0) + traitPrice(0) = 0
+                OptionCalcDetail
                         .builder()
                         .isSelected(true)
-                        .traitDetails(
+                        .traitCalcDetails(
                                 List.of()
                         )
-                        .quantityDetail(
-                                QuantityDetail
+                        .quantityCalcDetail(
+                                QuantityCalcDetail
                                         .builder()
                                         .price(BigDecimal.valueOf(1.19))
                                         .requestedId(2L)
@@ -99,36 +97,37 @@ public class OptionCalculatorTest {
                         .price(BigDecimal.ZERO)
                         .defaultQuantity(2)
                         .isDefault(true)
-                        .build()
+                        .traitTotalPrice(new BigDecimal("1.99"))
+                        .build() // basePrice(0) + quantityPrice(1.19) + traitPrice(1.99) = 3.18
         );
-        when(traitCalculator.calculateTotalPrice(any(List.class))).thenReturn(BigDecimal.ZERO);
-        BigDecimal totalPrice = optionCalculator.calculateTotalPrice(mockOptionDetails);
-        Assertions.assertEquals(BigDecimal.valueOf(1.19), totalPrice); // 0 + 1.19 = 1.19
+        BigDecimal totalPrice = optionCalculator.calculateTotalPrice(mockOptionCalcDetails);
+        Assertions.assertEquals(new BigDecimal("3.18"), totalPrice); // 0 + 3.18 = 3.18
     }
 
     @Test
     public void givenCountableAndUncountableOptionDetail_whenCalculate_thenReturnExpectedPrice() {
-        List<OptionDetail> mockOptionDetails = List.of(
-                OptionDetail // Large bun
+        List<OptionCalcDetail> mockOptionCalcDetails = List.of(
+                OptionCalcDetail // Large bun
                         .builder()
                         .isSelected(true)
-                        .traitDetails(
+                        .traitCalcDetails(
                                 List.of()
                         )
-                        .quantityDetail(null)
+                        .quantityCalcDetail(null)
                         .quantity(7)
                         .price(BigDecimal.valueOf(4.99))
                         .defaultQuantity(1)
                         .isDefault(false)
-                        .build(),
-                OptionDetail // Small bun
+                        .traitTotalPrice(BigDecimal.ZERO)
+                        .build(), // quantity(7) * basePrice(4.99) + traitPrice(0) = 34.93
+                OptionCalcDetail // Small bun
                         .builder()
                         .isSelected(true)
-                        .traitDetails(
+                        .traitCalcDetails(
                                 List.of()
                         )
-                        .quantityDetail(
-                                QuantityDetail
+                        .quantityCalcDetail(
+                                QuantityCalcDetail
                                         .builder()
                                         .price(BigDecimal.valueOf(2.99))
                                         .requestedId(2L)
@@ -139,10 +138,10 @@ public class OptionCalculatorTest {
                         .price(BigDecimal.valueOf(3.99))
                         .defaultQuantity(1)
                         .isDefault(false)
-                        .build()
+                        .traitTotalPrice(BigDecimal.ZERO)
+                        .build() // quantity(2.99) + basePrice(3.99) = 6.98
         );
-        when(traitCalculator.calculateTotalPrice(any(List.class))).thenReturn(BigDecimal.ZERO);
-        BigDecimal totalPrice = optionCalculator.calculateTotalPrice(mockOptionDetails);
-        Assertions.assertEquals(BigDecimal.valueOf(41.91), totalPrice); // 4.99 * 7 + 3.99 + 2.99 = 41.91
+        BigDecimal totalPrice = optionCalculator.calculateTotalPrice(mockOptionCalcDetails);
+        Assertions.assertEquals(BigDecimal.valueOf(41.91), totalPrice); // 34.93 + 6.98 = 41.91
     }
 }

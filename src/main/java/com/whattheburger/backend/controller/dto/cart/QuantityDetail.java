@@ -7,14 +7,16 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.util.List;
 
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
 @Builder
-public class QuantityDetailResponse {
-    private List<QuantityDetail> quantityDetails;
-    private Long selectedId;
-    // may need orderIndex
+public class QuantityDetail {
+    private Long quantityId; // productOptionOptionQuantity
+    private String labelCode;
+    private BigDecimal extraPrice;
+    private Double extraCalories;
+    private Boolean isDefault; // ProductOptionOptionQuantity
+    private QuantityType quantityType;
 }

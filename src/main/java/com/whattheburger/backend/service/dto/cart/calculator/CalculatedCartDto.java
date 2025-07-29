@@ -12,12 +12,7 @@ import java.util.List;
 @NoArgsConstructor
 @Data
 @Builder
-public class OptionDetail {
-    private BigDecimal price;
-    private Integer quantity;
-    private Boolean isSelected;
-    private Boolean isDefault;
-    private Integer defaultQuantity;
-    private QuantityDetail quantityDetail;
-    private List<TraitDetail> traitDetails;
+public class CalculatedCartDto {
+    private List<ProductCalcDetail> productCalcDetails;
+    private BigDecimal totalPrice;
 }

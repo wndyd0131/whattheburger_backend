@@ -13,6 +13,6 @@ import java.util.List;
 @Data
 @Builder
 public class CartResponseDto {
-    private List<CartResponse> cartResponses;
-    private BigDecimal totalPrice;
+    private List<ProductResponseDto> productResponses;
+    private BigDecimal cartTotalPrice;
 }

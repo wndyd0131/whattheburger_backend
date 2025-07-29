@@ -61,7 +61,7 @@ public class ProductDto {
         private Long optionTraitId;
         private String name;
         private Integer defaultSelection; //productOptionTrait
-        private Double extraPrice; //productOptionTrait
+        private BigDecimal extraPrice; //productOptionTrait
         private Double extraCalories; //productOptionTrait
     }
 }

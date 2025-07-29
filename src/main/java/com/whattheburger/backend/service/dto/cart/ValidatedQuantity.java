@@ -6,10 +6,13 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
 @Builder
 public class ValidatedQuantity {
-    private ProductOptionOptionQuantity productOptionOptionQuantity;
+    private List<ProductOptionOptionQuantity> productOptionOptionQuantities;
+    private Long selectedId;
 }

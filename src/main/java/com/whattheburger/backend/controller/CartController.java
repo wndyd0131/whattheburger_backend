@@ -3,6 +3,7 @@ package com.whattheburger.backend.controller;
 import com.whattheburger.backend.controller.dto.cart.CartModifyRequestDto;
 import com.whattheburger.backend.controller.dto.cart.CartRequestDto;
 import com.whattheburger.backend.controller.dto.cart.CartResponseDto;
+import com.whattheburger.backend.controller.dto.cart.ProductResponseDto;
 import com.whattheburger.backend.service.CartService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -11,8 +12,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -48,16 +47,20 @@ public class CartController {
         return ResponseEntity.ok(cartResponseDto);
     }
 
-    @PostMapping("/api/v1/cart/checkout-preview")
-    public ResponseEntity<CartResponseDto> preview(
+    @GetMapping("/api/v1/cart/{idx}")
+    public ResponseEntity<ProductResponseDto> loadItemByIdx(
+            @PathVariable("idx") int cartIdx,
             @CookieValue(name = "cartId") String cartId,
             Authentication authentication
     ) {
-        return null;
+        ProductResponseDto productResponse = cartService.loadCartByIdx(cartId, cartIdx, authentication);
+        return ResponseEntity.ok(
+                productResponse
+        );
     }
 
     @PatchMapping("/api/v1/cart/{idx}")
-    public ResponseEntity<CartResponseDto> modifyItem(
+    public ResponseEntity<CartResponseDto> modifyItemByIdx(
             @RequestBody CartModifyRequestDto cartRequestDto,
             @PathVariable("idx") int cartIdx,
             @CookieValue(name = "cartId") String cartId,
@@ -70,7 +73,7 @@ public class CartController {
     }
 
     @DeleteMapping("/api/v1/cart/{idx}")
-    public ResponseEntity<CartResponseDto> removeItem(
+    public ResponseEntity<CartResponseDto> removeItemByIdx(
             @PathVariable("idx") int cartIdx,
             @CookieValue(name = "cartId") String cartId,
             Authentication authentication

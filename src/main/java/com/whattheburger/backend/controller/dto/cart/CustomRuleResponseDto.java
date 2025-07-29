@@ -6,16 +6,20 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
 @Builder
-public class CustomRuleResponse {
+public class CustomRuleResponseDto {
     private Long customRuleId;
     private String customRuleName;
     private Integer orderIndex;
-//    private Integer selectedCount;
-    private List<OptionResponse> optionResponses;
+    private List<OptionResponseDto> optionResponses;
+    private BigDecimal customRuleTotalPrice;
+    private CustomRuleType customRuleType;
+    private Integer minSelection;
+    private Integer maxSelection;
 }

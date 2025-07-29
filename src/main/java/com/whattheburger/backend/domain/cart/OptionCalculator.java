@@ -1,8 +1,9 @@
 package com.whattheburger.backend.domain.cart;
 
 
-import com.whattheburger.backend.service.dto.cart.calculator.OptionDetail;
-import com.whattheburger.backend.service.dto.cart.calculator.TraitDetail;
+import com.whattheburger.backend.service.dto.cart.calculator.CalculatedTraitDto;
+import com.whattheburger.backend.service.dto.cart.calculator.OptionCalcDetail;
+import com.whattheburger.backend.service.dto.cart.calculator.TraitCalcDetail;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -13,34 +14,48 @@ import java.util.List;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class OptionCalculator implements PriceCalculator<List<OptionDetail>>{
-    private final TraitCalculator traitCalculator;
+public class OptionCalculator implements PriceCalculator<List<OptionCalcDetail>>{
 
     @Override
-    public BigDecimal calculateTotalPrice(List<OptionDetail> optionDetails) {
-        BigDecimal totalPrice = optionDetails.stream()
+    public BigDecimal calculateTotalPrice(List<OptionCalcDetail> details) {
+        BigDecimal totalPrice = details.stream()
                 .map(this::calculatePrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         return totalPrice;
     }
 
-    private BigDecimal calculatePrice(OptionDetail option) {
-        List<TraitDetail> traitDetails = option.getTraitDetails();
-        if (option.getIsSelected()) {
-            BigDecimal traitTotalPrice = traitCalculator.calculateTotalPrice(traitDetails);
-            BigDecimal optionPrice = option.getPrice();
+    public BigDecimal calculatePrice(OptionCalcDetail optionDetail) {
+        if (optionDetail.getIsSelected()) {
+            BigDecimal traitTotalPrice = optionDetail.getTraitTotalPrice();
+            BigDecimal optionPrice = optionDetail.getPrice();
             log.info("option price: {}", optionPrice);
-            if (option.getQuantityDetail() == null) { // if quantity is numeric
-                optionPrice = calculateCountable(option, optionPrice);
+            if (optionDetail.getQuantityCalcDetail() == null) { // if quantity is numeric
+                optionPrice = calculateCountable(optionDetail, optionPrice);
             } else { // if quantity is not numeric, such as EASY, LARGE...
-                optionPrice = calculateUncountable(option, optionPrice);
+                optionPrice = calculateUncountable(optionDetail, optionPrice);
             }
             return optionPrice.add(traitTotalPrice);
         }
         return BigDecimal.ZERO;
     }
 
-    private BigDecimal calculateCountable(OptionDetail detail, BigDecimal optionPrice) {
+//    public BigDecimal calculatePrice(OptionCalcDetail option) {
+//        List<TraitCalcDetail> traitCalcDetails = option.getTraitCalcDetails();
+//        if (option.getIsSelected()) {
+//            BigDecimal traitTotalPrice = traitCalculator.calculateTotalPrice(traitCalcDetails);
+//            BigDecimal optionPrice = option.getPrice();
+//            log.info("option price: {}", optionPrice);
+//            if (option.getQuantityCalcDetail() == null) { // if quantity is numeric
+//                optionPrice = calculateCountable(option, optionPrice);
+//            } else { // if quantity is not numeric, such as EASY, LARGE...
+//                optionPrice = calculateUncountable(option, optionPrice);
+//            }
+//            return optionPrice.add(traitTotalPrice);
+//        }
+//        return BigDecimal.ZERO;
+//    }
+
+    private BigDecimal calculateCountable(OptionCalcDetail detail, BigDecimal optionPrice) {
         Integer requestedQuantity = detail.getQuantity();
         if (detail.getIsDefault()) { // if option is default
             Integer defaultQuantity = detail.getDefaultQuantity();
@@ -54,11 +69,11 @@ public class OptionCalculator implements PriceCalculator<List<OptionDetail>>{
         return optionPrice.multiply(BigDecimal.valueOf(requestedQuantity));
     }
 
-    private BigDecimal calculateUncountable(OptionDetail detail, BigDecimal optionPrice) {
-        BigDecimal quantityPrice = detail.getQuantityDetail().getPrice();
-        Long requestedId = detail.getQuantityDetail().getRequestedId();
+    private BigDecimal calculateUncountable(OptionCalcDetail detail, BigDecimal optionPrice) {
+        BigDecimal quantityPrice = detail.getQuantityCalcDetail().getPrice();
+        Long requestedId = detail.getQuantityCalcDetail().getRequestedId();
         if (detail.getIsDefault()) {
-            Long defaultId = detail.getQuantityDetail().getDefaultId();
+            Long defaultId = detail.getQuantityCalcDetail().getDefaultId();
             if (requestedId != defaultId) {
                 return quantityPrice;
             }

@@ -4,13 +4,12 @@ import com.whattheburger.backend.domain.cart.exception.TraitCalcStrategyNotSuppo
 import com.whattheburger.backend.domain.cart.strategy.BinaryStrategy;
 import com.whattheburger.backend.domain.cart.strategy.TraitCalcStrategyResolver;
 import com.whattheburger.backend.domain.enums.OptionTraitType;
-import com.whattheburger.backend.service.dto.cart.calculator.TraitDetail;
+import com.whattheburger.backend.service.dto.cart.calculator.TraitCalcDetail;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
@@ -31,46 +30,50 @@ public class TraitCalculatorTest {
 
         BinaryStrategy mockStrategy = new BinaryStrategy();
 
-        List<TraitDetail> traitDetails = List.of(
-                new TraitDetail(
+        List<TraitCalcDetail> traitCalcDetails = List.of(
+                new TraitCalcDetail(
+                        1L,
                         BigDecimal.valueOf(1.99),
                         0,
                         1,
                         OptionTraitType.BINARY
                 ),
-                new TraitDetail(
+                new TraitCalcDetail(
+                        1L,
                         BigDecimal.valueOf(3.99),
                         0,
                         1,
                         OptionTraitType.BINARY
                 )
         );
-        when(strategyResolver.resolve(any(TraitDetail.class))).thenReturn(mockStrategy);
-        BigDecimal totalPrice = traitCalculator.calculateTotalPrice(traitDetails);
+        when(strategyResolver.resolve(any(TraitCalcDetail.class))).thenReturn(mockStrategy);
+        BigDecimal totalPrice = traitCalculator.calculateTotalPrice(traitCalcDetails);
         Assertions.assertEquals(BigDecimal.valueOf(5.98), totalPrice);
     }
 
     @Test
     public void givenValidTraitDetails_whenOptionTypeIsNotSupported_thenThrowException() {
-        List<TraitDetail> traitDetails = List.of(
-                new TraitDetail(
+        List<TraitCalcDetail> traitCalcDetails = List.of(
+                new TraitCalcDetail(
+                        1L,
                         BigDecimal.valueOf(1.99),
                         0,
                         1,
                         null
                 ),
-                new TraitDetail(
+                new TraitCalcDetail(
+                        1L,
                         BigDecimal.valueOf(3.99),
                         0,
                         1,
                         null
                 )
         );
-        when(strategyResolver.resolve(any(TraitDetail.class))).thenThrow(new TraitCalcStrategyNotSupportedException());
+        when(strategyResolver.resolve(any(TraitCalcDetail.class))).thenThrow(new TraitCalcStrategyNotSupportedException());
 
         Assertions.assertThrows(
                 TraitCalcStrategyNotSupportedException.class,
-                () -> traitCalculator.calculateTotalPrice(traitDetails)
+                () -> traitCalculator.calculateTotalPrice(traitCalcDetails)
         );
     }
 

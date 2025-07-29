@@ -12,7 +12,8 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @Data
 @Builder
-public class TraitDetail {
+public class TraitCalcDetail {
+    private Long productOptionTraitId;
     private BigDecimal price;
     private Integer defaultSelection;
     private Integer requestedSelection;

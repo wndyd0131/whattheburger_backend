@@ -2,7 +2,7 @@ package com.whattheburger.backend.domain.cart.strategy;
 
 import com.whattheburger.backend.domain.cart.exception.TraitCalcStrategyNotSupportedException;
 import com.whattheburger.backend.domain.enums.OptionTraitType;
-import com.whattheburger.backend.service.dto.cart.calculator.TraitDetail;
+import com.whattheburger.backend.service.dto.cart.calculator.TraitCalcDetail;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -26,8 +26,8 @@ public class TraitCalcStrategyResolver {
                 ));
     }
 
-    public TraitCalcStrategy resolve(TraitDetail traitDetail) {
-        return Optional.ofNullable(strategyMap.get(traitDetail.getOptionTraitType()))
+    public TraitCalcStrategy resolve(TraitCalcDetail traitCalcDetail) {
+        return Optional.ofNullable(strategyMap.get(traitCalcDetail.getOptionTraitType()))
                 .orElseThrow(() -> new TraitCalcStrategyNotSupportedException());
     }
 }

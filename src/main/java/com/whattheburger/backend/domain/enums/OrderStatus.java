@@ -1,5 +1,5 @@
 package com.whattheburger.backend.domain.enums;
 
 public enum OrderStatus {
-    IN_PROCESS, READY, TAKEN_OUT, CANCELED
+    PENDING, PAID, PREPARING, PICKUP_READY, DELIVERING, COMPLETE, REFUNDED, CANCELLED, EXPIRED
 }

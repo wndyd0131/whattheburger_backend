@@ -9,7 +9,7 @@ import java.util.List;
 
 public class CartMapper {
     public CartResponseDto toResponse(Cart cart, Product product) {
-        List<CustomRuleResponse> customRuleResponses = new ArrayList<>();
+        List<CustomRuleResponseDto> customRuleResponses = new ArrayList<>();
         for (CustomRuleRequest customRuleRequest : cart.getCustomRuleRequests()) {
             Long customRuleId = customRuleRequest.getCustomRuleId();
         }

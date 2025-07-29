@@ -1,5 +1,6 @@
 package com.whattheburger.backend.service.dto.cart;
 
+import com.whattheburger.backend.domain.ProductOptionOptionQuantity;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,7 +12,7 @@ import java.util.List;
 @NoArgsConstructor
 @Data
 @Builder
-public class ValidatedCartDto {
-    private ValidatedProduct validatedProduct;
-    private List<ValidatedCustomRule> validatedCustomRules;
+public class ProcessedQuantityDto {
+    private List<ProductOptionOptionQuantity> productOptionOptionQuantities;
+    private Long selectedId;
 }
