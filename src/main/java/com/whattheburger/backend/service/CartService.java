@@ -42,9 +42,9 @@ public class CartService {
     private final CartValidator cartValidator;
     private final CartCalculator cartCalculator;
 
-    public CartResponseDto saveCart(String cartId, Authentication authentication, CartRequestDto cartRequestDto) {
+    public ProcessedCartDto saveCart(String guestId, Authentication authentication, CartRequestDto cartRequestDto) {
 
-        String sessionKey = getSessionKey(cartId, authentication);
+        String sessionKey = getSessionKey(guestId, authentication);
 
         Cart cart = new Cart(cartRequestDto.getProductId(), cartRequestDto.getQuantity(), cartRequestDto.getCustomRuleRequests());
 
@@ -101,9 +101,9 @@ public class CartService {
         return processedCartDto;
     }
 
-    public CartResponseDto loadCart(String cartId, Authentication authentication) {
+    public ProcessedCartDto loadCart(String guestId, Authentication authentication) {
 
-        String sessionKey = getSessionKey(cartId, authentication);
+        String sessionKey = getSessionKey(guestId, authentication);
 
         CartList cartList = Optional.ofNullable(rt.opsForValue().get("cart:" + sessionKey)).orElse(new CartList(new ArrayList<>()));
 
@@ -111,13 +111,11 @@ public class CartService {
 
         ProcessedCartDto processedCartDto = processCart(carts);
 
-        CartResponseDto cartResponseDto = cartDtoMapper.toCartResponseDto(processedCartDto);
-
-        return cartResponseDto;
+        return processedCartDto;
     }
 
-    public ProductResponseDto loadCartByIdx(String cartId, int cartIdx, Authentication authentication) {
-        String sessionKey = getSessionKey(cartId, authentication);
+    public ProcessedProductDto loadCartByIdx(String guestId, int cartIdx, Authentication authentication) {
+        String sessionKey = getSessionKey(guestId, authentication);
 
         CartList cartList = Optional.ofNullable(rt.opsForValue().get("cart:" + sessionKey)).orElse(new CartList(new ArrayList<>()));
         log.info("CartList {}", cartList);
@@ -151,16 +149,15 @@ public class CartService {
             ProductCalcDetail productCalcDetail = cartCalculator.calculate(cart, productMap, customRuleMap, productOptionMap, productOptionTraitMap, quantityMap);
 
             ProcessedProductDto processedProductDto = cartDtoMapper.toProcessedProductDto(validatedCartDto, productCalcDetail);
-            ProductResponseDto productResponseDto = cartDtoMapper.toProductResponse(processedProductDto);
 
-            return productResponseDto;
+            return processedProductDto;
         }
         throw new InvalidCartIndexException(cartIdx);
     }
 
-    public CartResponseDto modifyItem(String cartId, int cartIdx, CartModifyRequestDto cartRequestDto, Authentication authentication) {
+    public ProcessedCartDto modifyItem(String guestId, int cartIdx, CartModifyRequestDto cartRequestDto, Authentication authentication) {
 
-        String sessionKey = getSessionKey(cartId, authentication);
+        String sessionKey = getSessionKey(guestId, authentication);
 
 //        Cart cart = new Cart(cartRequestDto.getProductId(), cartRequestDto.getQuantity(), cartRequestDto.getCustomRuleRequests());
         CartList cartList = Optional.ofNullable(rt.opsForValue().get("cart:" + sessionKey)).orElse(new CartList(new ArrayList<>()));
@@ -177,9 +174,9 @@ public class CartService {
         return loadCart(sessionKey, authentication);
     }
 
-    public CartResponseDto deleteItem(String cartId, int cartIdx, Authentication authentication) {
+    public ProcessedCartDto deleteItem(String guestId, int cartIdx, Authentication authentication) {
 
-        String sessionKey = getSessionKey(cartId, authentication);
+        String sessionKey = getSessionKey(guestId, authentication);
 
         CartList cartList = Optional.ofNullable(rt.opsForValue().get("cart:" + sessionKey)).orElse(new CartList(new ArrayList<>()));
         List<Cart> carts = cartList.getCarts();
@@ -201,7 +198,6 @@ public class CartService {
                 customRuleIds.add(customRuleRequest.getCustomRuleId());
                 List<OptionRequest> optionRequests = customRuleRequest.getOptionRequests();
                 for (OptionRequest optionRequest : optionRequests) {
-                    log.info("JAM_ID {}", optionRequest.getQuantityDetailRequest());
                     productOptionIds.add(optionRequest.getProductOptionId());
 
                     Optional.ofNullable(optionRequest.getQuantityDetailRequest())
@@ -217,7 +213,7 @@ public class CartService {
         }
     }
 
-    private String getSessionKey(String cartId, Authentication authentication) {
+    private String getSessionKey(String guestId, Authentication authentication) {
         boolean isUser = authentication != null && authentication.isAuthenticated() && !(authentication instanceof AnonymousAuthenticationToken);
         log.info("isUser {}", isUser);
         if (isUser) {
@@ -227,7 +223,7 @@ public class CartService {
             }
             log.info("Principal {}", principal);
         }
-        return cartId;
+        return guestId;
     }
 
     private Map<Class<?>, Map<Long, ?>> fetchAllRelatedEntitiesToMap(List<Cart> carts) {

@@ -75,11 +75,12 @@ public class CartValidator {
                         .map(quantityDetailRequest -> {
                             log.info("POOQID {}", quantityDetailRequest);
 
-                            Optional.ofNullable(quantityMap.get(quantityDetailRequest.getId()))
+
+                            ProductOptionOptionQuantity productOptionOptionQuantity = Optional.ofNullable(quantityMap.get(quantityDetailRequest.getId()))
                                     .orElseThrow(() -> new POOQuantityNotFoundException(quantityDetailRequest.getId()));
                             return new ValidatedQuantity(
                                     productOption.getProductOptionOptionQuantities(),
-                                    quantityDetailRequest.getId()
+                                    productOptionOptionQuantity
                             );
                         }).orElse(null);
 

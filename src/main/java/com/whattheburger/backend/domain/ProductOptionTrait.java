@@ -1,5 +1,6 @@
 package com.whattheburger.backend.domain;
 
+import com.whattheburger.backend.domain.order.OrderProductOptionTrait;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -32,9 +33,6 @@ public class ProductOptionTrait {
     @ManyToOne
     @JoinColumn(name = "option_trait_id")
     private OptionTrait optionTrait;
-
-    @OneToMany(mappedBy = "productOptionTrait")
-    private List<OrderProductOptionTrait> orderProductOptionTraits = new ArrayList<>();
 
     public ProductOptionTrait (
             ProductOption productOption,

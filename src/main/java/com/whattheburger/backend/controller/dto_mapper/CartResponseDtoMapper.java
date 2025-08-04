@@ -1,0 +1,141 @@
+package com.whattheburger.backend.controller.dto_mapper;
+
+import com.whattheburger.backend.controller.dto.cart.*;
+import com.whattheburger.backend.domain.CustomRule;
+import com.whattheburger.backend.domain.Product;
+import com.whattheburger.backend.domain.ProductOption;
+import com.whattheburger.backend.domain.ProductOptionTrait;
+import com.whattheburger.backend.service.dto.cart.ProcessedCartDto;
+import com.whattheburger.backend.service.dto.cart.ProcessedCustomRuleDto;
+import com.whattheburger.backend.service.dto.cart.ProcessedProductDto;
+import com.whattheburger.backend.service.dto.cart.ProcessedTraitDto;
+import com.whattheburger.backend.service.dto.cart.calculator.ProcessedOptionDto;
+import org.springframework.stereotype.Component;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+@Component
+public class CartResponseDtoMapper {
+    public ProductResponseDto toProductResponse(
+            ProcessedProductDto processedProductDto
+    ) {
+
+        Product product = processedProductDto.getProduct();
+        List<ProcessedCustomRuleDto> processedCustomRuleDtos = processedProductDto.getProcessedCustomRuleDtos();
+
+        List<CustomRuleResponseDto> customRuleResponses = new ArrayList<>();
+        for (ProcessedCustomRuleDto processedCustomRuleDto : processedCustomRuleDtos) {
+            CustomRule customRule = processedCustomRuleDto.getCustomRule();
+            BigDecimal customRuleTotalPrice = processedCustomRuleDto.getCalculatedCustomRulePrice();
+            List<ProcessedOptionDto> processedOptionDtos = processedCustomRuleDto.getProcessedOptionDtos();
+            List<OptionResponseDto> optionResponses = new ArrayList<>();
+            for (ProcessedOptionDto processedOptionDto : processedOptionDtos) {
+                ProductOption productOption = processedOptionDto.getProductOption();
+
+                QuantityDetailResponse quantityDetailResponse = Optional.ofNullable(processedOptionDto.getProcessedQuantityDto())
+                        .map(processedQuantityDto ->
+                                new QuantityDetailResponse(
+                                        processedQuantityDto.getProductOptionOptionQuantities().stream()
+                                                .map(optionQuantity -> new QuantityDetail(
+                                                        optionQuantity.getId(),
+                                                        optionQuantity.getOptionQuantity().getQuantity().getLabelCode(),
+                                                        optionQuantity.getExtraPrice(),
+                                                        optionQuantity.getOptionQuantity().getExtraCalories(),
+                                                        optionQuantity.getIsDefault(),
+                                                        optionQuantity.getOptionQuantity().getQuantity().getQuantityType()
+                                                )).toList(),
+                                        processedQuantityDto.getSelectedQuantity().getId()
+                                ))
+                        .orElse(null);
+
+                List<ProcessedTraitDto> processedTraitDtos = processedOptionDto.getProcessedTraitDtos();
+                List<OptionTraitResponseDto> optionTraitResponses = new ArrayList<>();
+
+                for (ProcessedTraitDto processedTraitDto : processedTraitDtos) {
+                    ProductOptionTrait productOptionTrait = processedTraitDto.getProductOptionTrait();
+                    optionTraitResponses.add(
+                            OptionTraitResponseDto
+                                    .builder()
+                                    .productOptionTraitId(productOptionTrait.getId())
+                                    .baseCalories(productOptionTrait.getExtraCalories())
+                                    .basePrice(productOptionTrait.getExtraPrice())
+                                    .currentValue(processedTraitDto.getCurrentValue())
+                                    .labelCode(productOptionTrait.getOptionTrait().getLabelCode())
+                                    .defaultSelection(productOptionTrait.getDefaultSelection())
+                                    .optionTraitName(productOptionTrait.getOptionTrait().getName())
+                                    .optionTraitType(productOptionTrait.getOptionTrait().getOptionTraitType())
+                                    .traitTotalPrice(processedTraitDto.getCalculatedTraitPrice())
+                                    .build()
+                    );
+                }
+                optionResponses.add(
+                        OptionResponseDto
+                                .builder()
+                                .productOptionId(productOption.getId())
+                                .baseCalories(productOption.getOption().getCalories())
+                                .basePrice(productOption.getExtraPrice())
+                                .countType(productOption.getCountType())
+                                .defaultQuantity(productOption.getDefaultQuantity())
+                                .imageSource(productOption.getOption().getImageSource())
+                                .isDefault(productOption.getIsDefault())
+                                .isSelected(processedOptionDto.getIsSelected())
+                                .maxQuantity(productOption.getMaxQuantity())
+                                .measureType(productOption.getMeasureType())
+                                .optionName(productOption.getOption().getName())
+                                .optionQuantity(processedOptionDto.getQuantity())
+                                .optionTotalPrice(processedOptionDto.getCalculatedOptionPrice())
+                                .optionTraitResponses(optionTraitResponses)
+                                .orderIndex(productOption.getOrderIndex())
+                                .quantityDetailResponse(quantityDetailResponse)
+                                .build()
+                );
+            }
+            customRuleResponses.add(
+                    CustomRuleResponseDto
+                            .builder()
+                            .customRuleId(customRule.getId())
+                            .optionResponses(optionResponses)
+                            .customRuleName(customRule.getName())
+                            .customRuleTotalPrice(customRuleTotalPrice)
+                            .customRuleType(customRule.getCustomRuleType())
+                            .maxSelection(customRule.getMaxSelection())
+                            .minSelection(customRule.getMinSelection())
+                            .orderIndex(customRule.getOrderIndex())
+                            .build()
+            );
+        }
+        ProductResponseDto productResponse = ProductResponseDto
+                .builder()
+                .customRuleResponses(customRuleResponses)
+                .basePrice(product.getPrice())
+                .productId(product.getId())
+                .productName(product.getName())
+                .briefInfo(product.getBriefInfo())
+                .calories(product.getCalories())
+                .productExtraPrice(processedProductDto.getCalculatedExtraPrice())
+                .productTotalPrice(processedProductDto.getCalculatedProductPrice())
+                .productType(product.getProductType())
+                .imageSource(product.getImageSource())
+                .quantity(processedProductDto.getQuantity())
+                .build();
+
+        return productResponse;
+    }
+    public CartResponseDto toCartResponseDto(
+            ProcessedCartDto processedCartDto
+    ) {
+        List<ProcessedProductDto> processedProductDtos = processedCartDto.getProcessedProductDtos();
+        BigDecimal cartTotalPrice = processedCartDto.getTotalPrice();
+
+        List<ProductResponseDto> productResponses = processedProductDtos.stream()
+                .map(this::toProductResponse)
+                .toList();
+        return new CartResponseDto(
+                productResponses,
+                cartTotalPrice
+        );
+    }
+}

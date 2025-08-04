@@ -1,6 +1,6 @@
 package com.whattheburger.backend.repository;
 
-import com.whattheburger.backend.domain.OrderProduct;
+import com.whattheburger.backend.domain.order.OrderProduct;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

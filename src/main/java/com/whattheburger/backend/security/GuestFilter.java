@@ -12,23 +12,23 @@ import java.io.IOException;
 import java.util.UUID;
 
 @Component
-public class CartFilter extends OncePerRequestFilter {
+public class GuestFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         Cookie[] cookies = request.getCookies();
-        boolean hasCartId = false;
+        boolean hasGuestId = false;
         if (cookies != null) {
             for (Cookie cookie : cookies) {
-                if ("cartId".equals(cookie.getName())) {
-                    hasCartId = true;
+                if ("guestId".equals(cookie.getName())) {
+                    hasGuestId = true;
                     break;
                 }
             }
         }
 
-        if (!hasCartId) {
+        if (!hasGuestId) {
             String cartId = UUID.randomUUID().toString();
-            Cookie cookie = new Cookie("cartId", cartId);
+            Cookie cookie = new Cookie("guestId", cartId);
             cookie.setHttpOnly(true);
             cookie.setPath("/");
             cookie.setMaxAge(60 * 60 * 24 * 30);

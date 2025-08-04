@@ -1,98 +1,101 @@
 package com.whattheburger.backend.service;
 
+import com.whattheburger.backend.controller.dto.cart.CartResponseDto;
+import com.whattheburger.backend.controller.dto.cart.ProductResponseDto;
 import com.whattheburger.backend.controller.dto.order.OrderCreateRequestDto;
 import com.whattheburger.backend.controller.dto.order.ProductOptionRequest;
 import com.whattheburger.backend.controller.dto.order.ProductOptionTraitRequest;
 import com.whattheburger.backend.controller.dto.order.ProductRequest;
 import com.whattheburger.backend.domain.*;
 import com.whattheburger.backend.domain.enums.OrderStatus;
+import com.whattheburger.backend.domain.enums.OrderType;
+import com.whattheburger.backend.domain.enums.PaymentStatus;
+import com.whattheburger.backend.domain.order.*;
 import com.whattheburger.backend.repository.*;
+import com.whattheburger.backend.security.UserDetailsImpl;
+import com.whattheburger.backend.service.dto.cart.ProcessedCartDto;
+import com.whattheburger.backend.service.dto.cart.ProcessedProductDto;
+import com.whattheburger.backend.service.exception.OrderNotFoundException;
 import com.whattheburger.backend.service.exception.ProductNotFoundException;
 import com.whattheburger.backend.service.exception.ProductOptionNotFoundException;
 import com.whattheburger.backend.service.exception.ProductOptionTraitNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static com.whattheburger.backend.controller.dto.order.OrderCreateRequestDto.*;
-
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OrderService {
 
-    private final OrderRepository orderRepository;
+    private final CartService cartService;
+    private final OrderStorage orderStorage;
     private final ProductRepository productRepository;
     private final ProductOptionRepository productOptionRepository;
     private final ProductOptionTraitRepository productOptionTraitRepository;
     private final OrderProductRepository orderProductRepository;
     private final OrderProductOptionRepository orderProductOptionRepository;
     private final OrderProductOptionTraitRepository orderProductOptionTraitRepository;
+    private final OrderFactory orderFactory;
 
-    @Transactional
-    public Order createOrder(OrderCreateRequestDto orderCreateRequestDto) {
-        Order order = Order
-                .builder()
-                .orderStatus(OrderStatus.IN_PROCESS)
-                .orderType(orderCreateRequestDto.getOrderType())
-                .orderNote(orderCreateRequestDto.getOrderNote())
-                .paymentMethod(orderCreateRequestDto.getPaymentMethod())
-                .totalPrice(orderCreateRequestDto.getTotalPrice())
-                // coupon
-                // store
-                .build();
+    public Order createOrderPreview(UUID guestId, Authentication authentication, OrderType orderType) {
+        ProcessedCartDto processedCartDto = cartService.loadCart(guestId.toString(), authentication);
+        boolean isUser = authentication != null && authentication.isAuthenticated() && !(authentication instanceof AnonymousAuthenticationToken);
 
-        Order newOrder = orderRepository.save(order);
-
-        List<ProductRequest> productRequests = orderCreateRequestDto.getProductRequests();
-
-        Map<Long, Product> productMap = createProductMap(productRequests);
-        Map<Long, ProductOption> productOptionMap = createProductOptionMap(productRequests);
-        Map<Long, ProductOptionTrait> productOptionTraitMap = createProductOptionTraitMap(productRequests);
-
-        for (ProductRequest productRequest : productRequests) {
-            Product product = Optional.ofNullable(productMap.get(productRequest.getProductId()))
-                    .orElseThrow(() -> new ProductNotFoundException(productRequest.getProductId()));
-
-            OrderProduct orderProduct = OrderProduct
-                    .builder()
-                    .quantity(productRequest.getQuantity())
-                    .forWhom(productRequest.getForWhom())
-                    .order(order)
-                    .product(product)
-                    .build();
-            orderProductRepository.save(orderProduct);
-
-            for (ProductOptionRequest productOptionRequest : productRequest.getProductOptionRequests()) {
-                Long productOptionId = productOptionRequest.getProductOptionId();
-                ProductOption productOption = Optional.ofNullable(productOptionMap.get(productOptionId))
-                        .orElseThrow(() -> new ProductOptionNotFoundException(productOptionId));
-                OrderProductOption orderProductOption = new OrderProductOption(
-                        productOptionRequest.getQuantity(),
-                        orderProduct,
-                        productOption
-                );
-                orderProductOptionRepository.save(orderProductOption);
-
-                for (ProductOptionTraitRequest productOptionTraitRequest : productOptionRequest.getProductOptionTraitRequests()) {
-                    Long productOptionTraitId = productOptionTraitRequest.getProductOptionTraitId();
-                    ProductOptionTrait productOptionTrait = Optional.ofNullable(productOptionTraitMap.get(productOptionTraitId))
-                            .orElseThrow(() -> new ProductOptionTraitNotFoundException(productOptionTraitId));
-
-                    OrderProductOptionTrait orderProductOptionTrait = new OrderProductOptionTrait(
-                            productOptionTraitRequest.getValue(),
-                            orderProductOption,
-                            productOptionTrait
-                    );
-                    orderProductOptionTraitRepository.save(orderProductOptionTrait);
-                }
+        if (isUser) {
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof UserDetailsImpl userDetails) {
+                User user = userDetails.getUser();
+                Order userOrderPreview = orderStorage.load(new UserKey(user.getId()))
+                        .map(order -> orderFactory.overWriteOrder(processedCartDto, orderType, order))
+                        .orElseGet(() -> {
+                            Order orderPreview = orderFactory.createFromCartDto(processedCartDto, orderType);
+                            orderPreview.changeUser(user);
+                            return orderPreview;
+                        });
+                return orderStorage.save(userOrderPreview);
             }
+            throw new IllegalStateException();
+        } else {
+            Order guestOrderPreview = orderStorage.load(new GuestKey(guestId))
+                    .map(order -> orderFactory.overWriteOrder(processedCartDto, orderType, order))
+                    .orElseGet(() -> {
+                        Order orderPreview = orderFactory.createFromCartDto(processedCartDto, orderType);
+                        orderPreview.changeGuestInfo(new GuestInfo(guestId));
+                        return orderPreview;
+                    });
+            return orderStorage.save(guestOrderPreview);
         }
-        return newOrder;
+    }
+
+    public Order loadOrderPreview(UUID guestId, Authentication authentication) {
+        boolean isUser = authentication != null && authentication.isAuthenticated() && !(authentication instanceof AnonymousAuthenticationToken);
+
+        if (isUser) {
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof UserDetailsImpl userDetails) {
+                User user = userDetails.getUser();
+                Order userOrderPreview = orderStorage.load(new UserKey(user.getId()))
+                        .orElseThrow(() -> new OrderNotFoundException(user.getId()));
+                return userOrderPreview;
+            }
+            throw new IllegalStateException();
+        } else {
+            if (guestId == null)
+                throw new IllegalArgumentException();
+            Order guestOrderPreview = orderStorage.load(new GuestKey(guestId))
+                    .orElseThrow(() -> new OrderNotFoundException(guestId));
+            return guestOrderPreview;
+        }
     }
 
     private Map<Long, Product> createProductMap(List<ProductRequest> productRequests) {

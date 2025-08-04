@@ -1,15 +1,15 @@
 package com.whattheburger.backend.service;
 
 import com.whattheburger.backend.controller.dto.order.OrderCreateRequestDto;
-import com.whattheburger.backend.controller.dto.order.ProductOptionRequest;
-import com.whattheburger.backend.controller.dto.order.ProductOptionTraitRequest;
-import com.whattheburger.backend.controller.dto.order.ProductRequest;
 import com.whattheburger.backend.domain.*;
 import com.whattheburger.backend.domain.enums.OrderType;
 import com.whattheburger.backend.domain.enums.PaymentMethod;
+import com.whattheburger.backend.domain.order.Order;
+import com.whattheburger.backend.domain.order.OrderProduct;
+import com.whattheburger.backend.domain.order.OrderProductOption;
+import com.whattheburger.backend.domain.order.OrderProductOptionTrait;
 import com.whattheburger.backend.repository.*;
 import com.whattheburger.backend.service.exception.ProductNotFoundException;
-import com.whattheburger.backend.service.exception.ProductOptionNotFoundException;
 import com.whattheburger.backend.utils.*;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;

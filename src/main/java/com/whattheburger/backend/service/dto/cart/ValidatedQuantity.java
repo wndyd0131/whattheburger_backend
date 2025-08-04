@@ -14,5 +14,5 @@ import java.util.List;
 @Builder
 public class ValidatedQuantity {
     private List<ProductOptionOptionQuantity> productOptionOptionQuantities;
-    private Long selectedId;
+    private ProductOptionOptionQuantity selectedQuantity;
 }

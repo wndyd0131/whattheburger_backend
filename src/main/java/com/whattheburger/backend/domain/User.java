@@ -1,5 +1,6 @@
 package com.whattheburger.backend.domain;
 
+import com.whattheburger.backend.domain.order.Order;
 import com.whattheburger.backend.security.enums.Role;
 import jakarta.persistence.*;
 import lombok.Getter;

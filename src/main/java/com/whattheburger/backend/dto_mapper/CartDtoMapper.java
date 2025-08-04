@@ -157,11 +157,11 @@ public class CartDtoMapper {
                         .map(validatedQuantity ->
                                 Optional.ofNullable(optionCalcDetail.getQuantityCalcDetail())
                                         .map(quantityCalcDetail -> {
-                                            if (!(validatedQuantity.getSelectedId().equals(quantityCalcDetail.getRequestedId())))
-                                                throw new IllegalStateException("validated quantity and calculated quantity have different ids [" + validatedQuantity.getSelectedId() + "]" + "vs." + "[" + quantityCalcDetail.getRequestedId() + "]");
+                                            if (!(validatedQuantity.getSelectedQuantity().getId().equals(quantityCalcDetail.getRequestedId())))
+                                                throw new IllegalStateException("validated quantity and calculated quantity have different ids [" + validatedQuantity.getSelectedQuantity().getId() + "]" + "vs." + "[" + quantityCalcDetail.getRequestedId() + "]");
                                             return new ProcessedQuantityDto(
                                                     validatedQuantity.getProductOptionOptionQuantities(),
-                                                    quantityCalcDetail.getRequestedId()
+                                                    validatedQuantity.getSelectedQuantity()
                                             );
                                         })
                                         .orElseGet(() -> {
@@ -316,124 +316,4 @@ public class CartDtoMapper {
 //                .productCalcDetails(productCalcDetails)
 //                .build();
 //    }
-
-    public ProductResponseDto toProductResponse(
-            ProcessedProductDto processedProductDto
-    ) {
-
-        Product product = processedProductDto.getProduct();
-        List<ProcessedCustomRuleDto> processedCustomRuleDtos = processedProductDto.getProcessedCustomRuleDtos();
-
-        List<CustomRuleResponseDto> customRuleResponses = new ArrayList<>();
-        for (ProcessedCustomRuleDto processedCustomRuleDto : processedCustomRuleDtos) {
-            CustomRule customRule = processedCustomRuleDto.getCustomRule();
-            BigDecimal customRuleTotalPrice = processedCustomRuleDto.getCalculatedCustomRulePrice();
-            List<ProcessedOptionDto> processedOptionDtos = processedCustomRuleDto.getProcessedOptionDtos();
-            List<OptionResponseDto> optionResponses = new ArrayList<>();
-            for (ProcessedOptionDto processedOptionDto : processedOptionDtos) {
-                ProductOption productOption = processedOptionDto.getProductOption();
-
-                QuantityDetailResponse quantityDetailResponse = Optional.ofNullable(processedOptionDto.getProcessedQuantityDto())
-                        .map(processedQuantityDto ->
-                                new QuantityDetailResponse(
-                                        processedQuantityDto.getProductOptionOptionQuantities().stream()
-                                                        .map(optionQuantity -> new QuantityDetail(
-                                                                optionQuantity.getId(),
-                                                                optionQuantity.getOptionQuantity().getQuantity().getLabelCode(),
-                                                                optionQuantity.getExtraPrice(),
-                                                                optionQuantity.getOptionQuantity().getExtraCalories(),
-                                                                optionQuantity.getIsDefault(),
-                                                                optionQuantity.getOptionQuantity().getQuantity().getQuantityType()
-                                                        )).toList(),
-                                        processedQuantityDto.getSelectedId()
-                                ))
-                        .orElse(null);
-
-                List<ProcessedTraitDto> processedTraitDtos = processedOptionDto.getProcessedTraitDtos();
-                List<OptionTraitResponseDto> optionTraitResponses = new ArrayList<>();
-
-                for (ProcessedTraitDto processedTraitDto : processedTraitDtos) {
-                    ProductOptionTrait productOptionTrait = processedTraitDto.getProductOptionTrait();
-                    optionTraitResponses.add(
-                            OptionTraitResponseDto
-                                    .builder()
-                                    .productOptionTraitId(productOptionTrait.getId())
-                                    .baseCalories(productOptionTrait.getExtraCalories())
-                                    .basePrice(productOptionTrait.getExtraPrice())
-                                    .currentValue(processedTraitDto.getCurrentValue())
-                                    .labelCode(productOptionTrait.getOptionTrait().getLabelCode())
-                                    .defaultSelection(productOptionTrait.getDefaultSelection())
-                                    .optionTraitName(productOptionTrait.getOptionTrait().getName())
-                                    .optionTraitType(productOptionTrait.getOptionTrait().getOptionTraitType())
-                                    .traitTotalPrice(processedTraitDto.getCalculatedTraitPrice())
-                                    .build()
-                    );
-                }
-                optionResponses.add(
-                        OptionResponseDto
-                                .builder()
-                                .productOptionId(productOption.getId())
-                                .baseCalories(productOption.getOption().getCalories())
-                                .basePrice(productOption.getExtraPrice())
-                                .countType(productOption.getCountType())
-                                .defaultQuantity(productOption.getDefaultQuantity())
-                                .imageSource(productOption.getOption().getImageSource())
-                                .isDefault(productOption.getIsDefault())
-                                .isSelected(processedOptionDto.getIsSelected())
-                                .maxQuantity(productOption.getMaxQuantity())
-                                .measureType(productOption.getMeasureType())
-                                .optionName(productOption.getOption().getName())
-                                .optionQuantity(processedOptionDto.getQuantity())
-                                .optionTotalPrice(processedOptionDto.getCalculatedOptionPrice())
-                                .optionTraitResponses(optionTraitResponses)
-                                .orderIndex(productOption.getOrderIndex())
-                                .quantityDetailResponse(quantityDetailResponse)
-                                .build()
-                );
-            }
-            customRuleResponses.add(
-                    CustomRuleResponseDto
-                            .builder()
-                            .customRuleId(customRule.getId())
-                            .optionResponses(optionResponses)
-                            .customRuleName(customRule.getName())
-                            .customRuleTotalPrice(customRuleTotalPrice)
-                            .customRuleType(customRule.getCustomRuleType())
-                            .maxSelection(customRule.getMaxSelection())
-                            .minSelection(customRule.getMinSelection())
-                            .orderIndex(customRule.getOrderIndex())
-                            .build()
-            );
-        }
-        ProductResponseDto productResponse = ProductResponseDto
-                .builder()
-                .customRuleResponses(customRuleResponses)
-                .basePrice(product.getPrice())
-                .productId(product.getId())
-                .productName(product.getName())
-                .briefInfo(product.getBriefInfo())
-                .calories(product.getCalories())
-                .productExtraPrice(processedProductDto.getCalculatedExtraPrice())
-                .productTotalPrice(processedProductDto.getCalculatedProductPrice())
-                .productType(product.getProductType())
-                .imageSource(product.getImageSource())
-                .quantity(processedProductDto.getQuantity())
-                .build();
-
-        return productResponse;
-    }
-    public CartResponseDto toCartResponseDto(
-            ProcessedCartDto processedCartDto
-    ) {
-        List<ProcessedProductDto> processedProductDtos = processedCartDto.getProcessedProductDtos();
-        BigDecimal cartTotalPrice = processedCartDto.getTotalPrice();
-
-        List<ProductResponseDto> productResponses = processedProductDtos.stream()
-                .map(this::toProductResponse)
-                .toList();
-        return new CartResponseDto(
-                productResponses,
-                cartTotalPrice
-        );
-    }
 }

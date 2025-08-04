@@ -1,6 +1,7 @@
 package com.whattheburger.backend.domain;
 import com.whattheburger.backend.domain.enums.CountType;
 import com.whattheburger.backend.domain.enums.MeasureType;
+import com.whattheburger.backend.domain.order.OrderProductOption;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -40,9 +41,6 @@ public class ProductOption {
 
     @OneToMany(mappedBy = "productOption")
     private List<ProductOptionTrait> productOptionTraits = new ArrayList<>();
-
-    @OneToMany(mappedBy = "productOption")
-    private List<OrderProductOption> orderProductOptions = new ArrayList<>();
 
     @ManyToOne
     @JoinColumn(name = "custom_rule_id")

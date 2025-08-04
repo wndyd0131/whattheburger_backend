@@ -1,5 +1,6 @@
 package com.whattheburger.backend.domain;
 import com.whattheburger.backend.domain.enums.ProductType;
+import com.whattheburger.backend.domain.order.OrderProduct;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -27,9 +28,6 @@ public class Product {
 
     @OneToMany(mappedBy = "product")
     private List<ProductOption> productOptions = new ArrayList<>();
-
-    @OneToMany(mappedBy = "product")
-    private List<OrderProduct> orderProducts = new ArrayList<>();
 
     @OneToMany(mappedBy = "product")
     private List<CategoryProduct> categoryProducts = new ArrayList<>();
