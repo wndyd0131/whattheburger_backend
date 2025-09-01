@@ -4,7 +4,7 @@ import com.whattheburger.backend.domain.cart.exception.TraitCalcStrategyNotSuppo
 import com.whattheburger.backend.domain.cart.strategy.BinaryStrategy;
 import com.whattheburger.backend.domain.cart.strategy.TraitCalcStrategyResolver;
 import com.whattheburger.backend.domain.enums.OptionTraitType;
-import com.whattheburger.backend.service.dto.cart.calculator.TraitCalcDetail;
+import com.whattheburger.backend.service.dto.cart.calculator.TraitCalculatorDto;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,15 +30,15 @@ public class TraitCalculatorTest {
 
         BinaryStrategy mockStrategy = new BinaryStrategy();
 
-        List<TraitCalcDetail> traitCalcDetails = List.of(
-                new TraitCalcDetail(
+        List<TraitCalculatorDto> traitCalculatorDtos = List.of(
+                new TraitCalculatorDto(
                         1L,
                         BigDecimal.valueOf(1.99),
                         0,
                         1,
                         OptionTraitType.BINARY
                 ),
-                new TraitCalcDetail(
+                new TraitCalculatorDto(
                         1L,
                         BigDecimal.valueOf(3.99),
                         0,
@@ -46,22 +46,22 @@ public class TraitCalculatorTest {
                         OptionTraitType.BINARY
                 )
         );
-        when(strategyResolver.resolve(any(TraitCalcDetail.class))).thenReturn(mockStrategy);
-        BigDecimal totalPrice = traitCalculator.calculateTotalPrice(traitCalcDetails);
+        when(strategyResolver.resolve(any(TraitCalculatorDto.class))).thenReturn(mockStrategy);
+        BigDecimal totalPrice = traitCalculator.calculateTotalPrice(traitCalculatorDtos);
         Assertions.assertEquals(BigDecimal.valueOf(5.98), totalPrice);
     }
 
     @Test
     public void givenValidTraitDetails_whenOptionTypeIsNotSupported_thenThrowException() {
-        List<TraitCalcDetail> traitCalcDetails = List.of(
-                new TraitCalcDetail(
+        List<TraitCalculatorDto> traitCalculatorDtos = List.of(
+                new TraitCalculatorDto(
                         1L,
                         BigDecimal.valueOf(1.99),
                         0,
                         1,
                         null
                 ),
-                new TraitCalcDetail(
+                new TraitCalculatorDto(
                         1L,
                         BigDecimal.valueOf(3.99),
                         0,
@@ -69,11 +69,11 @@ public class TraitCalculatorTest {
                         null
                 )
         );
-        when(strategyResolver.resolve(any(TraitCalcDetail.class))).thenThrow(new TraitCalcStrategyNotSupportedException());
+        when(strategyResolver.resolve(any(TraitCalculatorDto.class))).thenThrow(new TraitCalcStrategyNotSupportedException());
 
         Assertions.assertThrows(
                 TraitCalcStrategyNotSupportedException.class,
-                () -> traitCalculator.calculateTotalPrice(traitCalcDetails)
+                () -> traitCalculator.calculateTotalPrice(traitCalculatorDtos)
         );
     }
 

@@ -2,30 +2,37 @@ package com.whattheburger.backend.controller.dto_mapper;
 
 import com.whattheburger.backend.controller.dto.order.*;
 import com.whattheburger.backend.controller.dto.order.QuantityDetail;
-import com.whattheburger.backend.domain.enums.CountType;
-import com.whattheburger.backend.domain.enums.OptionTraitType;
-import com.whattheburger.backend.domain.enums.ProductType;
+import com.whattheburger.backend.domain.enums.*;
 import com.whattheburger.backend.domain.order.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 
 @Component
 @Slf4j
 public class OrderResponseDtoMapper {
-    public OrderPreviewResponseDto toOrderResponseDto(Order order) {
-        OrderPreviewResponseDto orderPreviewResponseDto = OrderPreviewResponseDto
+    public OrderResponseDto toOrderResponseDto(Order order) {
+        OrderResponseDto orderResponseDto = OrderResponseDto
                 .builder()
                 .id(order.getId())
-                .orderType(order.getOrderType())
-                .taxAmount(order.getTaxAmount())
+                .orderNumber(order.getOrderNumber())
                 .totalPrice(order.getTotalPrice())
+                .orderStatus(order.getOrderStatus())
+                .orderType(order.getOrderType())
+                .paymentStatus(order.getPaymentStatus())
+                .paymentMethod(order.getPaymentMethod())
+                .orderNote(order.getOrderNote())
+                .discountType(order.getDiscountType())
+                .taxAmount(order.getTaxAmount())
+                .guestInfo(order.getGuestInfo())
                 .productResponseDtos(order.getOrderProducts().stream()
                         .map(this::toProductResponseDto).toList())
                 .build();
-        return orderPreviewResponseDto;
+        return orderResponseDto;
     }
 
     private ProductResponseDto toProductResponseDto(OrderProduct orderProduct) {
@@ -36,8 +43,10 @@ public class OrderResponseDtoMapper {
                 .productId(orderProduct.getProductId())
                 .quantity(orderProduct.getQuantity())
                 .name(orderProduct.getName())
-                .calculatedPrice(orderProduct.getCalculatedPrice())
-                .calculatedCalories(orderProduct.getCalculatedCalories())
+                .totalPrice(orderProduct.getTotalPrice())
+                .extraPrice(orderProduct.getExtraPrice())
+                .basePrice(orderProduct.getBasePrice())
+                .calculatedCalories(orderProduct.getTotalCalories())
                 .imageSource(orderProduct.getImageSource())
                 .productType(orderProduct.getProductType())
                 .customRuleResponseDtos(orderProduct.getOrderCustomRules().stream()
@@ -52,7 +61,7 @@ public class OrderResponseDtoMapper {
                 .id(orderCustomRule.getId())
                 .customRuleId(orderCustomRule.getCustomRuleId())
                 .name(orderCustomRule.getName())
-                .calculatedPrice(orderCustomRule.getCalculatedPrice())
+                .calculatedPrice(orderCustomRule.getTotalPrice())
                 .optionResponseDtos(orderCustomRule.getOrderProductOptions().stream()
                         .map(this::toOptionResponseDto).toList())
                 .build();
@@ -72,8 +81,9 @@ public class OrderResponseDtoMapper {
                 .name(orderProductOption.getName())
                 .productOptionId(orderProductOption.getProductOptionId())
                 .countType(orderProductOption.getCountType())
-                .calculatedPrice(orderProductOption.getCalculatedPrice())
-                .calculatedCalories(orderProductOption.getCalculatedCalories())
+                .calculatedPrice(orderProductOption.getTotalPrice())
+                .basePrice(orderProductOption.getBasePrice())
+                .calculatedCalories(orderProductOption.getTotalCalories())
                 .quantity(orderProductOption.getQuantity())
                 .quantityDetail(quantityDetailResponse)
                 .traitResponseDtos(orderProductOption.getOrderProductOptionTraits().stream()
@@ -88,7 +98,8 @@ public class OrderResponseDtoMapper {
                 .name(orderProductOptionTrait.getName())
                 .productOptionTraitId(orderProductOptionTrait.getProductOptionTraitId())
                 .labelCode(orderProductOptionTrait.getLabelCode())
-                .calculatedPrice(orderProductOptionTrait.getCalculatedPrice())
+                .calculatedPrice(orderProductOptionTrait.getTotalPrice())
+                .basePrice(orderProductOptionTrait.getBasePrice())
                 .calculatedCalories(orderProductOptionTrait.getCalculatedCalories())
                 .optionTraitType(orderProductOptionTrait.getOptionTraitType())
                 .selectedValue(orderProductOptionTrait.getSelectedValue())

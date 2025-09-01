@@ -9,23 +9,23 @@ import java.util.List;
 public class MockCalculatorDtoFactory {
 
     public static CalculatorDto createMockCalculatorDto() {
-        ProductCalcDetail productCalcDetail1 = ProductCalcDetail
+        ProductCalculatorDto productCalculatorDto1 = ProductCalculatorDto
                 .builder()
                 .basePrice(new BigDecimal("5.49"))
                 .quantity(3)
-                .customRuleCalcDetails(
+                .customRuleCalculatorDtos(
                         List.of(
-                                CustomRuleCalcDetail
+                                CustomRuleCalculatorDto
                                         .builder()
                                         .customRuleId(1L)
-                                        .optionCalcDetails(
+                                        .optionCalculatorDtos(
                                                 List.of(
-                                                        OptionCalcDetail // Large bun
+                                                        OptionCalculatorDto // Large bun
                                                                 .builder()
                                                                 .isSelected(true)
-                                                                .traitCalcDetails(
+                                                                .traitCalculatorDtos(
                                                                         List.of(
-                                                                                TraitCalcDetail
+                                                                                TraitCalculatorDto
                                                                                         .builder()
                                                                                         .optionTraitType(OptionTraitType.BINARY)
                                                                                         .defaultSelection(0)
@@ -34,18 +34,18 @@ public class MockCalculatorDtoFactory {
                                                                                         .build()
                                                                         )
                                                                 )
-                                                                .quantityCalcDetail(null)
+                                                                .quantityCalculatorDto(null)
                                                                 .quantity(1)
                                                                 .price(BigDecimal.ZERO)
                                                                 .defaultQuantity(1)
                                                                 .isDefault(true)
                                                                 .build(),
-                                                        OptionCalcDetail // Small bun
+                                                        OptionCalculatorDto // Small bun
                                                                 .builder()
                                                                 .isSelected(false)
-                                                                .traitCalcDetails(
+                                                                .traitCalculatorDtos(
                                                                         List.of(
-                                                                                TraitCalcDetail
+                                                                                TraitCalculatorDto
                                                                                         .builder()
                                                                                         .optionTraitType(OptionTraitType.BINARY)
                                                                                         .defaultSelection(0)
@@ -54,92 +54,92 @@ public class MockCalculatorDtoFactory {
                                                                                         .build()
                                                                         )
                                                                 )
-                                                                .quantityCalcDetail(null)
+                                                                .quantityCalculatorDto(null)
                                                                 .quantity(1) // fake
                                                                 .price(BigDecimal.ZERO)
                                                                 .defaultQuantity(1)
                                                                 .isDefault(false)
                                                                 .build(),
-                                                        OptionCalcDetail // Texas Toast
+                                                        OptionCalculatorDto // Texas Toast
                                                                 .builder()
                                                                 .isSelected(false)
-                                                                .traitCalcDetails(
+                                                                .traitCalculatorDtos(
                                                                         List.of()
                                                                 )
-                                                                .quantityCalcDetail(null)
+                                                                .quantityCalculatorDto(null)
                                                                 .quantity(0)
                                                                 .price(BigDecimal.ZERO)
                                                                 .defaultQuantity(1)
                                                                 .isDefault(false)
                                                                 .build(),
-                                                        OptionCalcDetail // Beef
+                                                        OptionCalculatorDto // Beef
                                                                 .builder()
                                                                 .isSelected(true)
-                                                                .traitCalcDetails(
+                                                                .traitCalculatorDtos(
                                                                         List.of()
                                                                 )
-                                                                .quantityCalcDetail(null)
+                                                                .quantityCalculatorDto(null)
                                                                 .quantity(3)
                                                                 .price(BigDecimal.valueOf(2))
                                                                 .defaultQuantity(1)
                                                                 .isDefault(true)
                                                                 .build(),
-                                                        OptionCalcDetail // American Cheese
+                                                        OptionCalculatorDto // American Cheese
                                                                 .builder()
                                                                 .isSelected(false)
-                                                                .traitCalcDetails(
+                                                                .traitCalculatorDtos(
                                                                         List.of()
                                                                 )
-                                                                .quantityCalcDetail(null)
+                                                                .quantityCalculatorDto(null)
                                                                 .quantity(0)
                                                                 .price(new BigDecimal("0.6"))
                                                                 .defaultQuantity(1)
                                                                 .isDefault(false)
                                                                 .build(),
-                                                        OptionCalcDetail // Jack Cheese
+                                                        OptionCalculatorDto // Jack Cheese
                                                                 .builder()
                                                                 .isSelected(true)
-                                                                .traitCalcDetails(
+                                                                .traitCalculatorDtos(
                                                                         List.of()
                                                                 )
-                                                                .quantityCalcDetail(null)
+                                                                .quantityCalculatorDto(null)
                                                                 .quantity(4)
                                                                 .price(new BigDecimal("0.6"))
                                                                 .defaultQuantity(1)
                                                                 .isDefault(false)
                                                                 .build(),
-                                                        OptionCalcDetail // Bacon Slices
+                                                        OptionCalculatorDto // Bacon Slices
                                                                 .builder()
                                                                 .isSelected(true)
-                                                                .traitCalcDetails(
+                                                                .traitCalculatorDtos(
                                                                         List.of()
                                                                 )
-                                                                .quantityCalcDetail(null)
+                                                                .quantityCalculatorDto(null)
                                                                 .quantity(5)
                                                                 .price(new BigDecimal("0.5"))
                                                                 .defaultQuantity(1)
                                                                 .isDefault(false)
                                                                 .build(),
-                                                        OptionCalcDetail // Avocado
+                                                        OptionCalculatorDto // Avocado
                                                                 .builder()
                                                                 .isSelected(false)
-                                                                .traitCalcDetails(
+                                                                .traitCalculatorDtos(
                                                                         List.of()
                                                                 )
-                                                                .quantityCalcDetail(null)
+                                                                .quantityCalculatorDto(null)
                                                                 .quantity(4) // fake
                                                                 .price(new BigDecimal("1.3"))
                                                                 .defaultQuantity(1)
                                                                 .isDefault(false)
                                                                 .build(),
-                                                        OptionCalcDetail // Tomato
+                                                        OptionCalculatorDto // Tomato
                                                                 .builder()
                                                                 .isSelected(true)
-                                                                .traitCalcDetails(
+                                                                .traitCalculatorDtos(
                                                                         List.of()
                                                                 )
-                                                                .quantityCalcDetail(
-                                                                        QuantityCalcDetail
+                                                                .quantityCalculatorDto(
+                                                                        QuantityCalculatorDto
                                                                                 .builder()
                                                                                 .price(BigDecimal.ZERO)
                                                                                 .requestedId(1L)
@@ -151,14 +151,14 @@ public class MockCalculatorDtoFactory {
                                                                 .defaultQuantity(1)
                                                                 .isDefault(true)
                                                                 .build(),
-                                                        OptionCalcDetail // Pickle
+                                                        OptionCalculatorDto // Pickle
                                                                 .builder()
                                                                 .isSelected(true)
-                                                                .traitCalcDetails(
+                                                                .traitCalculatorDtos(
                                                                         List.of()
                                                                 )
-                                                                .quantityCalcDetail(
-                                                                        QuantityCalcDetail
+                                                                .quantityCalculatorDto(
+                                                                        QuantityCalculatorDto
                                                                                 .builder()
                                                                                 .price(BigDecimal.ZERO)
                                                                                 .requestedId(1L)
@@ -170,14 +170,14 @@ public class MockCalculatorDtoFactory {
                                                                 .defaultQuantity(1)
                                                                 .isDefault(true)
                                                                 .build(),
-                                                        OptionCalcDetail // Mustard
+                                                        OptionCalculatorDto // Mustard
                                                                 .builder()
                                                                 .isSelected(true)
-                                                                .traitCalcDetails(
+                                                                .traitCalculatorDtos(
                                                                         List.of()
                                                                 )
-                                                                .quantityCalcDetail(
-                                                                        QuantityCalcDetail
+                                                                .quantityCalculatorDto(
+                                                                        QuantityCalculatorDto
                                                                                 .builder()
                                                                                 .price(BigDecimal.ZERO)
                                                                                 .requestedId(1L)
@@ -189,14 +189,14 @@ public class MockCalculatorDtoFactory {
                                                                 .defaultQuantity(1)
                                                                 .isDefault(true)
                                                                 .build(),
-                                                        OptionCalcDetail // Creamy Pepper Sauce
+                                                        OptionCalculatorDto // Creamy Pepper Sauce
                                                                 .builder()
                                                                 .isSelected(true)
-                                                                .traitCalcDetails(
+                                                                .traitCalculatorDtos(
                                                                         List.of()
                                                                 )
-                                                                .quantityCalcDetail(
-                                                                        QuantityCalcDetail
+                                                                .quantityCalculatorDto(
+                                                                        QuantityCalculatorDto
                                                                                 .builder()
                                                                                 .price(BigDecimal.valueOf(1))
                                                                                 .requestedId(2L)
@@ -217,31 +217,31 @@ public class MockCalculatorDtoFactory {
 
         return new CalculatorDto(
                 List.of(
-                        productCalcDetail1,
-                        productCalcDetail1
+                        productCalculatorDto1,
+                        productCalculatorDto1
                 )
         );
     }
 
-    public static List<ProductCalcDetail> createMockProductCalcDetails() {
-        ProductCalcDetail productCalcDetail1 = ProductCalcDetail
+    public static List<ProductCalculatorDto> createMockProductCalcDetails() {
+        ProductCalculatorDto productCalculatorDto1 = ProductCalculatorDto
                 .builder()
                 .basePrice(BigDecimal.valueOf(5.49))
-                .customRuleCalcDetails(List.of())
+                .customRuleCalculatorDtos(List.of())
                 .customRuleTotalPrice(BigDecimal.valueOf(2.99))
                 .quantity(3)
                 .build(); // 25.44
-        ProductCalcDetail productCalcDetail2 = ProductCalcDetail
+        ProductCalculatorDto productCalculatorDto2 = ProductCalculatorDto
                 .builder()
                 .basePrice(BigDecimal.valueOf(9.99))
-                .customRuleCalcDetails(List.of())
+                .customRuleCalculatorDtos(List.of())
                 .customRuleTotalPrice(BigDecimal.valueOf(5.64))
                 .quantity(2) // 31.26
                 .build();
         // total: $56.70
         return List.of(
-                productCalcDetail1,
-                productCalcDetail2
+                productCalculatorDto1,
+                productCalculatorDto2
         );
     }
 

@@ -46,6 +46,10 @@ dependencies {
 	/* AWS */
 	implementation 'com.amazonaws:aws-java-sdk-s3:1.12.260'
 
+	/* STRIPE */
+	implementation 'com.stripe:stripe-java:29.0.0'
+
+
 	testImplementation 'com.h2database:h2'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'

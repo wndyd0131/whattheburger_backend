@@ -1,5 +1,6 @@
 package com.whattheburger.backend.controller.dto.order;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.whattheburger.backend.domain.enums.CountType;
 import com.whattheburger.backend.domain.enums.ProductType;
 import com.whattheburger.backend.domain.order.QuantityDetail;
@@ -25,9 +26,12 @@ public class ProductResponseDto {
     private Integer quantity;
 //    private String forWhom;
     private String name;
-    private BigDecimal calculatedPrice;
+    private BigDecimal totalPrice;
+    private BigDecimal extraPrice;
+    private BigDecimal basePrice;
     private String imageSource;
     private Double calculatedCalories;
     private ProductType productType;
+    @JsonProperty("customRuleResponses")
     List<CustomRuleResponseDto> customRuleResponseDtos;
 }

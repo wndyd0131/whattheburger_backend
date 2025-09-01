@@ -1,5 +1,6 @@
 package com.whattheburger.backend.controller.dto.order;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.whattheburger.backend.domain.enums.CountType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
@@ -21,8 +22,10 @@ public class OptionResponseDto {
     private String name;
     private CountType countType;
     private BigDecimal calculatedPrice;
+    private BigDecimal basePrice;
     private Double calculatedCalories;
     private Integer quantity;
     private QuantityDetail quantityDetail;
+    @JsonProperty("traitResponses")
     private List<TraitResponseDto> traitResponseDtos;
 }

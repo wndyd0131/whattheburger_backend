@@ -24,7 +24,9 @@ public class OrderProductOptionTrait {
     private String name;
     private String labelCode;
     @Column(precision = 10, scale = 2)
-    private BigDecimal calculatedPrice;
+    private BigDecimal totalPrice;
+    @Column(precision = 10, scale = 2)
+    private BigDecimal basePrice;
     private Double calculatedCalories;
     @Enumerated(EnumType.STRING)
     private OptionTraitType optionTraitType;

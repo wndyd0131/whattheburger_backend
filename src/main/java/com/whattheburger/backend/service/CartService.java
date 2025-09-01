@@ -12,8 +12,8 @@ import com.whattheburger.backend.service.dto.cart.ProcessedCartDto;
 import com.whattheburger.backend.service.dto.cart.ProcessedProductDto;
 import com.whattheburger.backend.service.dto.cart.calculator.CalculatedCartDto;
 import com.whattheburger.backend.service.dto.cart.ValidatedCartDto;
-import com.whattheburger.backend.service.dto.cart.calculator.ProductCalcDetail;
-import com.whattheburger.backend.service.exception.ResourceNotFoundException;
+import com.whattheburger.backend.service.dto.cart.calculator.ProductCalculationDetail;
+import com.whattheburger.backend.service.dto.cart.calculator.ProductCalculatorDto;
 import com.whattheburger.backend.service.exception.cart.InvalidCartIndexException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -85,7 +85,7 @@ public class CartService {
                 quantityMap
         );
 
-        CalculatedCartDto calculatedCartDto = cartCalculator.calculate(
+        CalculatedCartDto calculatedCartDto = cartCalculator.calculateTotalPrice(
                 carts,
                 productMap,
                 customRuleMap,
@@ -93,6 +93,8 @@ public class CartService {
                 productOptionTraitMap,
                 quantityMap
         );
+
+        log.info("Cart Total {}", calculatedCartDto.getCartCalculationResult().getCartTotalPrice());
 
         ProcessedCartDto processedCartDto = cartDtoMapper.toProcessedCartDto(validatedCartDtos, calculatedCartDto);
 
@@ -146,9 +148,9 @@ public class CartService {
             Cart cart = carts.get(cartIdx);
 
             ValidatedCartDto validatedCartDto = cartValidator.validate(cart, productMap, customRuleMap, productOptionMap, productOptionTraitMap, quantityMap);
-            ProductCalcDetail productCalcDetail = cartCalculator.calculate(cart, productMap, customRuleMap, productOptionMap, productOptionTraitMap, quantityMap);
+            ProductCalculationDetail productCalculationDetail = cartCalculator.calculateProductPrice(cart, productMap, customRuleMap, productOptionMap, productOptionTraitMap, quantityMap);
 
-            ProcessedProductDto processedProductDto = cartDtoMapper.toProcessedProductDto(validatedCartDto, productCalcDetail);
+            ProcessedProductDto processedProductDto = cartDtoMapper.toProcessedProductDto(validatedCartDto, productCalculationDetail);
 
             return processedProductDto;
         }

@@ -18,6 +18,7 @@ public class TraitResponseDto {
     private String name;
     private String labelCode;
     private BigDecimal calculatedPrice;
+    private BigDecimal basePrice;
     private Double calculatedCalories;
     private OptionTraitType optionTraitType;
     private Integer selectedValue;

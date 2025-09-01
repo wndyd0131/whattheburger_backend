@@ -27,9 +27,13 @@ public class OrderProduct {
     private String forWhom;
     private String name;
     @Column(precision = 10, scale = 2)
-    private BigDecimal calculatedPrice;
+    private BigDecimal totalPrice;
+    @Column(precision = 10, scale = 2)
+    private BigDecimal extraPrice;
+    @Column(precision = 10, scale = 2)
+    private BigDecimal basePrice;
     private String imageSource;
-    private Double calculatedCalories;
+    private Double totalCalories;
     @Enumerated(EnumType.STRING)
     private ProductType productType;
 

@@ -12,14 +12,13 @@ import java.util.List;
 @NoArgsConstructor
 @Data
 @Builder
-public class OptionCalcDetail {
+public class OptionCalculatorDto {
     private Long productOptionId;
     private BigDecimal price;
     private Integer quantity;
     private Boolean isSelected;
     private Boolean isDefault;
     private Integer defaultQuantity;
-    private QuantityCalcDetail quantityCalcDetail;
-    private List<TraitCalcDetail> traitCalcDetails;
-    private BigDecimal traitTotalPrice;
+    private QuantityCalculatorDto quantityCalculatorDto;
+    private TraitCalculationResult traitCalculationResult;
 }

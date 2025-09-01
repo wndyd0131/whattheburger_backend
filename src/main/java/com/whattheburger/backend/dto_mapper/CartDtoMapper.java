@@ -1,8 +1,5 @@
 package com.whattheburger.backend.dto_mapper;
 
-import com.whattheburger.backend.controller.dto.cart.*;
-import com.whattheburger.backend.controller.dto.cart.QuantityDetail;
-import com.whattheburger.backend.domain.*;
 import com.whattheburger.backend.service.dto.cart.*;
 import com.whattheburger.backend.service.dto.cart.calculator.*;
 import lombok.RequiredArgsConstructor;
@@ -126,71 +123,76 @@ public class CartDtoMapper {
 
     public ProcessedProductDto toProcessedProductDto(
             ValidatedCartDto validatedCartDto,
-            ProductCalcDetail productCalcDetail
+            ProductCalculationDetail productCalculationDetail
     ) {
         ValidatedProduct validatedProduct = validatedCartDto.getValidatedProduct();
-        if (!(validatedProduct.getProduct().getId().equals(productCalcDetail.getProductId())))
+        if (!(validatedProduct.getProduct().getId().equals(productCalculationDetail.getProductId())))
             throw new IllegalStateException("validated cart and calculated cart are different in id");
         List<ValidatedCustomRule> validatedCustomRules = validatedCartDto.getValidatedCustomRules();
-        List<CustomRuleCalcDetail> customRuleCalcDetails = productCalcDetail.getCustomRuleCalcDetails();
-        if (validatedCustomRules.size() != customRuleCalcDetails.size())
+        List<CustomRuleCalculationDetail> customRuleCalculationDetails = productCalculationDetail.getCustomRuleCalculationDetails();
+        log.info("customRuleDetails size {}", customRuleCalculationDetails.size());
+        if (validatedCustomRules.size() != customRuleCalculationDetails.size())
             throw new IllegalStateException("validated cart and calculated cart are different in length");
         List<ProcessedCustomRuleDto> processedCustomRuleDtos = new ArrayList<>();
         for (int j = 0; j < validatedCustomRules.size(); j++) {
             ValidatedCustomRule validatedCustomRule = validatedCustomRules.get(j);
-            CustomRuleCalcDetail customRuleCalcDetail = customRuleCalcDetails.get(j);
-            if (!(validatedCustomRule.getCustomRule().getId().equals(customRuleCalcDetail.getCustomRuleId())))
+            CustomRuleCalculationDetail customRuleCalculationDetail = customRuleCalculationDetails.get(j);
+            if (!(validatedCustomRule.getCustomRule().getId().equals(customRuleCalculationDetail.getCustomRuleId())))
                 throw new IllegalStateException("validated cart and calculated cart are different in id");
 
             List<ValidatedOption> validatedOptions = validatedCustomRule.getValidatedOptions();
-            List<OptionCalcDetail> optionCalcDetails = customRuleCalcDetail.getOptionCalcDetails();
-            if (validatedOptions.size() != optionCalcDetails.size())
+            List<OptionCalculationDetail> optionCalculationDetails = customRuleCalculationDetail.getOptionCalculationDetails();
+            log.info("optionDetails size {}", optionCalculationDetails.size());
+            if (validatedOptions.size() != optionCalculationDetails.size())
                 throw new IllegalStateException("validated cart and calculated cart are different in length");
             List<ProcessedOptionDto> processedOptionDtos = new ArrayList<>();
             for (int k = 0; k < validatedOptions.size(); k++) {
                 ValidatedOption validatedOption = validatedOptions.get(k);
-                OptionCalcDetail optionCalcDetail = optionCalcDetails.get(k);
-                if (!(validatedOption.getProductOption().getId().equals(optionCalcDetail.getProductOptionId())))
+                OptionCalculationDetail optionCalculationDetail = optionCalculationDetails.get(k);
+                if (!(validatedOption.getProductOption().getId().equals(optionCalculationDetail.getProductOptionId())))
                     throw new IllegalStateException("validated cart and calculated cart are different in id");
 
                 ProcessedQuantityDto processedQuantityDto = Optional.ofNullable(validatedOption.getValidatedQuantity())
                         .map(validatedQuantity ->
-                                Optional.ofNullable(optionCalcDetail.getQuantityCalcDetail())
+                                Optional.ofNullable(optionCalculationDetail.getQuantityCalculationDetail())
                                         .map(quantityCalcDetail -> {
-                                            if (!(validatedQuantity.getSelectedQuantity().getId().equals(quantityCalcDetail.getRequestedId())))
-                                                throw new IllegalStateException("validated quantity and calculated quantity have different ids [" + validatedQuantity.getSelectedQuantity().getId() + "]" + "vs." + "[" + quantityCalcDetail.getRequestedId() + "]");
+                                            if (!(validatedQuantity.getSelectedQuantity().getId().equals(quantityCalcDetail.getProductOptionOptionQuantityId())))
+                                                throw new IllegalStateException("validated quantity and calculated quantity have different ids [" + validatedQuantity.getSelectedQuantity().getId() + "]" + "vs." + "[" + quantityCalcDetail.getProductOptionOptionQuantityId() + "]");
                                             return new ProcessedQuantityDto(
                                                     validatedQuantity.getProductOptionOptionQuantities(),
                                                     validatedQuantity.getSelectedQuantity()
                                             );
                                         })
                                         .orElseGet(() -> {
-                                            if (optionCalcDetail.getQuantityCalcDetail() == null)
+                                            if (optionCalculationDetail.getQuantityCalculationDetail() == null)
                                                 return null;
                                             throw new IllegalStateException("validated cart and calculated cart are different in id");
                                         })
                         )
                         .orElseGet(() -> {
-                            if (optionCalcDetail.getQuantityCalcDetail() == null)
+                            if (optionCalculationDetail.getQuantityCalculationDetail() == null)
                                 return null;
                             throw new IllegalStateException("validated cart and calculated cart are different in id");
                         });
 
                 List<ValidatedTrait> validatedTraits = validatedOption.getValidatedTraits();
-                List<TraitCalcDetail> traitCalcDetails = optionCalcDetail.getTraitCalcDetails();
-                if (validatedTraits.size() != traitCalcDetails.size())
-                    throw new IllegalStateException("validated cart and calculated cart are different in length");
+                List<TraitCalculationDetail> traitCalculationDetails = optionCalculationDetail.getTraitCalculationDetails();
+                log.info("traitDetails size {}", traitCalculationDetails.size());
+                if (validatedTraits.size() != traitCalculationDetails.size()) {
+                    log.info(validatedOption.getProductOption().getOption().getName());
+                    throw new IllegalStateException("validated cart and calculated cart are different in length" + "(" + validatedTraits.size() + "," + traitCalculationDetails.size() + ")");
+                }
                 List<ProcessedTraitDto> processedTraitDtos = new ArrayList<>();
                 for (int l = 0; l < validatedTraits.size(); l++) {
                     ValidatedTrait validatedTrait = validatedTraits.get(l);
-                    TraitCalcDetail traitCalcDetail = traitCalcDetails.get(l);
-                    if (!(validatedTrait.getProductOptionTrait().getId().equals(traitCalcDetail.getProductOptionTraitId())))
+                    TraitCalculationDetail traitCalculationDetail = traitCalculationDetails.get(l);
+                    if (!(validatedTrait.getProductOptionTrait().getId().equals(traitCalculationDetail.getProductOptionTraitId())))
                         throw new IllegalStateException("validated cart and calculated cart are different in id");
 
                     ProcessedTraitDto processedTraitDto = new ProcessedTraitDto(
                             validatedTrait.getProductOptionTrait(),
                             validatedTrait.getCurrentValue(),
-                            traitCalcDetail.getPrice()
+                            traitCalculationDetail.getCalculatedTraitPrice()
                     );
                     processedTraitDtos.add(processedTraitDto);
                 }
@@ -200,14 +202,14 @@ public class CartDtoMapper {
                         validatedOption.getIsSelected(),
                         processedQuantityDto,
                         processedTraitDtos,
-                        optionCalcDetail.getTraitTotalPrice()
+                        optionCalculationDetail.getCalculatedOptionPrice()
                 );
                 processedOptionDtos.add(processedOptionDto);
             }
             ProcessedCustomRuleDto processedCustomRuleDto = new ProcessedCustomRuleDto(
                     validatedCustomRule.getCustomRule(),
                     processedOptionDtos,
-                    customRuleCalcDetail.getOptionTotalPrice()
+                    customRuleCalculationDetail.getCalculatedCustomRulePrice()
             );
             processedCustomRuleDtos.add(processedCustomRuleDto);
         }
@@ -215,8 +217,8 @@ public class CartDtoMapper {
                 validatedProduct.getProduct(),
                 validatedProduct.getQuantity(),
                 processedCustomRuleDtos,
-                productCalcDetail.getCalculatedProductPrice(),
-                productCalcDetail.getCustomRuleTotalPrice()
+                productCalculationDetail.getCalculatedTotalPrice(),
+                productCalculationDetail.getCalculatedExtraPrice()
         );
         return processedProductDto;
     }
@@ -225,17 +227,17 @@ public class CartDtoMapper {
             List<ValidatedCartDto> validatedCartDtos,
             CalculatedCartDto calculatedCartDto
     ) {
-        List<ProductCalcDetail> productCalcDetails = calculatedCartDto.getProductCalcDetails();
-        BigDecimal cartTotalPrice = calculatedCartDto.getTotalPrice();
+        List<ProductCalculationDetail> productCalculationDetails = calculatedCartDto.getCartCalculationResult().getProductCalculationDetails();
+        BigDecimal cartTotalPrice = calculatedCartDto.getCartCalculationResult().getCartTotalPrice();
 
-        if (validatedCartDtos.size() != productCalcDetails.size())
+        if (validatedCartDtos.size() != productCalculationDetails.size())
             throw new IllegalStateException("validated cart and calculated cart are different in length");
         List<ProcessedProductDto> processedProductDtos = new ArrayList<>();
         for (int i = 0; i < validatedCartDtos.size(); i++) {
             ValidatedCartDto validatedCartDto = validatedCartDtos.get(i);
-            ProductCalcDetail productCalcDetail = productCalcDetails.get(i);
+            ProductCalculationDetail productCalculationDetail = productCalculationDetails.get(i);
 
-            ProcessedProductDto processedProductDto = toProcessedProductDto(validatedCartDto, productCalcDetail);
+            ProcessedProductDto processedProductDto = toProcessedProductDto(validatedCartDto, productCalculationDetail);
 
             processedProductDtos.add(processedProductDto);
         }

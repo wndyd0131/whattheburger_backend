@@ -13,6 +13,5 @@ import java.util.List;
 @Data
 @Builder
 public class CalculatedCartDto {
-    private List<ProductCalcDetail> productCalcDetails;
-    private BigDecimal totalPrice;
+    private CartCalculationResult cartCalculationResult;
 }

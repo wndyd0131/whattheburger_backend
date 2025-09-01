@@ -12,5 +12,5 @@ import java.util.List;
 @Data
 @Builder
 public class CalculatorDto {
-    private List<ProductCalcDetail> productCalcDetails;
+    private List<ProductCalculatorDto> productCalculatorDtos;
 }

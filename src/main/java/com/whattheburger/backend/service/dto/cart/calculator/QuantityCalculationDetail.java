@@ -6,14 +6,12 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.util.List;
 
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
 @Builder
-public class CustomRuleCalcDetail {
-    private Long customRuleId;
-    private List<OptionCalcDetail> optionCalcDetails;
-    private BigDecimal optionTotalPrice;
+public class QuantityCalculationDetail {
+    private Long productOptionOptionQuantityId;
+    private BigDecimal calculatedQuantityPrice;
 }

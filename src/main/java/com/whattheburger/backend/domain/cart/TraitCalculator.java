@@ -1,41 +1,47 @@
 package com.whattheburger.backend.domain.cart;
 
 import com.whattheburger.backend.domain.cart.strategy.TraitCalcStrategyResolver;
-import com.whattheburger.backend.service.dto.cart.calculator.TraitCalcDetail;
+import com.whattheburger.backend.service.dto.cart.calculator.TraitCalculationDetail;
+import com.whattheburger.backend.service.dto.cart.calculator.TraitCalculationResult;
+import com.whattheburger.backend.service.dto.cart.calculator.TraitCalculatorDto;
 import com.whattheburger.backend.domain.cart.strategy.TraitCalcStrategy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class TraitCalculator implements PriceCalculator<List<TraitCalcDetail>> {
+public class TraitCalculator implements PriceCalculator<List<TraitCalculatorDto>, TraitCalculationResult> {
     private final TraitCalcStrategyResolver strategyResolver;
 
     @Override
-    public BigDecimal calculateTotalPrice(List<TraitCalcDetail> traitCalcDetails) {
-        BigDecimal traitTotalPrice = traitCalcDetails.stream()
-                .peek(trait -> log.info("trait exist {}", trait))
-                .map(this::calculatePrice)
-                .peek(value -> log.info("trait value {}", value))
+    public TraitCalculationResult calculateTotalPrice(List<TraitCalculatorDto> traitCalculatorDtos) {
+        List<TraitCalculationDetail> traitCalculationDetails = traitCalculatorDtos.stream()
+                .map(traitCalculatorDto -> {
+                    BigDecimal price = calculatePrice(traitCalculatorDto);
+                    return new TraitCalculationDetail(
+                            traitCalculatorDto.getProductOptionTraitId(),
+                            price
+                    );
+                })
+                .toList();
+
+        BigDecimal traitTotalPrice = traitCalculationDetails.stream()
+                .map(TraitCalculationDetail::getCalculatedTraitPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        return traitTotalPrice;
+
+        return new TraitCalculationResult(
+                traitCalculationDetails,
+                traitTotalPrice
+        );
     }
 
-//    private boolean shouldIncludeForPricing(TraitDetail trait) {
-//        if (trait.getOptionTraitType() == OptionTraitType.BINARY) {
-//            return trait.getRequestedSelection() != 0;
-//        }
-//        if (trait.getRequestedSelection() == trait.getDefaultSelection())
-//            return false;
-//        return true;
-//    }
-
-    public BigDecimal calculatePrice(TraitCalcDetail trait) {
+    public BigDecimal calculatePrice(TraitCalculatorDto trait) {
         TraitCalcStrategy strategy = strategyResolver.resolve(trait);
         BigDecimal price = strategy.execute(trait);
         return price;

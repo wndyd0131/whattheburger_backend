@@ -1,5 +1,6 @@
 package com.whattheburger.backend.controller.dto.order;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.Column;
 import lombok.*;
 
@@ -15,5 +16,6 @@ public class CustomRuleResponseDto {
     private Long customRuleId;
     private BigDecimal calculatedPrice;
     private String name;
+    @JsonProperty("optionResponses")
     private List<OptionResponseDto> optionResponseDtos;
 }

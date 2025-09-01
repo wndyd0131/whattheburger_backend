@@ -1,67 +1,67 @@
 package com.whattheburger.backend.service;
 
 import com.whattheburger.backend.domain.*;
-import com.whattheburger.backend.domain.enums.OrderStatus;
-import com.whattheburger.backend.domain.enums.OrderType;
-import com.whattheburger.backend.domain.enums.PaymentStatus;
+import com.whattheburger.backend.domain.enums.*;
 import com.whattheburger.backend.domain.order.*;
 import com.whattheburger.backend.domain.order.QuantityDetail;
 import com.whattheburger.backend.service.dto.cart.*;
 import com.whattheburger.backend.service.dto.cart.calculator.ProcessedOptionDto;
+import jakarta.persistence.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.math.BigDecimal;
+import java.util.*;
 
 @Component
 @Slf4j
 public class OrderFactory {
-    public Order createFromCartDto(ProcessedCartDto cartDto, OrderType orderType) {
-        Order order = Order
-                .builder()
-                .orderStatus(OrderStatus.PENDING)
-                .orderType(orderType)
-                .paymentStatus(PaymentStatus.UNPAID)
-                .totalPrice(cartDto.getTotalPrice())
-                .orderProducts(new ArrayList<>())
-                .build();
-        List<ProcessedProductDto> productDtos = cartDto.getProcessedProductDtos();
-        List<OrderProduct> orderProducts = productDtos.stream()
-                .map(productDto -> createOrderProduct(productDto, order))
+
+    public Order createFromOrderSession(OrderSession orderSession) {
+        Order.OrderBuilder orderBuilder = Order.builder()
+                .orderType(orderSession.getOrderType())
+                .orderStatus(orderSession.getOrderStatus())
+                .orderNote(orderSession.getOrderNote())
+                .paymentStatus(orderSession.getPaymentStatus())
+                .discountType(orderSession.getDiscountType())
+                .taxAmount(orderSession.getTaxAmount())
+                .totalPrice(orderSession.getTotalPrice())
+                .contactInfo(orderSession.getContactInfo());
+
+        if (orderSession.getOrderType() == OrderType.DELIVERY) {
+            orderBuilder
+                    .addressInfo(orderSession.getAddressInfo());
+        } else if (orderSession.getOrderType() == OrderType.PICK_UP) {
+            Order.builder()
+                    .pickupInfo(orderSession.getPickupInfo());
+        } else {
+            throw new IllegalStateException();
+        }
+        Order order = orderBuilder.build();
+        List<OrderProduct> orderProducts = orderSession.getOrderSessionProducts().stream()
+                .map(sessionProduct -> createOrderProduct(sessionProduct, order))
                 .toList();
         order.assignOrderProducts(orderProducts);
         return order;
     }
 
-    public Order overWriteOrder(ProcessedCartDto cartDto, OrderType orderType, Order order) {
-        // Order set anything
-        List<ProcessedProductDto> productDtos = cartDto.getProcessedProductDtos();
-        List<OrderProduct> orderProducts = productDtos.stream()
-                .map(productDto -> createOrderProduct(productDto, order))
-                .toList();
-        order.assignOrderProducts(orderProducts);
-        return order;
-    }
-
-    private OrderProduct createOrderProduct(ProcessedProductDto productDto, Order order) {
-        Product product = productDto.getProduct();
-        log.info("Product ID {}", product.getId());
+    private OrderProduct createOrderProduct(OrderSessionProduct sessionProduct, Order order) {
+        log.info("Product ID {}", sessionProduct.getProductId());
         OrderProduct orderProduct = OrderProduct
                 .builder()
-                .productId(product.getId())
-                .quantity(productDto.getQuantity())
-                .name(product.getName())
-                .calculatedPrice(productDto.getCalculatedProductPrice())
-                .imageSource(product.getImageSource())
-                .calculatedCalories(product.getCalories())
-                .productType(product.getProductType())
+                .productId(sessionProduct.getProductId())
+                .quantity(sessionProduct.getQuantity())
+                .name(sessionProduct.getName())
+                .totalPrice(sessionProduct.getTotalPrice())
+                .extraPrice(sessionProduct.getExtraPrice())
+                .basePrice(sessionProduct.getBasePrice())
+                .imageSource(sessionProduct.getImageSource())
+                .totalCalories(sessionProduct.getTotalCalories())
+                .productType(sessionProduct.getProductType())
                 .orderCustomRules(new ArrayList<>())
                 .build();
-        List<OrderCustomRule> orderCustomRules = productDto.getProcessedCustomRuleDtos().stream()
-                .map(customRuleDto -> createOrderCustomRule(customRuleDto, orderProduct))
+        List<OrderCustomRule> orderCustomRules = sessionProduct.getOrderSessionCustomRules().stream()
+                .map(sessionCustomRule -> createOrderCustomRule(sessionCustomRule, orderProduct))
                 .toList();
         orderProduct.assignOrderCustomRules(orderCustomRules);
         orderProduct.assignOrder(order);
@@ -69,18 +69,16 @@ public class OrderFactory {
         return orderProduct;
     }
 
-    private OrderCustomRule createOrderCustomRule(ProcessedCustomRuleDto customRuleDto, OrderProduct orderProduct) {
-        CustomRule customRule = customRuleDto.getCustomRule();
+    private OrderCustomRule createOrderCustomRule(OrderSessionCustomRule sessionCustomRule, OrderProduct orderProduct) {
         OrderCustomRule orderCustomRule = OrderCustomRule
                 .builder()
-                .customRuleId(customRule.getId())
-                .calculatedPrice(customRuleDto.getCalculatedCustomRulePrice())
-                .name(customRule.getName())
+                .customRuleId(sessionCustomRule.getCustomRuleId())
+                .totalPrice(sessionCustomRule.getTotalPrice())
+                .name(sessionCustomRule.getName())
                 .orderProductOptions(new ArrayList<>())
                 .build();
-        List<OrderProductOption> orderProductOptions = customRuleDto.getProcessedOptionDtos().stream()
-                .filter(optionDto -> optionDto.getIsSelected())
-                .map(optionDto -> createOrderProductOption(optionDto, orderCustomRule))
+        List<OrderProductOption> orderProductOptions = sessionCustomRule.getOrderSessionOptions().stream()
+                .map(sessionOption -> createOrderProductOption(sessionOption, orderCustomRule))
                 .toList();
         orderCustomRule.assignOrderProductOptions(orderProductOptions);
         orderCustomRule.assignOrderProduct(orderProduct);
@@ -88,32 +86,31 @@ public class OrderFactory {
         return orderCustomRule;
     }
 
-    private OrderProductOption createOrderProductOption(ProcessedOptionDto optionDto, OrderCustomRule orderCustomRule) {
-        QuantityDetail quantityDetail = Optional.ofNullable(optionDto.getProcessedQuantityDto())
-                .map(processedQuantityDto -> {
-                    ProductOptionOptionQuantity selectedQuantity = processedQuantityDto.getSelectedQuantity();
-                    return new QuantityDetail(
-                            selectedQuantity.getId(),
-                            selectedQuantity.getOptionQuantity().getQuantity().getQuantityType(),
-                            selectedQuantity.getExtraPrice(),
-                            selectedQuantity.getOptionQuantity().getExtraCalories()
-                    );
-                }).orElse(null);
+    private OrderProductOption createOrderProductOption(OrderSessionOption sessionOption, OrderCustomRule orderCustomRule) {
+        QuantityDetail quantityDetail = Optional.ofNullable(sessionOption.getQuantityDetail())
+                .map(sessionQuantityDetail ->
+                    new QuantityDetail(
+                            sessionQuantityDetail.getProductOptionOptionQuantityId(),
+                            sessionQuantityDetail.getQuantityType(),
+                            sessionQuantityDetail.getQuantityExtraPrice(),
+                            sessionQuantityDetail.getQuantityExtraCalories()
+                    )
+                ).orElse(null);
 
-        ProductOption productOption = optionDto.getProductOption();
         OrderProductOption orderProductOption = OrderProductOption
                 .builder()
-                .productOptionId(productOption.getId())
-                .name(productOption.getOption().getName())
-                .countType(productOption.getCountType())
-                .calculatedPrice(optionDto.getCalculatedOptionPrice())
-                .calculatedCalories(productOption.getOption().getCalories())
-                .quantity(optionDto.getQuantity())
+                .productOptionId(sessionOption.getProductOptionId())
+                .name(sessionOption.getName())
+                .countType(sessionOption.getCountType())
+                .totalPrice(sessionOption.getTotalPrice())
+                .basePrice(sessionOption.getBasePrice())
+                .totalCalories(sessionOption.getTotalCalories())
+                .quantity(sessionOption.getQuantity())
                 .quantityDetail(quantityDetail)
                 .orderProductOptionTraits(new ArrayList<>())
                 .build();
-        List<OrderProductOptionTrait> orderProductOptionTraits = optionDto.getProcessedTraitDtos().stream()
-                .map(traitDto -> createOrderProductOptionTrait(traitDto, orderProductOption))
+        List<OrderProductOptionTrait> orderProductOptionTraits = sessionOption.getOrderSessionOptionTraits().stream()
+                .map(sessionOptionTrait -> createOrderProductOptionTrait(sessionOptionTrait, orderProductOption))
                 .toList();
         log.info("OPOT {}", orderProductOptionTraits);
         orderProductOption.assignOrderProductOptionTraits(orderProductOptionTraits);
@@ -121,17 +118,17 @@ public class OrderFactory {
         return orderProductOption;
     }
 
-    private OrderProductOptionTrait createOrderProductOptionTrait(ProcessedTraitDto traitDto, OrderProductOption orderProductOption) {
-        ProductOptionTrait productOptionTrait = traitDto.getProductOptionTrait();
+    private OrderProductOptionTrait createOrderProductOptionTrait(OrderSessionOptionTrait sessionOptionTrait, OrderProductOption orderProductOption) {
         OrderProductOptionTrait orderProductOptionTrait = OrderProductOptionTrait
                 .builder()
-                .productOptionTraitId(productOptionTrait.getId())
-                .name(productOptionTrait.getOptionTrait().getName())
-                .optionTraitType(productOptionTrait.getOptionTrait().getOptionTraitType())
-                .calculatedCalories(productOptionTrait.getExtraCalories())
-                .calculatedPrice(traitDto.getCalculatedTraitPrice())
-                .labelCode(productOptionTrait.getOptionTrait().getLabelCode())
-                .selectedValue(traitDto.getCurrentValue())
+                .productOptionTraitId(sessionOptionTrait.getProductOptionTraitId())
+                .name(sessionOptionTrait.getName())
+                .optionTraitType(sessionOptionTrait.getOptionTraitType())
+                .calculatedCalories(sessionOptionTrait.getCalculatedCalories())
+                .totalPrice(sessionOptionTrait.getTotalPrice())
+                .basePrice(sessionOptionTrait.getBasePrice())
+                .labelCode(sessionOptionTrait.getLabelCode())
+                .selectedValue(sessionOptionTrait.getSelectedValue())
                 .build();
         orderProductOptionTrait.assignOrderProductOption(orderProductOption);
         return orderProductOptionTrait;

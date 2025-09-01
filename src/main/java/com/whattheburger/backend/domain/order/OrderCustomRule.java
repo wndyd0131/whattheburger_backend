@@ -24,7 +24,7 @@ public class OrderCustomRule {
     private Long customRuleId;
     private String name;
     @Column(precision = 10, scale = 2)
-    private BigDecimal calculatedPrice;
+    private BigDecimal totalPrice;
 
     @ManyToOne
     @JoinColumn(name = "order_product_id")

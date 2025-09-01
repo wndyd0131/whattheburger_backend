@@ -1,16 +1,13 @@
 package com.whattheburger.backend.service.dto.cart;
 
 import com.whattheburger.backend.domain.ProductOptionOptionQuantity;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.List;
 
 @AllArgsConstructor
 @NoArgsConstructor
-@Data
+@Getter
 @Builder
 public class ProcessedQuantityDto {
     private List<ProductOptionOptionQuantity> productOptionOptionQuantities;

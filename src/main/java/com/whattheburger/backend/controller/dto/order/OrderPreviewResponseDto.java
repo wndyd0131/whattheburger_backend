@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 
 @NoArgsConstructor
 @Data
@@ -16,6 +17,7 @@ import java.util.List;
 @Builder
 public class OrderPreviewResponseDto {
     private Long id;
+    private UUID orderNumber;
     private BigDecimal totalPrice;
 //    private OrderStatus orderStatus;
     private OrderType orderType;

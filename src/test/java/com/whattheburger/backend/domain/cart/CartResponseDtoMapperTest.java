@@ -67,22 +67,22 @@ public class CartResponseDtoMapperTest {
 
         CalculatedCartDto calculatedCartDto = CalculatedCartDto
                 .builder()
-                .productCalcDetails(
+                .productCalculatorDtos(
                         List.of(
-                                ProductCalcDetail
+                                ProductCalculatorDto
                                         .builder()
                                         .productId(1L)
                                         .basePrice(new BigDecimal("5.99"))
                                         .quantity(1)
-                                        .customRuleCalcDetails(
+                                        .customRuleCalculatorDtos(
                                                 List.of(
-                                                        CustomRuleCalcDetail
+                                                        CustomRuleCalculatorDto
                                                                 .builder()
                                                                 .customRuleId(1L)
                                                                 .optionTotalPrice(BigDecimal.ZERO)
-                                                                .optionCalcDetails(
+                                                                .optionCalculatorDtos(
                                                                         List.of(
-                                                                                OptionCalcDetail
+                                                                                OptionCalculatorDto
                                                                                         .builder()
                                                                                         .productOptionId(1L)
                                                                                         .defaultQuantity(1)
@@ -90,9 +90,9 @@ public class CartResponseDtoMapperTest {
                                                                                         .isSelected(true)
                                                                                         .price(BigDecimal.ZERO)
                                                                                         .traitTotalPrice(BigDecimal.ZERO)
-                                                                                        .traitCalcDetails(
+                                                                                        .traitCalculatorDtos(
                                                                                                 List.of(
-                                                                                                        TraitCalcDetail
+                                                                                                        TraitCalculatorDto
                                                                                                                 .builder()
                                                                                                                 .productOptionTraitId(1L)
                                                                                                                 .price(BigDecimal.ZERO)

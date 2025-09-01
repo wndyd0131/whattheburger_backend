@@ -1,7 +1,6 @@
 package com.whattheburger.backend.domain.cart;
 
 import com.whattheburger.backend.domain.*;
-import com.whattheburger.backend.dto_mapper.CartDtoMapper;
 import com.whattheburger.backend.service.dto.cart.calculator.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +20,7 @@ public class CartCalculator {
     private final OptionCalculator optionCalculator;
     private final TraitCalculator traitCalculator;
 
-    public CalculatedCartDto calculate(
+    public CalculatedCartDto calculateTotalPrice(
             List<Cart> carts,
             Map<Long, Product> productMap,
             Map<Long, CustomRule> customRuleMap,
@@ -29,54 +28,53 @@ public class CartCalculator {
             Map<Long, ProductOptionTrait> productOptionTraitMap,
             Map<Long, ProductOptionOptionQuantity> quantityMap
     ) {
-        List<ProductCalcDetail> productCalcDetails = carts.stream()
-                .map(cart -> calculate(cart, productMap, customRuleMap, productOptionMap, productOptionTraitMap, quantityMap))
+        List<ProductCalculationDetail> productCalculationDetails = carts.stream()
+                .map(cart -> calculateProductPrice(cart, productMap, customRuleMap, productOptionMap, productOptionTraitMap, quantityMap))
                 .toList();
+        BigDecimal cartTotalPrice = productCalculationDetails.stream()
+                .map(ProductCalculationDetail::getCalculatedTotalPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        CartCalculationResult cartCalculationResult = new CartCalculationResult(
+                productCalculationDetails,
+                cartTotalPrice
+        );
 
-        BigDecimal cartPrice = productCalculator.calculateTotalPrice(productCalcDetails);
-
-        return CalculatedCartDto
-                .builder()
-                .productCalcDetails(productCalcDetails)
-                .totalPrice(cartPrice)
-                .build();
+        return new CalculatedCartDto(cartCalculationResult);
     }
 
-    public ProductCalcDetail calculate(
+    private CustomRuleCalculationResult calculateExtraPrice(
             Cart cart,
-            Map<Long, Product> productMap,
             Map<Long, CustomRule> customRuleMap,
             Map<Long, ProductOption> productOptionMap,
             Map<Long, ProductOptionTrait> productOptionTraitMap,
             Map<Long, ProductOptionOptionQuantity> quantityMap
     ) {
-        Product product = productMap.get(cart.getProductId());
-        List<CustomRuleCalcDetail> customRuleCalcDetails = cart.getCustomRuleRequests().stream()
+        List<CustomRuleCalculatorDto> customRuleCalculatorDtos = cart.getCustomRuleRequests().stream()
                 .map(customRuleRequest -> {
                     CustomRule customRule = customRuleMap.get(customRuleRequest.getCustomRuleId());
-                    List<OptionCalcDetail> optionCalcDetails = customRuleRequest.getOptionRequests().stream()
+                    List<OptionCalculatorDto> optionCalculatorDtos = customRuleRequest.getOptionRequests().stream()
                             .map(optionRequest -> {
                                 ProductOption productOption = productOptionMap.get(optionRequest.getProductOptionId());
                                 // quantity handling
-                                QuantityCalcDetail quantityCalcDetail = Optional.ofNullable(optionRequest.getQuantityDetailRequest())
+                                QuantityCalculatorDto quantityCalculatorDto = Optional.ofNullable(optionRequest.getQuantityDetailRequest())
                                         .map(quantityDetailRequest -> {
                                                     ProductOptionOptionQuantity productOptionOptionQuantity = productOption.getProductOptionOptionQuantities().stream()
                                                             .filter(pooQuantity -> pooQuantity.getIsDefault())
                                                             .findFirst()
                                                             .orElseThrow(() -> new IllegalStateException("Missing default uncountable quantity value for productOption " + productOption.getId()));
-                                                    return new QuantityCalcDetail(
+                                                    return new QuantityCalculatorDto(
                                                             quantityMap.get(quantityDetailRequest.getId()).getExtraPrice(),
                                                             quantityDetailRequest.getId(),
                                                             productOptionOptionQuantity.getId()
                                                     );
                                                 }
                                         ).orElse(null);
-                                List<TraitCalcDetail> traitCalcDetails = optionRequest.getOptionTraitRequests().stream()
+                                List<TraitCalculatorDto> traitCalculatorDtos = optionRequest.getOptionTraitRequests().stream()
                                         .map(optionTraitRequest -> {
                                             ProductOptionTrait optionTrait = productOptionTraitMap.get(optionTraitRequest.getProductOptionTraitId());
                                             log.info("trait detail trait id {}", optionTrait.getId());
 
-                                            return new TraitCalcDetail(
+                                            return new TraitCalculatorDto(
                                                     optionTrait.getId(),
                                                     optionTrait.getExtraPrice(),
                                                     optionTrait.getDefaultSelection(),
@@ -85,9 +83,11 @@ public class CartCalculator {
                                             );
                                         }).toList();
 
-                                BigDecimal traitTotalPrice = traitCalculator.calculateTotalPrice(traitCalcDetails);
+                                TraitCalculationResult traitCalculationResult = traitCalculator.calculateTotalPrice(traitCalculatorDtos); // calculate traits per option
+                                log.info("option {}, trait size {}", productOption.getOption().getName(), traitCalculatorDtos.size());
+                                log.info("trait calc result size {}", traitCalculationResult.getTraitCalculationDetails().size());
 
-                                return OptionCalcDetail
+                                return OptionCalculatorDto
                                         .builder()
                                         .productOptionId(productOption.getId())
                                         .price(productOption.getExtraPrice())
@@ -95,31 +95,41 @@ public class CartCalculator {
                                         .defaultQuantity(productOption.getDefaultQuantity())
                                         .isSelected(optionRequest.getIsSelected())
                                         .quantity(optionRequest.getOptionQuantity())
-                                        .quantityCalcDetail(quantityCalcDetail)
-                                        .traitCalcDetails(traitCalcDetails)
-                                        .traitTotalPrice(traitTotalPrice)
+                                        .quantityCalculatorDto(quantityCalculatorDto)
+                                        .traitCalculationResult(traitCalculationResult)
                                         .build();
                             }).toList();
-                    BigDecimal optionTotalPrice = optionCalculator.calculateTotalPrice(optionCalcDetails);
+                    OptionCalculationResult optionCalculationResult = optionCalculator.calculateTotalPrice(optionCalculatorDtos); // calculate option per customRule
+                    log.info("customRule {}", customRule.getName());
+                    log.info("option trait calc result size {}", optionCalculationResult.getOptionCalculationDetails().get(0).getTraitCalculationDetails().size());
 
-                    return CustomRuleCalcDetail
+                    return CustomRuleCalculatorDto
                             .builder()
                             .customRuleId(customRule.getId())
-                            .optionCalcDetails(optionCalcDetails)
-                            .optionTotalPrice(optionTotalPrice)
+                            .optionCalculationResult(optionCalculationResult)
                             .build();
                 }).toList();
-        BigDecimal customRuleTotalPrice = customRuleCalculator.calculateTotalPrice(customRuleCalcDetails);
-        ProductCalcDetail productCalcDetail = ProductCalcDetail
+        CustomRuleCalculationResult customRuleCalculationResult = customRuleCalculator.calculateTotalPrice(customRuleCalculatorDtos);
+        return customRuleCalculationResult;
+    }
+
+    public ProductCalculationDetail calculateProductPrice(
+            Cart cart,
+            Map<Long, Product> productMap,
+            Map<Long, CustomRule> customRuleMap,
+            Map<Long, ProductOption> productOptionMap,
+            Map<Long, ProductOptionTrait> productOptionTraitMap,
+            Map<Long, ProductOptionOptionQuantity> quantityMap
+    ) {
+        Product product = productMap.get(cart.getProductId());
+        CustomRuleCalculationResult customRuleCalculationResult = calculateExtraPrice(cart, customRuleMap, productOptionMap, productOptionTraitMap, quantityMap);
+        ProductCalculatorDto productCalculatorDto = ProductCalculatorDto
                 .builder()
                 .productId(product.getId())
                 .basePrice(product.getPrice())
                 .quantity(cart.getQuantity())
-                .customRuleCalcDetails(customRuleCalcDetails)
-                .customRuleTotalPrice(customRuleTotalPrice)
+                .customRuleCalculationResult(customRuleCalculationResult)
                 .build();
-        BigDecimal calculatedProductPrice = productCalculator.calculatePrice(productCalcDetail);
-        productCalcDetail.changeCalculatedProductPrice(calculatedProductPrice);
-        return productCalcDetail;
+        return productCalculator.calculatePrice(productCalculatorDto);
     }
 }

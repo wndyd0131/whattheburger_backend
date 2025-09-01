@@ -1,42 +1,75 @@
 package com.whattheburger.backend.domain.cart;
 
 
-import com.whattheburger.backend.service.dto.cart.calculator.CalculatedTraitDto;
-import com.whattheburger.backend.service.dto.cart.calculator.OptionCalcDetail;
-import com.whattheburger.backend.service.dto.cart.calculator.TraitCalcDetail;
+import com.whattheburger.backend.service.dto.cart.calculator.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class OptionCalculator implements PriceCalculator<List<OptionCalcDetail>>{
+public class OptionCalculator implements PriceCalculator<List<OptionCalculatorDto>, OptionCalculationResult>{
 
     @Override
-    public BigDecimal calculateTotalPrice(List<OptionCalcDetail> details) {
-        BigDecimal totalPrice = details.stream()
-                .map(this::calculatePrice)
+    public OptionCalculationResult calculateTotalPrice(List<OptionCalculatorDto> optionCalculatorDtos) {
+        List<OptionCalculationDetail> optionCalculationDetails = optionCalculatorDtos.stream()
+                .map(optionCalculatorDto -> calculatePrice(optionCalculatorDto))
+                .toList();
+        BigDecimal optionTotalPrice = optionCalculationDetails.stream()
+                .map(OptionCalculationDetail::getCalculatedOptionPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        return totalPrice;
+
+        return new OptionCalculationResult(
+                optionCalculationDetails,
+                optionTotalPrice
+        );
     }
 
-    public BigDecimal calculatePrice(OptionCalcDetail optionDetail) {
-        if (optionDetail.getIsSelected()) {
-            BigDecimal traitTotalPrice = optionDetail.getTraitTotalPrice();
-            BigDecimal optionPrice = optionDetail.getPrice();
+    public OptionCalculationDetail calculatePrice(OptionCalculatorDto optionCalculatorDto) {
+
+        if (optionCalculatorDto.getIsSelected()) {
+            TraitCalculationResult traitCalculationResult = optionCalculatorDto.getTraitCalculationResult();
+            BigDecimal traitTotalPrice = traitCalculationResult.getTraitTotalPrice();
+            BigDecimal optionPrice = optionCalculatorDto.getPrice();
+            QuantityCalculationDetail quantityCalculationDetail = null;
             log.info("option price: {}", optionPrice);
-            if (optionDetail.getQuantityCalcDetail() == null) { // if quantity is numeric
-                optionPrice = calculateCountable(optionDetail, optionPrice);
+            if (optionCalculatorDto.getQuantityCalculatorDto() == null) { // if quantity is numeric
+                optionPrice = calculateCountable(optionCalculatorDto, optionPrice);
             } else { // if quantity is not numeric, such as EASY, LARGE...
-                optionPrice = calculateUncountable(optionDetail, optionPrice);
+                BigDecimal quantityPrice = optionCalculatorDto.getQuantityCalculatorDto().getPrice();
+                quantityCalculationDetail = calculateUncountable(optionCalculatorDto);
+                if (optionCalculatorDto.getIsDefault()) { // if default, only count quantity price
+                    optionPrice = quantityCalculationDetail.getCalculatedQuantityPrice();
+                }
+                else { // if not, option + quantity
+                    optionPrice = optionPrice.add(quantityPrice);
+                }
             }
-            return optionPrice.add(traitTotalPrice);
+            BigDecimal calculatedPrice = optionPrice.add(traitTotalPrice);
+            return new OptionCalculationDetail(
+                    optionCalculatorDto.getProductOptionId(),
+                    calculatedPrice,
+                    traitCalculationResult.getTraitCalculationDetails(),
+                    quantityCalculationDetail
+            );
+        } else {
+            QuantityCalculationDetail quantityCalculationDetail = null;
+            if (optionCalculatorDto.getQuantityCalculatorDto() != null)
+                quantityCalculationDetail = new QuantityCalculationDetail(optionCalculatorDto.getQuantityCalculatorDto().getDefaultId(), BigDecimal.ZERO);
+            return new OptionCalculationDetail(
+                    optionCalculatorDto.getProductOptionId(),
+                    BigDecimal.ZERO,
+                    optionCalculatorDto.getTraitCalculationResult().getTraitCalculationDetails(),
+                    quantityCalculationDetail
+            );
         }
-        return BigDecimal.ZERO;
+
     }
 
 //    public BigDecimal calculatePrice(OptionCalcDetail option) {
@@ -55,7 +88,7 @@ public class OptionCalculator implements PriceCalculator<List<OptionCalcDetail>>
 //        return BigDecimal.ZERO;
 //    }
 
-    private BigDecimal calculateCountable(OptionCalcDetail detail, BigDecimal optionPrice) {
+    private BigDecimal calculateCountable(OptionCalculatorDto detail, BigDecimal optionPrice) {
         Integer requestedQuantity = detail.getQuantity();
         if (detail.getIsDefault()) { // if option is default
             Integer defaultQuantity = detail.getDefaultQuantity();
@@ -69,16 +102,19 @@ public class OptionCalculator implements PriceCalculator<List<OptionCalcDetail>>
         return optionPrice.multiply(BigDecimal.valueOf(requestedQuantity));
     }
 
-    private BigDecimal calculateUncountable(OptionCalcDetail detail, BigDecimal optionPrice) {
-        BigDecimal quantityPrice = detail.getQuantityCalcDetail().getPrice();
-        Long requestedId = detail.getQuantityCalcDetail().getRequestedId();
-        if (detail.getIsDefault()) {
-            Long defaultId = detail.getQuantityCalcDetail().getDefaultId();
-            if (requestedId != defaultId) {
-                return quantityPrice;
-            }
-            return BigDecimal.ZERO;
+    private QuantityCalculationDetail calculateUncountable(OptionCalculatorDto optionCalculatorDto) {
+        BigDecimal quantityPrice = optionCalculatorDto.getQuantityCalculatorDto().getPrice();
+        Long requestedId = optionCalculatorDto.getQuantityCalculatorDto().getRequestedId();
+        Long defaultId = optionCalculatorDto.getQuantityCalculatorDto().getDefaultId();
+        if (requestedId != defaultId) {
+            return new QuantityCalculationDetail(
+                    requestedId,
+                    quantityPrice
+            );
         }
-        return optionPrice.add(quantityPrice);
+        return new QuantityCalculationDetail(
+                requestedId,
+                BigDecimal.ZERO
+        );
     }
 }

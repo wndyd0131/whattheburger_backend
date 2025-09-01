@@ -11,9 +11,6 @@ import java.util.UUID;
 @Getter
 public class GuestInfo {
     private UUID guestId;
-    private String guestName;
-    private String guestEmail;
-    private String guestPhoneNum;
 
     public GuestInfo(UUID guestId) {
         this.guestId = guestId;

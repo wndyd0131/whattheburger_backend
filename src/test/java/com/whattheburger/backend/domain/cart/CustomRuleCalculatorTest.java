@@ -1,8 +1,6 @@
 package com.whattheburger.backend.domain.cart;
 
-import com.whattheburger.backend.service.dto.cart.calculator.CustomRuleCalcDetail;
-import com.whattheburger.backend.service.dto.cart.calculator.ProductCalcDetail;
-import com.whattheburger.backend.utils.MockCalculatorDtoFactory;
+import com.whattheburger.backend.service.dto.cart.calculator.CustomRuleCalculatorDto;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -14,28 +12,28 @@ public class CustomRuleCalculatorTest {
 
     @Test
     public void givenCustomRuleDetails_whenCalculate_thenReturnExpectedPrice() {
-        List<CustomRuleCalcDetail> customRuleCalcDetails = List.of(
-                CustomRuleCalcDetail
+        List<CustomRuleCalculatorDto> customRuleCalculatorDtos = List.of(
+                CustomRuleCalculatorDto
                         .builder()
                         .customRuleId(1L)
-                        .optionCalcDetails(List.of())
+                        .optionCalculatorDtos(List.of())
                         .optionTotalPrice(new BigDecimal("5.99"))
                         .build(),
-                CustomRuleCalcDetail
+                CustomRuleCalculatorDto
                         .builder()
                         .customRuleId(2L)
-                        .optionCalcDetails(List.of())
+                        .optionCalculatorDtos(List.of())
                         .optionTotalPrice(new BigDecimal("7.99"))
                         .build(),
-                CustomRuleCalcDetail
+                CustomRuleCalculatorDto
                         .builder()
                         .customRuleId(3L)
-                        .optionCalcDetails(List.of())
+                        .optionCalculatorDtos(List.of())
                         .optionTotalPrice(new BigDecimal("1.99"))
                         .build()
         );
 
-        BigDecimal customRuleTotalPrice = customRuleCalculator.calculateTotalPrice(customRuleCalcDetails);
+        BigDecimal customRuleTotalPrice = customRuleCalculator.calculateTotalPrice(customRuleCalculatorDtos);
         Assertions.assertEquals(new BigDecimal("15.97"), customRuleTotalPrice);
     }
 }

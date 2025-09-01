@@ -25,8 +25,10 @@ public class OrderProductOption {
     private String name;
     private CountType countType;
     @Column(precision = 10, scale = 2)
-    private BigDecimal calculatedPrice;
-    private Double calculatedCalories;
+    private BigDecimal totalPrice;
+    @Column(precision = 10, scale = 2)
+    private BigDecimal basePrice;
+    private Double totalCalories;
     private Integer quantity;
     @Embedded
     private QuantityDetail quantityDetail;

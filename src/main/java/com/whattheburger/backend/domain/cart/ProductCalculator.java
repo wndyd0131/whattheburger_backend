@@ -1,7 +1,8 @@
 package com.whattheburger.backend.domain.cart;
 
-import com.whattheburger.backend.service.dto.cart.calculator.CalculatedCartDto;
-import com.whattheburger.backend.service.dto.cart.calculator.ProductCalcDetail;
+import com.whattheburger.backend.service.dto.cart.calculator.ProductCalculationDetail;
+import com.whattheburger.backend.service.dto.cart.calculator.ProductCalculationResult;
+import com.whattheburger.backend.service.dto.cart.calculator.ProductCalculatorDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -12,25 +13,36 @@ import java.util.List;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class ProductCalculator implements PriceCalculator<List<ProductCalcDetail>> {
+public class ProductCalculator implements PriceCalculator<List<ProductCalculatorDto>, ProductCalculationResult> {
 
     @Override
-    public BigDecimal calculateTotalPrice(List<ProductCalcDetail> details) {
-        BigDecimal totalPrice = details.stream()
-                .map(this::calculatePrice)
-                .peek(value -> log.info("product value {}", value))
+    public ProductCalculationResult calculateTotalPrice(List<ProductCalculatorDto> productCalculatorDtos) {
+        List<ProductCalculationDetail> productCalculationDetails = productCalculatorDtos.stream()
+                .map(productCalculatorDto -> calculatePrice(productCalculatorDto))
+                .toList();
+        BigDecimal productTotalPrice = productCalculationDetails.stream()
+                .map(ProductCalculationDetail::getCalculatedTotalPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        return totalPrice;
+        return new ProductCalculationResult(
+                productCalculationDetails,
+                productTotalPrice
+        );
     }
 
-    public BigDecimal calculatePrice(ProductCalcDetail detail) {
-        BigDecimal productBasePrice = detail.getBasePrice();
-        Integer productQuantity = detail.getQuantity();
-        log.info("Product Price: {}", detail.getBasePrice());
-        log.info("Product Quantity: {}", detail.getQuantity());
-        BigDecimal customRuleTotalPrice = detail.getCustomRuleTotalPrice();
+    public ProductCalculationDetail calculatePrice(ProductCalculatorDto productCalculatorDto) {
+        BigDecimal productBasePrice = productCalculatorDto.getBasePrice();
+        Integer productQuantity = productCalculatorDto.getQuantity();
+        log.info("Product Price: {}", productCalculatorDto.getBasePrice());
+        log.info("Product Quantity: {}", productCalculatorDto.getQuantity());
+        BigDecimal customRuleTotalPrice = productCalculatorDto.getCustomRuleCalculationResult().getCustomRuleTotalPrice();
         log.info("Option Total Price: {}", customRuleTotalPrice);
-        return productBasePrice.add(customRuleTotalPrice).multiply(BigDecimal.valueOf(productQuantity));
+        BigDecimal calculatedPrice = productBasePrice.add(customRuleTotalPrice).multiply(BigDecimal.valueOf(productQuantity));
+        return new ProductCalculationDetail(
+                productCalculatorDto.getProductId(),
+                productCalculatorDto.getCustomRuleCalculationResult().getCustomRuleCalculationDetails(),
+                calculatedPrice,
+                productCalculatorDto.getCustomRuleCalculationResult().getCustomRuleTotalPrice()
+        );
     }
 
 //    public BigDecimal calculatePrice(ProductCalcDetail product) {
@@ -42,8 +54,4 @@ public class ProductCalculator implements PriceCalculator<List<ProductCalcDetail
 //        log.info("Option Total Price: {}", optionTotalPrice);
 //        return productBasePrice.add(optionTotalPrice).multiply(BigDecimal.valueOf(productQuantity));
 //    }
-
-    public BigDecimal calculatePrice(CalculatedCartDto calculatedCartDto) {
-        return BigDecimal.ZERO;
-    }
 }
