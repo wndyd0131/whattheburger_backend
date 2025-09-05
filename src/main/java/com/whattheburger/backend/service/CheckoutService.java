@@ -5,6 +5,7 @@ import com.stripe.exception.StripeException;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.checkout.Session;
 import com.stripe.param.checkout.SessionCreateParams;
+import com.whattheburger.backend.config.websocket.OrderTrackingWebSocketHandler;
 import com.whattheburger.backend.domain.enums.OrderStatus;
 import com.whattheburger.backend.domain.enums.PaymentMethod;
 import com.whattheburger.backend.domain.enums.PaymentStatus;
@@ -36,6 +37,7 @@ public class CheckoutService {
     private final OrderService orderService;
     private final OrderSessionStorage orderSessionStorage;
     private final OrderFactory orderFactory;
+    private final OrderTrackingService orderTrackingService;
 
     public Session createCheckoutSession(
             UUID guestId,
@@ -117,6 +119,7 @@ public class CheckoutService {
         order.changePaymentStatus(PaymentStatus.PAID);
         order.changePaymentMethod(PaymentMethod.CASH);
         order.changeCheckoutSessionId(session.getId());
+        orderTrackingService.sendReadyFlag(order.getOrderNumber().toString());
         orderService.saveOrder(order);
     }
 
