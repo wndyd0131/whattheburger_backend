@@ -18,7 +18,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(orderTrackingWebSocketHandler, "/ws/track") // register handler to URL
-                .setAllowedOrigins("*")
-                .withSockJS(); // activate fallback, providing alternative for browser not supporting websocket
+                .setAllowedOriginPatterns("*");
+//                .withSockJS(); // activate fallback, providing alternative for browser not supporting websocket
     }
 }

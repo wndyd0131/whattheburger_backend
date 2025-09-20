@@ -11,7 +11,7 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 
 @Component
 @Slf4j
@@ -23,6 +23,38 @@ public class OrderTrackingWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         log.info("Websocket Session Established");
+
+        final int minTime = 5; // 1 minute
+        final int maxTime = 15; // 3 minutes
+        final int randomDelay = ThreadLocalRandom.current().nextInt(minTime, maxTime);
+
+        ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+        scheduledExecutorService.schedule(() -> {
+            Map<String, Integer> delayMessage = Map.of(
+                    "delay", randomDelay
+            );
+            try {
+                session.sendMessage(new TextMessage(objectMapper.writeValueAsString(delayMessage)));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }, 0, TimeUnit.SECONDS);
+        scheduledExecutorService.schedule(() -> {
+            Map<String, Object> readyFlag = Map.of(
+                    "type", "PREP_ALERT",
+                    "payload", Map.of(
+                            "status", "PREP_COMPLETE"
+                    )
+            );
+            try {
+                session.sendMessage(new TextMessage(objectMapper.writeValueAsString(readyFlag)));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }, randomDelay, TimeUnit.SECONDS);
+        scheduledExecutorService.shutdown();
+        sessions.put(session.getId(), session);
+        log.info("session size {}", sessions.size());
     }
 
     @Override

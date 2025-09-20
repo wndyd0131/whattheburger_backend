@@ -49,6 +49,7 @@ public class SecurityConfig {
                                 .requestMatchers(HttpMethod.POST, "/api/v1/register", "/api/v1/login").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/api/v1/users").authenticated()
                                 .requestMatchers(HttpMethod.GET, "/api/v1/products").permitAll()
+                                .requestMatchers("/ws/**").permitAll()
                                 .anyRequest().permitAll()
                 );
         // Apple
