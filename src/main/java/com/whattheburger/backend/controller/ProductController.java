@@ -65,7 +65,6 @@ public class ProductController {
         return ResponseEntity.ok(productResponseDto);
     }
 
-    @Transactional
     @PostMapping("/api/v1/products")
     public ResponseEntity<String> createProduct(
             @RequestPart("productBlob") ProductCreateRequestDto productCreateRequestDTO,

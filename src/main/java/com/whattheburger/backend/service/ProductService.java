@@ -18,8 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +36,8 @@ public class ProductService {
     private final ProductOptionTraitRepository productOptionTraitRepository;
     private final OptionQuantityRepository optionQuantityRepository;
     private final ProductOptionOptionQuantityRepository productOptionOptionQuantityRepository;
+    private final StoreRepository storeRepository;
+    private final StoreProductRepository storeProductRepository;
 
     private final S3Service s3Service;
 
@@ -49,6 +52,7 @@ public class ProductService {
         List<CustomRuleRequest> customRuleRequests = productDto.getCustomRuleRequests();
 
         saveCategoryProduct(categoryIds, newProduct);
+        saveStoreProduct(productDto.getStoreIds(), product);
         saveProductDetail(customRuleRequests, newProduct);
 
         return newProduct;
@@ -90,6 +94,20 @@ public class ProductService {
             log.error("Failed to load file from S3 {}", e.getMessage(), e);
         }
         return ProductReadByProductIdDto.toDto(product, publicUrl);
+    }
+
+    private void saveStoreProduct(List<Long> storeIds, Product product) {
+        Set<Long> storeIdSet = storeIds.stream()
+                .collect(Collectors.toSet());
+        Map<Long, Store> storeIdMap = storeRepository.findAllById(storeIdSet)
+                .stream().collect(Collectors.toMap(Store::getId, Function.identity()));
+        List<StoreProduct> storeProducts = storeIds.stream()
+                .map(storeId ->
+                        Optional.ofNullable(storeIdMap.get(storeId))
+                                .orElseThrow(() -> new StoreNotFoundException(storeId)))
+                .map(store -> new StoreProduct(store, product))
+                .toList();
+        storeProductRepository.saveAll(storeProducts);
     }
 
     private void saveCategoryProduct(List<Long> categoryIds, Product product) {

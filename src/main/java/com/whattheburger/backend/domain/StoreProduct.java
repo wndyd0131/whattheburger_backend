@@ -16,4 +16,9 @@ public class StoreProduct {
     @ManyToOne
     @JoinColumn(name = "product_id")
     private Product product;
+
+    public StoreProduct(Store store, Product product) {
+        this.store = store;
+        this.product = product;
+    }
 }

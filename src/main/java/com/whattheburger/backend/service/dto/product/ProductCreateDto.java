@@ -22,6 +22,7 @@ public class ProductCreateDto {
     private String briefInfo;
     private String imageSource;
     private List<Long> categoryIds;
+    private List<Long> storeIds;
     private List<CustomRuleRequest> customRuleRequests;
 
 
