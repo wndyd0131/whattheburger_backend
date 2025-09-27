@@ -47,12 +47,7 @@ public class OrderService {
     private final OrderSessionStorage orderSessionStorage;
     private final OrderSessionFactory orderSessionFactory;
     private final OrderFactory orderFactory;
-    private final RedisTemplate<String, CartList> rt;
-    private final ProductRepository productRepository;
-    private final CustomRuleRepository customRuleRepository;
-    private final ProductOptionRepository productOptionRepository;
-    private final ProductOptionTraitRepository productOptionTraitRepository;
-    private final ProductOptionOptionQuantityRepository productOptionOptionQuantityRepository;
+
     public OrderSession updateOrderSession(OrderFormRequestDto orderFormRequestDto, Authentication authentication, UUID guestId) {
         SessionKey sessionKey = getSessionKey(guestId, authentication);
         OrderSession orderSession = orderSessionStorage.load(sessionKey)

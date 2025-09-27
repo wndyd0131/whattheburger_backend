@@ -60,7 +60,6 @@ public class Order {
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private LocalDateTime expiredAt;
 
     @PrePersist
     public void onCreate() {

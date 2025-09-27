@@ -3,6 +3,7 @@ package com.whattheburger.backend.domain;
 import jakarta.persistence.*;
 import lombok.Getter;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,12 +14,17 @@ public class Store {
     @Column(name = "store_id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private Long storeNumber;
+    private Long overpassId;
+    private Long houseNumber;
+    private LocalDateTime closeTime;
+    private LocalDateTime openTime;
+    private String branch;
     @Embedded
     private Address address;
-    private String opName;
-    private Double latitude;
-    private Double longitude;
+    @Embedded
+    private Coordinate coordinate;
+    private String phoneNum;
+    private String website;
 
     @ManyToOne
     @JoinColumn(name = "user_id")

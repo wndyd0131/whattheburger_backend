@@ -2,7 +2,17 @@ package com.whattheburger.backend.config.websocket;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.maps.GeoApiContext;
+import com.google.maps.GeocodingApi;
+import com.google.maps.errors.ApiException;
+import com.google.maps.errors.InvalidRequestException;
+import com.google.maps.model.GeocodingResult;
+import com.google.maps.model.LatLng;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -15,20 +25,49 @@ import java.util.concurrent.*;
 
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class OrderTrackingWebSocketHandler extends TextWebSocketHandler {
 
     private final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
+    @Value("${google.apiKey}")
+    private String secretKey;
+    private final GeoApiContext geoApiContext;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         log.info("Websocket Session Established");
+        log.info("secretkey {}", secretKey);
 
-        final int minTime = 5; // 1 minute
+        final int minTime = 10; // 1 minute
         final int maxTime = 15; // 3 minutes
         final int randomDelay = ThreadLocalRandom.current().nextInt(minTime, maxTime);
 
         ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.submit(() -> {
+            try {
+                log.info("It starts here");
+                GeocodingResult[] results = GeocodingApi.geocode(geoApiContext, "716 Settlement St.").await();
+                log.info("It stops here");
+                Gson gson = new GsonBuilder().setPrettyPrinting().create();
+                String s = gson.toJson(results[0].geometry.location);
+                log.info("location {}", s);
+                geoApiContext.shutdown();
+            } catch (InvalidRequestException e) {
+                e.printStackTrace();
+                log.info("invalid request exception");
+            } catch (ApiException e) {
+                e.printStackTrace();
+                log.info("api exception");
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+                log.info("interrupted exception");
+            } catch (IOException e) {
+                e.printStackTrace();
+                log.info("io exception");
+            }
+        });
         scheduledExecutorService.schedule(() -> {
             Map<String, Integer> delayMessage = Map.of(
                     "delay", randomDelay
@@ -46,6 +85,7 @@ public class OrderTrackingWebSocketHandler extends TextWebSocketHandler {
                             "status", "PREP_COMPLETE"
                     )
             );
+
             try {
                 session.sendMessage(new TextMessage(objectMapper.writeValueAsString(readyFlag)));
             } catch (IOException e) {

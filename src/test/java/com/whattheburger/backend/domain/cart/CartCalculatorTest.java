@@ -62,7 +62,7 @@ public class CartCalculatorTest {
     void givenCartAndMaps_whenCalculate_thenReturnExpectedDto() {
         CartList mockCartList = MockCartFactory.createCartList();
         List<Cart> carts = mockCartList.getCarts();
-        CalculatedCartDto calculatedCartDto = cartCalculator.calculate(
+        CalculatedCartDto calculatedCartDto = cartCalculator.calculateTotalPrice(
                 carts,
                 productMap,
                 customRuleMap,

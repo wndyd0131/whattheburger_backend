@@ -6,5 +6,6 @@ import jakarta.persistence.Embeddable;
 public class Address {
     private String city;
     private String street;
+    private String state;
     private String zipcode;
 }

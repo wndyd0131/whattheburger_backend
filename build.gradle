@@ -50,6 +50,13 @@ dependencies {
 	/* STRIPE */
 	implementation 'com.stripe:stripe-java:29.0.0'
 
+	/* GOOGLE MAP */
+	implementation 'com.google.maps:google-maps-services:2.2.0'
+
+	/* GOOGLE ROUTING */
+	implementation 'com.google.maps:google-maps-routing:1.59.0'
+//	implementation platform('com.google.cloud:libraries-bom:26.45.0')
+//	implementation 'com.google.cloud:google-cloud-bigquery'
 
 	testImplementation 'com.h2database:h2'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
