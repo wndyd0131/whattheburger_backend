@@ -5,6 +5,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @NoArgsConstructor
@@ -24,6 +26,9 @@ public class ProductOptionOptionQuantity {
     @ManyToOne
     @JoinColumn(name = "option_quantity_id")
     private OptionQuantity optionQuantity;
+
+    @OneToMany(mappedBy = "productOptionOptionQuantity")
+    private List<StoreQuantityDelta> storeQuantityDeltas = new ArrayList<>();
 
     public ProductOptionOptionQuantity(ProductOption productOption, OptionQuantity optionQuantity, BigDecimal extraPrice, Boolean isDefault) {
         this.productOption = productOption;

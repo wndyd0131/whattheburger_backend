@@ -49,13 +49,29 @@ public class ProductService {
         product.changeImageSource(s3Key);
         Product newProduct = productRepository.save(product);
         List<Long> categoryIds = productDto.getCategoryIds();
-        List<CustomRuleRequest> customRuleRequests = productDto.getCustomRuleRequests();
 
         saveCategoryProduct(categoryIds, newProduct);
-        saveStoreProduct(productDto.getStoreIds(), product);
-        saveProductDetail(customRuleRequests, newProduct);
 
         return newProduct;
+    }
+
+    @Transactional
+    public void createStoreProduct(List<Long> storeIds, Long productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ProductNotFoundException(productId));
+        List<CustomRuleRequest> customRuleRequests = productDto.getCustomRuleRequests();
+        saveProductDetail(customRuleRequests, newProduct);
+        Set<Long> storeIdSet = storeIds.stream()
+                .collect(Collectors.toSet());
+        Map<Long, Store> storeIdMap = storeRepository.findAllById(storeIdSet)
+                .stream().collect(Collectors.toMap(Store::getId, Function.identity()));
+        List<StoreProduct> storeProducts = storeIds.stream()
+                .map(storeId ->
+                        Optional.ofNullable(storeIdMap.get(storeId))
+                                .orElseThrow(() -> new StoreNotFoundException(storeId)))
+                .map(store -> new StoreProduct(store, product))
+                .toList();
+        storeProductRepository.saveAll(storeProducts);
     }
 
     public List<Product> getAllProducts() {
@@ -94,20 +110,6 @@ public class ProductService {
             log.error("Failed to load file from S3 {}", e.getMessage(), e);
         }
         return ProductReadByProductIdDto.toDto(product, publicUrl);
-    }
-
-    private void saveStoreProduct(List<Long> storeIds, Product product) {
-        Set<Long> storeIdSet = storeIds.stream()
-                .collect(Collectors.toSet());
-        Map<Long, Store> storeIdMap = storeRepository.findAllById(storeIdSet)
-                .stream().collect(Collectors.toMap(Store::getId, Function.identity()));
-        List<StoreProduct> storeProducts = storeIds.stream()
-                .map(storeId ->
-                        Optional.ofNullable(storeIdMap.get(storeId))
-                                .orElseThrow(() -> new StoreNotFoundException(storeId)))
-                .map(store -> new StoreProduct(store, product))
-                .toList();
-        storeProductRepository.saveAll(storeProducts);
     }
 
     private void saveCategoryProduct(List<Long> categoryIds, Product product) {

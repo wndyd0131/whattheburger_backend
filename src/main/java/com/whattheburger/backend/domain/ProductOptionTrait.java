@@ -34,6 +34,9 @@ public class ProductOptionTrait {
     @JoinColumn(name = "option_trait_id")
     private OptionTrait optionTrait;
 
+    @OneToMany(mappedBy = "productOptionTrait")
+    private List<StoreTraitDelta> storeTraitDeltas = new ArrayList<>();
+
     public ProductOptionTrait (
             ProductOption productOption,
             OptionTrait optionTrait,
