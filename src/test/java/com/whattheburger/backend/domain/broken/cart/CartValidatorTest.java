@@ -1,6 +1,9 @@
-package com.whattheburger.backend.domain.cart;
+package com.whattheburger.backend.domain.broken.cart;
 
 import com.whattheburger.backend.domain.*;
+import com.whattheburger.backend.domain.cart.Cart;
+import com.whattheburger.backend.domain.cart.CartList;
+import com.whattheburger.backend.domain.cart.CartValidator;
 import com.whattheburger.backend.service.dto.cart.ValidatedCartDto;
 import com.whattheburger.backend.service.exception.ProductNotFoundException;
 import com.whattheburger.backend.service.exception.ResourceNotFoundException;

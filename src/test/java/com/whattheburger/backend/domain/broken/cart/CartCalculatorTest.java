@@ -1,9 +1,11 @@
-package com.whattheburger.backend.domain.cart;
+package com.whattheburger.backend.domain.broken.cart;
 
 import com.whattheburger.backend.domain.*;
+import com.whattheburger.backend.domain.cart.*;
 import com.whattheburger.backend.domain.enums.OptionTraitType;
 import com.whattheburger.backend.service.dto.cart.calculator.*;
 import com.whattheburger.backend.utils.*;
+import com.whattheburger.backend.utils.broken.MockCalculatorDtoFactory;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -90,6 +92,11 @@ public class CartCalculatorTest {
 //
 //    @Test
 //    public void givenCalculatorDto_whenCalculate_thenReturnExpectedValue() {
+//
+//        CartList mockCartList = MockCartFactory.createCartList();
+//        List<Cart> carts = mockCartList.getCarts();
+//
+//
 //        TraitDetail trait1 = MockCalculatorDtoFactory.createMockTraitDetail(5.45, 1, OptionTraitType.BINARY);
 //        List<TraitDetail> traitDetails1 = List.of(
 //                new TraitDetail(1D, 1, OptionTraitType.BINARY)
@@ -122,6 +129,9 @@ public class CartCalculatorTest {
 //                        1.34, 4, false, null, traitDetails4
 //                )
 //        );
+//        List.of(
+//                new ProductCalculation
+//        )
 //        List<ProductDetail> productDetails = List.of(
 //                new ProductDetail(
 //                        5.99, 2, optionDetails1
@@ -133,8 +143,14 @@ public class CartCalculatorTest {
 //        // product 1: (5.99 + 2 * 5 + 1 + 0.65 + 1.5) * 2 = 38.28
 //        // product 2: (8.99 + 0 - 0.35 + 0.15 + 1.34 * 4) * 1 = 14.15
 //
-//        CalculatorDto calculatorDto = new CalculatorDto(productDetails);
-//        Double totalPrice = cartCalculator.calculate(calculatorDto);
+//        CalculatedCartDto calculatedCartDto = cartCalculator.calculateTotalPrice(
+//                carts,
+//                productMap,
+//                customRuleMap,
+//                productOptionMap,
+//                productOptionTraitMap,
+//                quantityMap
+//        );
 //        Assertions.assertThat(totalPrice).isEqualTo(52.43);
 //    }
 

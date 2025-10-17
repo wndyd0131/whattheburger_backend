@@ -1,14 +1,21 @@
 package com.whattheburger.backend.domain;
 
 import jakarta.persistence.*;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @NoArgsConstructor
+@Getter
+@Table(uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"store_id", "product_id"})
+})
 public class StoreProduct {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -35,9 +42,16 @@ public class StoreProduct {
     @OneToMany(mappedBy = "storeProduct")
     private List<StoreQuantityDelta> storeQuantityDeltas = new ArrayList<>();
 
-    public StoreProduct(BigDecimal overridePrice, Store store, Product product, List<ProductOption> productOptions) {
+    @OneToMany(mappedBy = "storeProduct")
+    private List<CategoryStoreProduct> categoryStoreProducts = new ArrayList<>();
+
+    public StoreProduct(Store store, Product product) {
         this.store = store;
         this.product = product;
-        this.overridePrice = overridePrice;
+        this.isActive = true;
+    }
+
+    public void changePrice(BigDecimal price) {
+        this.overridePrice = price;
     }
 }

@@ -41,9 +41,9 @@ public class TraitCalculator implements PriceCalculator<List<TraitCalculatorDto>
         );
     }
 
-    public BigDecimal calculatePrice(TraitCalculatorDto trait) {
-        TraitCalcStrategy strategy = strategyResolver.resolve(trait);
-        BigDecimal price = strategy.execute(trait);
+    public BigDecimal calculatePrice(TraitCalculatorDto traitDto) {
+        TraitCalcStrategy strategy = strategyResolver.resolve(traitDto);
+        BigDecimal price = strategy.execute(traitDto);
         return price;
     }
 }

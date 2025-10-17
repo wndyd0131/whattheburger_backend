@@ -1,5 +1,6 @@
 package com.whattheburger.backend.domain;
 
+import com.whattheburger.backend.domain.enums.DeltaType;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;

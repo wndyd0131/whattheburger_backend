@@ -1,10 +1,13 @@
 package com.whattheburger.backend.domain;
 
+import com.whattheburger.backend.domain.enums.DeltaType;
 import jakarta.persistence.*;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
 @Entity
+@NoArgsConstructor
 public class StoreTraitDelta {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Id
@@ -22,4 +25,16 @@ public class StoreTraitDelta {
     @ManyToOne
     @JoinColumn(name = "store_product_id")
     private StoreProduct storeProduct;
+
+    public StoreTraitDelta(
+            BigDecimal price,
+            DeltaType deltaType,
+            ProductOptionTrait productOptionTrait,
+            StoreProduct storeProduct
+    ) {
+        this.overridePrice = price;
+        this.deltaType = deltaType;
+        this.productOptionTrait= productOptionTrait;
+        this.storeProduct = storeProduct;
+    }
 }

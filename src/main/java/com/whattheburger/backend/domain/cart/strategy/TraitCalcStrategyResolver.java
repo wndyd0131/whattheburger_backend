@@ -18,7 +18,7 @@ public class TraitCalcStrategyResolver {
     private final Map<OptionTraitType, TraitCalcStrategy> strategyMap;
 
     @Autowired
-    public TraitCalcStrategyResolver(List<TraitCalcStrategy> strategies) { // All Components are found and injected
+    public TraitCalcStrategyResolver(List<TraitCalcStrategy> strategies) { // All Components that implement TraitCalcStrategy will be found and injected automatically
         this.strategyMap = strategies.stream()
                 .collect(Collectors.toMap(
                         TraitCalcStrategy::getSupportedType,

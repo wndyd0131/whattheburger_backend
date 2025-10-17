@@ -1,7 +1,9 @@
-package com.whattheburger.backend.domain.cart;
+package com.whattheburger.backend.domain.broken.cart;
 
+import com.whattheburger.backend.domain.cart.ProductCalculator;
+import com.whattheburger.backend.service.dto.cart.calculator.ProductCalculationResult;
 import com.whattheburger.backend.service.dto.cart.calculator.ProductCalculatorDto;
-import com.whattheburger.backend.utils.MockCalculatorDtoFactory;
+import com.whattheburger.backend.utils.broken.MockCalculatorDtoFactory;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -16,8 +18,8 @@ public class ProductCalculatorTest {
     public void givenProductDetails_whenCalculate_thenReturnExpectedPrice() {
         List<ProductCalculatorDto> mockProductCalculatorDtos = MockCalculatorDtoFactory.createMockProductCalcDetails();
 
-        BigDecimal totalPrice = productCalculator.calculateTotalPrice(mockProductCalculatorDtos);
+        ProductCalculationResult productCalculationResult = productCalculator.calculateTotalPrice(mockProductCalculatorDtos);
 
-        Assertions.assertEquals(new BigDecimal("56.70"), totalPrice);
+        Assertions.assertEquals(new BigDecimal("56.70"), productCalculationResult.getProductTotalPrice());
     }
 }

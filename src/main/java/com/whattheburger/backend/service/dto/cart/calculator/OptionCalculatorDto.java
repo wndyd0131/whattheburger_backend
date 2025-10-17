@@ -1,9 +1,7 @@
 package com.whattheburger.backend.service.dto.cart.calculator;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -20,5 +18,6 @@ public class OptionCalculatorDto {
     private Boolean isDefault;
     private Integer defaultQuantity;
     private QuantityCalculatorDto quantityCalculatorDto;
+    @NotNull(message = "TraitResult cannot be null")
     private TraitCalculationResult traitCalculationResult;
 }

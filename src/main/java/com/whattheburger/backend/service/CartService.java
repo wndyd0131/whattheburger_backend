@@ -46,7 +46,7 @@ public class CartService {
 
         String sessionKey = getSessionKey(guestId, authentication);
 
-        Cart cart = new Cart(cartRequestDto.getProductId(), cartRequestDto.getQuantity(), cartRequestDto.getCustomRuleRequests());
+        Cart cart = new Cart(cartRequestDto.getStoreId(), cartRequestDto.getProductId(), cartRequestDto.getQuantity(), cartRequestDto.getCustomRuleRequests());
 
         CartList cartList = Optional.ofNullable(rt.opsForValue().get("cart:" + sessionKey)).orElse(new CartList(new ArrayList<>()));
         log.info("CartList {}", cartList);

@@ -6,6 +6,9 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Getter
 @Builder
@@ -24,7 +27,6 @@ public class CategoryProduct {
     @JoinColumn(name = "product_id")
     private Product product;
 
-    private Integer orderIndex;
 
     public CategoryProduct(Category category, Product product) {
         this.category = category;

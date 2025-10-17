@@ -19,6 +19,7 @@ public class Category {
     @Column(name = "category_id")
     private Long id;
     private String name;
+    private Integer orderIndex;
 
     @ManyToOne
     @JoinColumn(name = "PARENT_ID")
@@ -29,6 +30,9 @@ public class Category {
 
     @OneToMany(mappedBy = "category")
     private List<CategoryProduct> categoryProducts = new ArrayList<>();
+
+    @OneToMany(mappedBy = "category")
+    private List<CategoryStoreProduct> categoryStoreProducts = new ArrayList<>();
 
     public Category(String name) {
         this.name = name;

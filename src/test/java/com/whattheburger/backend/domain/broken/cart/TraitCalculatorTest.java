@@ -1,9 +1,11 @@
-package com.whattheburger.backend.domain.cart;
+package com.whattheburger.backend.domain.broken.cart;
 
+import com.whattheburger.backend.domain.cart.TraitCalculator;
 import com.whattheburger.backend.domain.cart.exception.TraitCalcStrategyNotSupportedException;
 import com.whattheburger.backend.domain.cart.strategy.BinaryStrategy;
 import com.whattheburger.backend.domain.cart.strategy.TraitCalcStrategyResolver;
 import com.whattheburger.backend.domain.enums.OptionTraitType;
+import com.whattheburger.backend.service.dto.cart.calculator.TraitCalculationResult;
 import com.whattheburger.backend.service.dto.cart.calculator.TraitCalculatorDto;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -47,8 +49,8 @@ public class TraitCalculatorTest {
                 )
         );
         when(strategyResolver.resolve(any(TraitCalculatorDto.class))).thenReturn(mockStrategy);
-        BigDecimal totalPrice = traitCalculator.calculateTotalPrice(traitCalculatorDtos);
-        Assertions.assertEquals(BigDecimal.valueOf(5.98), totalPrice);
+        TraitCalculationResult traitCalculationResult = traitCalculator.calculateTotalPrice(traitCalculatorDtos);
+        Assertions.assertEquals(BigDecimal.valueOf(5.98), traitCalculationResult.getTraitTotalPrice());
     }
 
     @Test

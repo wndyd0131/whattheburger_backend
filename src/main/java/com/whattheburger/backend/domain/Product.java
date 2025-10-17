@@ -48,7 +48,6 @@ public class Product {
         this.calories = calories;
         this.productType = productType;
     }
-
     public void changeImageSource(String imageSource) {
         this.imageSource = imageSource;
     }

@@ -1,7 +1,10 @@
-package com.whattheburger.backend.domain.cart;
+package com.whattheburger.backend.domain.broken.cart;
 
+import com.whattheburger.backend.domain.cart.OptionCalculator;
+import com.whattheburger.backend.service.dto.cart.calculator.OptionCalculationResult;
 import com.whattheburger.backend.service.dto.cart.calculator.OptionCalculatorDto;
 import com.whattheburger.backend.service.dto.cart.calculator.QuantityCalculatorDto;
+import com.whattheburger.backend.service.dto.cart.calculator.TraitCalculationResult;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,12 +25,15 @@ public class OptionCalculatorTest {
                         .builder()
                         .productOptionId(1L)
                         .isSelected(true)
-                        .traitCalculatorDtos(
-                                List.of()
+                        .traitCalculationResult(
+                                new TraitCalculationResult(
+                                        List.of(),
+                                        BigDecimal.ZERO
+                                )
                         )
                         .quantityCalculatorDto(null)
                         .quantity(5)
-                        .traitTotalPrice(BigDecimal.ZERO)
+//                        .traitTotalPrice(BigDecimal.ZERO)
                         .price(new BigDecimal("4.99"))
                         .defaultQuantity(1)
                         .isDefault(true)
@@ -36,20 +42,22 @@ public class OptionCalculatorTest {
                         .builder()
                         .productOptionId(2L)
                         .isSelected(true)
-                        .traitCalculatorDtos(
-                                List.of()
+                        .traitCalculationResult(
+                                new TraitCalculationResult(
+                                        List.of(),
+                                        BigDecimal.valueOf(1.97)
+                                )
                         )
                         .quantityCalculatorDto(null)
                         .quantity(3)
-                        .price(new BigDecimal("7.99"))
+                        .price(BigDecimal.valueOf(7.99))
                         .defaultQuantity(2)
                         .isDefault(true)
-                        .traitTotalPrice(new BigDecimal("1.97"))
                         .build() // 7.99 + 1.97 = 9.96
         );
 
-        BigDecimal totalPrice = optionCalculator.calculateTotalPrice(mockOptionCalculatorDtos);
-        Assertions.assertEquals(BigDecimal.valueOf(29.92), totalPrice); // 19.96 + 9.96 =
+        OptionCalculationResult optionCalculationResult = optionCalculator.calculateTotalPrice(mockOptionCalculatorDtos);
+        Assertions.assertEquals(BigDecimal.valueOf(29.92), optionCalculationResult.getOptionTotalPrice()); // 19.96 + 9.96 =
     }
 
     @Test
@@ -58,8 +66,12 @@ public class OptionCalculatorTest {
                 OptionCalculatorDto
                         .builder()
                         .isSelected(true)
-                        .traitCalculatorDtos(
-                                List.of()
+                        .traitCalculationResult(
+                                TraitCalculationResult
+                                        .builder()
+                                        .traitCalculationDetails(List.of())
+                                        .traitTotalPrice(BigDecimal.ZERO)
+                                        .build()
                         )
                         .quantityCalculatorDto(
                                 QuantityCalculatorDto
@@ -73,13 +85,23 @@ public class OptionCalculatorTest {
                         .price(BigDecimal.ZERO)
                         .defaultQuantity(1)
                         .isDefault(true)
-                        .traitTotalPrice(BigDecimal.ZERO)
+                        .traitCalculationResult(
+                                TraitCalculationResult
+                                        .builder()
+                                        .traitCalculationDetails(List.of())
+                                        .traitTotalPrice(BigDecimal.ZERO)
+                                        .build()
+                        )
                         .build(), // basePrice(0) + quantityPrice(0) + traitPrice(0) = 0
                 OptionCalculatorDto
                         .builder()
                         .isSelected(true)
-                        .traitCalculatorDtos(
-                                List.of()
+                        .traitCalculationResult(
+                                TraitCalculationResult
+                                        .builder()
+                                        .traitCalculationDetails(List.of())
+                                        .traitTotalPrice(BigDecimal.valueOf(1.99))
+                                        .build()
                         )
                         .quantityCalculatorDto(
                                 QuantityCalculatorDto
@@ -93,11 +115,11 @@ public class OptionCalculatorTest {
                         .price(BigDecimal.ZERO)
                         .defaultQuantity(2)
                         .isDefault(true)
-                        .traitTotalPrice(new BigDecimal("1.99"))
+//                        .traitTotalPrice(new BigDecimal("1.99"))
                         .build() // basePrice(0) + quantityPrice(1.19) + traitPrice(1.99) = 3.18
         );
-        BigDecimal totalPrice = optionCalculator.calculateTotalPrice(mockOptionCalculatorDtos);
-        Assertions.assertEquals(new BigDecimal("3.18"), totalPrice); // 0 + 3.18 = 3.18
+        OptionCalculationResult optionCalculationResult = optionCalculator.calculateTotalPrice(mockOptionCalculatorDtos);
+        Assertions.assertEquals(new BigDecimal("3.18"), optionCalculationResult.getOptionTotalPrice()); // 0 + 3.18 = 3.18
     }
 
     @Test
@@ -106,21 +128,29 @@ public class OptionCalculatorTest {
                 OptionCalculatorDto // Large bun
                         .builder()
                         .isSelected(true)
-                        .traitCalculatorDtos(
-                                List.of()
+                        .traitCalculationResult(
+                                TraitCalculationResult
+                                        .builder()
+                                        .traitCalculationDetails(List.of())
+                                        .traitTotalPrice(BigDecimal.ZERO)
+                                        .build()
                         )
                         .quantityCalculatorDto(null)
                         .quantity(7)
                         .price(BigDecimal.valueOf(4.99))
                         .defaultQuantity(1)
                         .isDefault(false)
-                        .traitTotalPrice(BigDecimal.ZERO)
+//                        .traitTotalPrice(BigDecimal.ZERO)
                         .build(), // quantity(7) * basePrice(4.99) + traitPrice(0) = 34.93
                 OptionCalculatorDto // Small bun
                         .builder()
                         .isSelected(true)
-                        .traitCalculatorDtos(
-                                List.of()
+                        .traitCalculationResult(
+                                TraitCalculationResult
+                                        .builder()
+                                        .traitCalculationDetails(List.of())
+                                        .traitTotalPrice(BigDecimal.ZERO)
+                                        .build()
                         )
                         .quantityCalculatorDto(
                                 QuantityCalculatorDto
@@ -134,10 +164,10 @@ public class OptionCalculatorTest {
                         .price(BigDecimal.valueOf(3.99))
                         .defaultQuantity(1)
                         .isDefault(false)
-                        .traitTotalPrice(BigDecimal.ZERO)
+//                        .traitTotalPrice(BigDecimal.ZERO)
                         .build() // quantity(2.99) + basePrice(3.99) = 6.98
         );
-        BigDecimal totalPrice = optionCalculator.calculateTotalPrice(mockOptionCalculatorDtos);
-        Assertions.assertEquals(BigDecimal.valueOf(41.91), totalPrice); // 34.93 + 6.98 = 41.91
+        OptionCalculationResult optionCalculationResult = optionCalculator.calculateTotalPrice(mockOptionCalculatorDtos);
+        Assertions.assertEquals(BigDecimal.valueOf(41.91), optionCalculationResult.getOptionTotalPrice()); // 34.93 + 6.98 = 41.91
     }
 }

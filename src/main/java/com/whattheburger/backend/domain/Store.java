@@ -1,14 +1,21 @@
 package com.whattheburger.backend.domain;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
 @Getter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class Store {
     @Id
     @Column(name = "store_id")
@@ -16,8 +23,8 @@ public class Store {
     private Long id;
     private Long overpassId;
     private Long houseNumber;
-    private LocalDateTime closeTime;
-    private LocalDateTime openTime;
+    private LocalTime closeTime;
+    private LocalTime openTime;
     private String branch;
     @Embedded
     private Address address;

@@ -10,11 +10,13 @@ import java.util.List;
 @Getter
 @NoArgsConstructor
 public class Cart {
+    private Long storeId;
     private Long productId;
     private Integer quantity;
     private List<CustomRuleRequest> customRuleRequests = new ArrayList<>();
 
-    public Cart(Long productId, Integer quantity, List<CustomRuleRequest> customRuleRequests) {
+    public Cart(Long storeId, Long productId, Integer quantity, List<CustomRuleRequest> customRuleRequests) {
+        this.storeId = storeId;
         this.productId = productId;
         this.quantity = quantity;
         this.customRuleRequests = customRuleRequests;

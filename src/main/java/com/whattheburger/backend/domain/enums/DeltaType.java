@@ -1,4 +1,4 @@
-package com.whattheburger.backend.domain;
+package com.whattheburger.backend.domain.enums;
 
 public enum DeltaType {
     HIDDEN, OVERRIDE
