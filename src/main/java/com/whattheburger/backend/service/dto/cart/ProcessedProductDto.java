@@ -1,6 +1,7 @@
 package com.whattheburger.backend.service.dto.cart;
 
 import com.whattheburger.backend.domain.Product;
+import com.whattheburger.backend.domain.StoreProduct;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,7 +15,7 @@ import java.util.List;
 @Data
 @Builder
 public class ProcessedProductDto {
-    private Product product;
+    private StoreProduct storeProduct;
     private Integer quantity;
     private List<ProcessedCustomRuleDto> processedCustomRuleDtos;
     private BigDecimal calculatedProductPrice;

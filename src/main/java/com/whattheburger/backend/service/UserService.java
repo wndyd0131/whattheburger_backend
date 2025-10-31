@@ -34,7 +34,7 @@ public class UserService {
                 userDto.getFirstName(),
                 userDto.getLastName(),
                 userDto.getPhoneNum(),
-                userDto.getZipcode(),
+                userDto.getZipCode(),
                 userDto.getEmail(),
                 password,
                 Role.USER

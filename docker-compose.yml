@@ -1,0 +1,100 @@
+version: "3.9"
+services:
+  mysql:
+    image: mysql
+    container_name: mysql
+    environment:
+      MYSQL_DATABASE: whattheburger_dev
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  redis:
+    container_name: redis
+    image: redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1s
+      timeout: 2s
+      retries: 10
+#  backend:
+#    image: wndyd0131/whattheburger_backend:latest
+#    ports:
+#      - "8080:8080"
+#    environment:
+#      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
+#      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+#      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+#      SPRING_DATASOURCE_HOST: ${SPRING_DATASOURCE_HOST}
+#      SPRING_DATASOURCE_PORT: ${SPRING_DATASOURCE_PORT}
+#      SPRING_DATASOURCE_NAME: ${SPRING_DATASOURCE_NAME}
+#      AWS_ACCESS_KEY: ${AWS_ACCESS_KEY}
+#      AWS_SECRET_KEY: ${AWS_SECRET_KEY}
+#      AWS_S3_BUCKET_NAME: ${AWS_S3_BUCKET_NAME}
+#      AWS_S3_URL_POSTFIX: ${AWS_S3_URL_POSTFIX}
+#      AWS_REGION: ${AWS_REGION}
+#      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+#      STRIPE_SUCCESS_URL: ${STRIPE_SUCCESS_URL}
+#      STRIPE_WEBHOOK_SECRET_KEY: ${STRIPE_WEBHOOK_SECRET_KEY}
+#      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+#      MAPBOX_ACCESS_TOKEN: ${MAPBOX_ACCESS_TOKEN}
+#      SERVER_PORT: ${SERVER_PORT}
+#      REDIS_HOST: ${REDIS_HOST}
+#      STORE_SEEDING_FLAG: ${STORE_SEEDING_FLAG}
+#      PRODUCT_SEEDING_FLAG: ${PRODUCT_SEEDING_FLAG}
+#      STOREPRODUCT_SEEDING_FLAG: ${STOREPRODUCT_SEEDING_FLAG}
+#      USER_SEEDING_FLAG: ${USER_SEEDING_FLAG}
+#    depends_on:
+#      mysql:
+#        condition: service_healthy
+#      redis:
+#        condition: service_started
+  backend:
+    build: .
+    container_name: app
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      SPRING_DATASOURCE_HOST: ${SPRING_DATASOURCE_HOST}
+      SPRING_DATASOURCE_PORT: ${SPRING_DATASOURCE_PORT}
+      SPRING_DATASOURCE_NAME: ${SPRING_DATASOURCE_NAME}
+      AWS_ACCESS_KEY: ${AWS_ACCESS_KEY}
+      AWS_SECRET_KEY: ${AWS_SECRET_KEY}
+      AWS_S3_BUCKET_NAME: ${AWS_S3_BUCKET_NAME}
+      AWS_S3_URL_POSTFIX: ${AWS_S3_URL_POSTFIX}
+      AWS_REGION: ${AWS_REGION}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_SUCCESS_URL: ${STRIPE_SUCCESS_URL}
+      STRIPE_WEBHOOK_SECRET_KEY: ${STRIPE_WEBHOOK_SECRET_KEY}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      MAPBOX_ACCESS_TOKEN: ${MAPBOX_ACCESS_TOKEN}
+      SERVER_PORT: ${SERVER_PORT}
+      REDIS_HOST: ${REDIS_HOST}
+      STORE_SEEDING_FLAG: ${STORE_SEEDING_FLAG}
+      PRODUCT_SEEDING_FLAG: ${PRODUCT_SEEDING_FLAG}
+      STOREPRODUCT_SEEDING_FLAG: ${STOREPRODUCT_SEEDING_FLAG}
+      USER_SEEDING_FLAG: ${USER_SEEDING_FLAG}
+      CLIENT_URL: ${CLIENT_URL}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+      SQL_INIT_MODE: ${SQL_INIT_MODE}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+volumes:
+  mysql_data:

@@ -22,7 +22,7 @@ import java.util.List;
 @Builder
 public class ProductResponseDto {
     private Long id;
-    private Long productId;
+    private Long storeProductId;
     private Integer quantity;
 //    private String forWhom;
     private String name;

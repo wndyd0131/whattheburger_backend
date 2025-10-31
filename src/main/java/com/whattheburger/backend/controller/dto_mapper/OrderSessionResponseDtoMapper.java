@@ -4,6 +4,7 @@ import com.whattheburger.backend.controller.dto.order.*;
 import com.whattheburger.backend.controller.dto.order.QuantityDetail;
 import com.whattheburger.backend.domain.order.*;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -11,9 +12,16 @@ import java.util.Optional;
 @Component
 @Slf4j
 public class OrderSessionResponseDtoMapper {
+    @Value("${aws.s3-bucket-name}")
+    private String s3bucketName;
+    @Value("${aws.s3-url-postfix}")
+    private String s3urlPostfix;
+
     public OrderSessionResponseDto toOrderSessionResponseDto(OrderSession orderSession) {
         return OrderSessionResponseDto
                 .builder()
+                .sessionId(orderSession.getSessionId())
+                .storeId(orderSession.getStoreId())
                 .orderType(orderSession.getOrderType())
                 .taxAmount(orderSession.getTaxAmount())
                 .totalPrice(orderSession.getTotalPrice())
@@ -23,17 +31,21 @@ public class OrderSessionResponseDtoMapper {
     }
 
     private OrderSessionProductResponseDto toProductResponseDto(OrderSessionProduct sessionProduct) {
-        log.info("Product ID {}", sessionProduct.getProductId());
+        log.info("storeProduct ID {}", sessionProduct.getStoreProductId());
+        String publicUrl = "https://" + s3bucketName + "." + s3urlPostfix + "/";
+        String productImageUrl = Optional.ofNullable(sessionProduct.getImageSource())
+                .map(imageSource -> publicUrl + imageSource)
+                .orElse(null);
         OrderSessionProductResponseDto productResponseDto = OrderSessionProductResponseDto
                 .builder()
-                .productId(sessionProduct.getProductId())
+                .storeProductId(sessionProduct.getStoreProductId())
                 .quantity(sessionProduct.getQuantity())
                 .name(sessionProduct.getName())
                 .totalPrice(sessionProduct.getTotalPrice())
                 .extraPrice(sessionProduct.getExtraPrice())
                 .basePrice(sessionProduct.getBasePrice())
                 .calculatedCalories(sessionProduct.getTotalCalories())
-                .imageSource(sessionProduct.getImageSource())
+                .imageSource(productImageUrl)
                 .productType(sessionProduct.getProductType())
                 .customRuleResponses(sessionProduct.getOrderSessionCustomRules().stream()
                         .map(this::toCustomRuleResponseDto).toList())

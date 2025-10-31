@@ -18,9 +18,9 @@ public class RedisOrderSessionStorage implements OrderSessionStorage {
     private final StringRedisTemplate stringRedisTemplate;
     @Override
     public void save(String sessionKey, OrderSession orderSession) {
-        String randomUUID = UUID.randomUUID().toString();
-        stringRedisTemplate.opsForValue().set("order:" + sessionKey, randomUUID);
-        rt.opsForValue().set(randomUUID, orderSession);
+        UUID sessionId = orderSession.getSessionId();
+        stringRedisTemplate.opsForValue().set("order:" + sessionKey, sessionId.toString());
+        rt.opsForValue().set(sessionId.toString(), orderSession);
     }
 
     @Override
@@ -35,7 +35,12 @@ public class RedisOrderSessionStorage implements OrderSessionStorage {
     }
 
     @Override
-    public Optional<OrderSession> load(String sessionId) {
-        return Optional.ofNullable(rt.opsForValue().get(sessionId));
+    public Optional<OrderSession> load(UUID sessionId) {
+        return Optional.ofNullable(rt.opsForValue().get(sessionId.toString()));
+    }
+
+    @Override
+    public void remove(UUID sessionId) {
+        rt.delete(sessionId.toString());
     }
 }

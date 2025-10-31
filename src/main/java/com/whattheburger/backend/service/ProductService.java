@@ -54,6 +54,19 @@ public class ProductService {
         return newProduct;
     }
 
+    @Transactional
+    public Product createProduct(ProductCreateDto productDto) {
+        Product product = productDto.toEntity();
+        product.changeImageSource(productDto.getImageSource());
+        Product newProduct = productRepository.save(product);
+        List<Long> categoryIds = productDto.getCategoryIds();
+        List<CustomRuleRequest> customRuleRequests = productDto.getCustomRuleRequests();
+        saveProductDetail(customRuleRequests, newProduct);
+        saveCategoryProduct(categoryIds, newProduct);
+
+        return newProduct;
+    }
+
     public List<Product> getAllProducts() {
         List<Product> products = productRepository.findAll();
         return products;

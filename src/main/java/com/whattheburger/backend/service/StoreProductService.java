@@ -18,6 +18,7 @@ import com.whattheburger.backend.service.exception.*;
 import com.whattheburger.backend.service.store_product.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,6 +47,11 @@ public class StoreProductService {
     private final ModificationStrategyResolver modificationStrategyResolver;
     private final CategoryRepository categoryRepository;
     private final S3Service s3Service;
+
+    @Value("${aws.s3-bucket-name}")
+    private String s3bucketName;
+    @Value("${aws.s3-url-postfix}")
+    private String s3postFix;
 
     @Transactional
     public void registerProductToStores(Long productId, List<Long> storeIds) {
@@ -91,19 +97,22 @@ public class StoreProductService {
     @Transactional
     public void modifyProduct(
             Long storeId,
-            Long productId,
+            Long storeProductId,
             StoreProductModifyRequestDto storeProductDto
     ) {
-        StoreProduct storeProduct = storeProductRepository.findByStoreIdAndProductId(storeId, productId)
-                .orElseThrow(() -> new StoreProductNotFoundException(storeId, productId));
-        List<ProductOption> productOptions = productOptionRepository.findByProductId(productId);
+        StoreProduct storeProduct = storeProductRepository.findById(storeProductId)
+                .orElseThrow(() -> new StoreProductNotFoundException(storeProductId));
+        if (!storeProduct.getStore().getId().equals(storeId))
+            throw new IllegalArgumentException();
+        Product product = storeProduct.getProduct();
+        List<ProductOption> productOptions = productOptionRepository.findByProductId(product.getId());
         Set<CustomRule> customRuleSet = new HashSet<>();
         Map<Long, ProductOption> productOptionMap = new HashMap<>();
         for (ProductOption productOption : productOptions) {
             customRuleSet.add(productOption.getCustomRule());
             productOptionMap.put(productOption.getId(), productOption);
         }
-        List<ProductOptionTrait> productOptionTraits = productOptionTraitRepository.findByProductOptionProductId(productId);
+        List<ProductOptionTrait> productOptionTraits = productOptionTraitRepository.findByProductOptionProductId(product.getId());
         Map<Long, ProductOptionTrait> productOptionTraitMap = productOptionTraits.stream()
                 .collect(Collectors.toMap(ProductOptionTrait::getId, Function.identity()));
 
@@ -118,7 +127,7 @@ public class StoreProductService {
             for (StoreOptionModifyRequest optionRequest : optionRequests) {
                 Long optionId = optionRequest.getOptionId();
                 OptionModificationCommand optionModificationCommand = new OptionModificationCommand(
-                        productId,
+                        storeProductId,
                         optionRequest.getOptionId(),
                         storeProduct,
                         optionRequest.getIsDefault(),
@@ -207,14 +216,13 @@ public class StoreProductService {
 
     public List<CategorizedStoreProductsReadDto> getCategorizedStoreProducts(Long storeId) {
         List<Category> categories = categoryRepository.findAll();
-        record ProductOrder(Product product, Integer orderIndex) {}
+        record ProductOrder(StoreProduct storeProduct, Integer orderIndex) {}
         Map<Long, List<ProductOrder>> categoryProductMap = new HashMap<>();
         List<StoreProduct> storeProducts = storeProductRepository.findByStoreId(storeId);
         log.info("Store Product Count {}", storeProducts.size());
         storeProducts.stream()
                 .filter(StoreProduct::getIsActive)
                 .forEach(storeProduct -> {
-                    Product product = storeProduct.getProduct();
                     storeProduct.getCategoryStoreProducts().stream()
                             .forEach(categoryStoreProduct -> {
                                 Integer orderIndex = categoryStoreProduct.getOrderIndex(); // how to ??
@@ -222,33 +230,41 @@ public class StoreProductService {
                                 categoryProductMap.computeIfAbsent(
                                         categoryId,
                                         k -> new ArrayList<>()
-                                ).add(new ProductOrder(product, orderIndex));
+                                ).add(new ProductOrder(storeProduct, orderIndex));
                             });
                 });
         categoryProductMap.values().forEach(list -> {
             log.info("LIST SIZE {}", list.size());
             list.sort(Comparator.comparing(ProductOrder::orderIndex));
         });
-        System.out.println("SIZE" + categoryProductMap.size());
 
         List<CategorizedStoreProductsReadDto> categorizedStoreProductsReadDtos = categories.stream()
                 .map(category -> {
                     Long categoryId = category.getId();
-                    System.out.println("Category Product Map: " + categoryProductMap.get(categoryId));
+                    log.info("Category Product Map {}: ", categoryProductMap.get(categoryId));
                     List<ProductOrder> productOrders = categoryProductMap.computeIfAbsent(
                             categoryId,
                             k -> new ArrayList<>()
                     );
                     List<CategorizedStoreProductsReadDto.StoreProductDto> storeProductDtos = productOrders.stream()
                             .map(productOrder -> {
-                                Product product = productOrder.product;
+                                StoreProduct storeProduct = productOrder.storeProduct;
+                                String publicUrl = null;
+                                try {
+                                    publicUrl = s3Service.getPublicUrl(storeProduct.getProduct().getImageSource());
+                                } catch (Exception e) {
+                                    log.error("Failed to load file from S3 {}", e.getMessage(), e);
+                                }
+                                Product product = storeProduct.getProduct();
+                                BigDecimal productPrice = Optional.ofNullable(storeProduct.getOverridePrice())
+                                        .orElse(product.getPrice());
                                 return CategorizedStoreProductsReadDto.StoreProductDto
                                         .builder()
-                                        .productId(product.getId())
+                                        .storeProductId(storeProduct.getId())
                                         .briefInfo(product.getBriefInfo())
                                         .name(product.getName())
-                                        .imageSource(product.getImageSource())
-                                        .price(product.getPrice())
+                                        .imageSource(publicUrl)
+                                        .price(productPrice)
                                         .productType(product.getProductType())
                                         .build();
                             }).toList();
@@ -260,25 +276,34 @@ public class StoreProductService {
                             .products(storeProductDtos)
                             .build();
                 }).collect(Collectors.toList());
-        categorizedStoreProductsReadDtos.sort(Comparator.comparing(
-                CategorizedStoreProductsReadDto::getOrderIndex
-        ));
+        log.info("DTO SIZE {}", categorizedStoreProductsReadDtos.size());
+        if (!categorizedStoreProductsReadDtos.isEmpty()) {
+            categorizedStoreProductsReadDtos.sort(Comparator.comparing(
+                    CategorizedStoreProductsReadDto::getOrderIndex
+            ));
+        }
+
         return categorizedStoreProductsReadDtos;
     }
 
-    public StoreProductReadByProductIdDto getProductById(Long storeId, Long productId) {
-        StoreProduct storeProduct = storeProductRepository.findByStoreIdAndProductId(storeId, productId)
-                .orElseThrow(() -> new StoreProductNotFoundException(storeId, productId));
+    public StoreProductReadByProductIdDto getProductById(Long storeId, Long storeProductId) {
+        String publicUrl = "https://" + s3bucketName + "." + s3postFix + "/";
+        StoreProduct storeProduct = storeProductRepository.findById(storeProductId)
+                .orElseThrow(() -> new StoreProductNotFoundException(storeProductId));
+
+        if (!storeProduct.getStore().getId().equals(storeId))
+            throw new IllegalArgumentException();
         Map<Long, StoreOptionDelta> storeOptionDeltaMap = storeProduct.getStoreOptionDeltas().stream()
                 .collect(Collectors.toMap(storeOptionDelta -> storeOptionDelta.getProductOption().getId(), Function.identity()));
-        String publicUrl = null;
-        try {
-            publicUrl = s3Service.getPublicUrl(storeProduct.getProduct().getImageSource());
-        } catch (Exception e) {
-            log.error("Failed to load file from S3 {}", e.getMessage(), e);
+        String productImageUrl = null;
+        String productImageSource = storeProduct.getProduct().getImageSource();
+        if (productImageSource != null) {
+            productImageUrl = publicUrl + productImageSource;
         }
 
         Product product = storeProduct.getProduct();
+        BigDecimal productPrice = Optional.ofNullable(storeProduct.getOverridePrice())
+                .orElse(product.getPrice());
         List<ProductOption> productOptions = product.getProductOptions();
         List<StoreProductReadByProductIdDto.OptionResponse> optionResponses = new ArrayList<>();
 
@@ -301,6 +326,11 @@ public class StoreProductService {
                             new OptionDelta(productOption.getExtraPrice())
                     );
             Option option = productOption.getOption();
+            String optionImageUrl = null;
+            String optionImageSource = option.getImageSource();
+            if (optionImageSource != null) {
+                optionImageUrl = publicUrl + optionImageSource;
+            }
             List<StoreProductReadByProductIdDto.QuantityDetailResponse> quantityDetailResponses = productOption.getProductOptionOptionQuantities()
                     .stream()
                     .map(productOptionQuantity -> StoreProductReadByProductIdDto.QuantityDetailResponse
@@ -355,7 +385,7 @@ public class StoreProductService {
                     .calories(option.getCalories())
                     .countType(productOption.getCountType())
                     .measureType(productOption.getMeasureType())
-                    .imageSource(option.getImageSource())
+                    .imageSource(optionImageUrl)
                     .orderIndex(productOption.getOrderIndex())
                     .customRuleResponse(customRuleResponse)
                     .optionTraitResponses(optionTraitResponses)
@@ -364,10 +394,10 @@ public class StoreProductService {
         }
         return StoreProductReadByProductIdDto
                 .builder()
-                .productId(product.getId())
+                .storeProductId(storeProduct.getId())
                 .productName(product.getName())
-                .productPrice(product.getPrice())
-                .imageSource(publicUrl)
+                .productPrice(productPrice)
+                .imageSource(productImageUrl)
                 .briefInfo(product.getBriefInfo())
                 .optionResponses(optionResponses)
                 .build();

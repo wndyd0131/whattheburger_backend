@@ -1,0 +1,10 @@
+target
+build
+node_modules
+.git
+.gitignore
+.env
+.idea
+.vscode
+.DS_Store
+src/main/resources/application-dev.yml

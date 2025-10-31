@@ -5,6 +5,7 @@ import com.whattheburger.backend.controller.dto.order.QuantityDetail;
 import com.whattheburger.backend.domain.enums.*;
 import com.whattheburger.backend.domain.order.*;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -15,11 +16,16 @@ import java.util.Optional;
 @Component
 @Slf4j
 public class OrderResponseDtoMapper {
+    @Value("${aws.s3-bucket-name}")
+    private String s3bucketName;
+    @Value("${aws.s3-url-postfix}")
+    private String s3urlPostfix;
     public OrderResponseDto toOrderResponseDto(Order order) {
         OrderResponseDto orderResponseDto = OrderResponseDto
                 .builder()
                 .id(order.getId())
                 .orderNumber(order.getOrderNumber())
+                .storeId(order.getStore().getId())
                 .totalPrice(order.getTotalPrice())
                 .orderStatus(order.getOrderStatus())
                 .orderType(order.getOrderType())
@@ -29,6 +35,9 @@ public class OrderResponseDtoMapper {
                 .discountType(order.getDiscountType())
                 .taxAmount(order.getTaxAmount())
                 .guestInfo(order.getGuestInfo())
+                .contactInfo(order.getContactInfo())
+                .cardInfo(order.getCardInfo())
+                .addressInfo(order.getAddressInfo())
                 .productResponseDtos(order.getOrderProducts().stream()
                         .map(this::toProductResponseDto).toList())
                 .build();
@@ -36,18 +45,22 @@ public class OrderResponseDtoMapper {
     }
 
     private ProductResponseDto toProductResponseDto(OrderProduct orderProduct) {
-        log.info("Product ID {}", orderProduct.getProductId());
+        log.info("Product ID {}", orderProduct.getStoreProductId());
+        String publicUrl = "https://" + s3bucketName + "." + s3urlPostfix + "/";
+        String productImageUrl = Optional.ofNullable(orderProduct.getImageSource())
+                .map(imageSource -> publicUrl + imageSource)
+                .orElse(null);
         ProductResponseDto productResponseDto = ProductResponseDto
                 .builder()
                 .id(orderProduct.getId())
-                .productId(orderProduct.getProductId())
+                .storeProductId(orderProduct.getStoreProductId())
                 .quantity(orderProduct.getQuantity())
                 .name(orderProduct.getName())
                 .totalPrice(orderProduct.getTotalPrice())
                 .extraPrice(orderProduct.getExtraPrice())
                 .basePrice(orderProduct.getBasePrice())
                 .calculatedCalories(orderProduct.getTotalCalories())
-                .imageSource(orderProduct.getImageSource())
+                .imageSource(productImageUrl)
                 .productType(orderProduct.getProductType())
                 .customRuleResponseDtos(orderProduct.getOrderCustomRules().stream()
                         .map(this::toCustomRuleResponseDto).toList())

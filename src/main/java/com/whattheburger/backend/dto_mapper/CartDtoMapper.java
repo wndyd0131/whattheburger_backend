@@ -126,7 +126,7 @@ public class CartDtoMapper {
             ProductCalculationDetail productCalculationDetail
     ) {
         ValidatedProduct validatedProduct = validatedCartDto.getValidatedProduct();
-        if (!(validatedProduct.getProduct().getId().equals(productCalculationDetail.getProductId())))
+        if (!(validatedProduct.getStoreProduct().getId().equals(productCalculationDetail.getStoreProductId())))
             throw new IllegalStateException("validated cart and calculated cart are different in id");
         List<ValidatedCustomRule> validatedCustomRules = validatedCartDto.getValidatedCustomRules();
         List<CustomRuleCalculationDetail> customRuleCalculationDetails = productCalculationDetail.getCustomRuleCalculationDetails();
@@ -214,7 +214,7 @@ public class CartDtoMapper {
             processedCustomRuleDtos.add(processedCustomRuleDto);
         }
         ProcessedProductDto processedProductDto = new ProcessedProductDto(
-                validatedProduct.getProduct(),
+                validatedProduct.getStoreProduct(),
                 validatedProduct.getQuantity(),
                 processedCustomRuleDtos,
                 productCalculationDetail.getCalculatedTotalPrice(),

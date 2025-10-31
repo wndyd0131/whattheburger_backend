@@ -1,21 +1,28 @@
 package com.whattheburger.backend.security;
 
+import com.google.common.net.HttpHeaders;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.UUID;
 
 @Component
+@Slf4j
 public class GuestFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+        System.out.println(">>> " + request.getMethod() + " " + request.getRequestURI());
         Cookie[] cookies = request.getCookies();
+        System.out.println(">>> Cookies: " + cookies);
         boolean hasGuestId = false;
         if (cookies != null) {
             for (Cookie cookie : cookies) {
@@ -27,12 +34,18 @@ public class GuestFilter extends OncePerRequestFilter {
         }
 
         if (!hasGuestId) {
-            String cartId = UUID.randomUUID().toString();
-            Cookie cookie = new Cookie("guestId", cartId);
-            cookie.setHttpOnly(true);
-            cookie.setPath("/");
-            cookie.setMaxAge(60 * 60 * 24 * 30);
-            response.addCookie(cookie);
+            String guestId = UUID.randomUUID().toString();
+            ResponseCookie guestCookie = ResponseCookie.from("guestId", guestId)
+                    .path("/")
+                    .secure(true)
+                    .httpOnly(true)
+                    .sameSite("None")
+                    .maxAge(Duration.ofDays(30))
+                    .build();
+            response.addHeader(
+                    HttpHeaders.SET_COOKIE, guestCookie.toString()
+            );
+            log.info("Cookie[guestId] set as {}", guestId);
         }
 
         filterChain.doFilter(request, response);

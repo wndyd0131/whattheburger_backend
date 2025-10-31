@@ -1,9 +1,6 @@
 package com.whattheburger.backend.controller;
 
-import com.whattheburger.backend.controller.dto.cart.CartModifyRequestDto;
-import com.whattheburger.backend.controller.dto.cart.CartRequestDto;
-import com.whattheburger.backend.controller.dto.cart.CartResponseDto;
-import com.whattheburger.backend.controller.dto.cart.ProductResponseDto;
+import com.whattheburger.backend.controller.dto.cart.*;
 import com.whattheburger.backend.controller.dto_mapper.CartResponseDtoMapper;
 import com.whattheburger.backend.service.CartService;
 import com.whattheburger.backend.service.dto.cart.ProcessedCartDto;
@@ -16,6 +13,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.UUID;
+
 @RestController
 @RequiredArgsConstructor
 @Tag(name = "Cart")
@@ -25,14 +25,15 @@ public class CartController {
     private final CartService cartService;
     private final CartResponseDtoMapper cartResponseDtoMapper;
 
-    @PostMapping("/api/v1/cart")
+    @PostMapping("/api/v1/store/{storeId}/cart")
     public ResponseEntity<CartResponseDto> addToCart(
-            @RequestBody CartRequestDto cartRequestDto,
-            @CookieValue(name = "guestId") String guestId,
+            @PathVariable(name = "storeId") Long storeId,
+            @RequestBody CartCreateRequestDto cartRequestDto,
+            @CookieValue(name = "guestId", required = false) UUID guestId,
             Authentication authentication
             ) {
         log.info("GUEST_ID: {}", guestId);
-        ProcessedCartDto processedCartDto = cartService.saveCart(guestId, authentication, cartRequestDto);
+        ProcessedCartDto processedCartDto = cartService.saveCart(storeId, guestId, authentication, cartRequestDto);
         CartResponseDto cartResponseDto = cartResponseDtoMapper.toCartResponseDto(processedCartDto);
         return new ResponseEntity<>(
                 cartResponseDto,
@@ -40,53 +41,87 @@ public class CartController {
         );
     }
 
-    @GetMapping("/api/v1/cart")
+    @GetMapping("/api/v1/store/{storeId}/cart")
     public ResponseEntity<CartResponseDto> loadCart(
-            @CookieValue(name = "guestId") String guestId,
+            @PathVariable(name = "storeId") Long storeId,
+            @CookieValue("guestId") UUID guestId,
             Authentication authentication
     ) {
         log.info("GUEST_ID: {}", guestId);
 
-        ProcessedCartDto processedCartDto = cartService.loadCart(guestId, authentication); // let other services reuse product entity
+        ProcessedCartDto processedCartDto = cartService.loadCart(storeId, guestId, authentication); // let other services reuse product entity
         CartResponseDto cartResponseDto = cartResponseDtoMapper.toCartResponseDto(processedCartDto);
 
         return ResponseEntity.ok(cartResponseDto);
     }
 
-    @GetMapping("/api/v1/cart/{idx}")
+    @GetMapping("/api/v1/store/{storeId}/cart/{cartIdx}")
     public ResponseEntity<ProductResponseDto> loadItemByIdx(
-            @PathVariable("idx") int cartIdx,
-            @CookieValue(name = "guestId") String guestId,
+            @PathVariable(name = "cartIdx") int cartIdx,
+            @PathVariable(name = "storeId") Long storeId,
+            @CookieValue(name = "guestId") UUID guestId,
             Authentication authentication
     ) {
-        ProcessedProductDto processedProductDto = cartService.loadCartByIdx(guestId, cartIdx, authentication);
+        ProcessedProductDto processedProductDto = cartService.loadCartByIdx(storeId, guestId, cartIdx, authentication);
         ProductResponseDto productResponseDto = cartResponseDtoMapper.toProductResponse(processedProductDto);
         return ResponseEntity.ok(
                 productResponseDto
         );
     }
 
-    @PatchMapping("/api/v1/cart/{idx}")
-    public ResponseEntity<CartResponseDto> modifyItemByIdx(
-            @RequestBody CartModifyRequestDto cartRequestDto,
-            @PathVariable("idx") int cartIdx,
-            @CookieValue(name = "guestId") String guestId,
+    @PatchMapping("/api/v1/store/{storeId}/cart/{cartIdx}/option")
+    public ResponseEntity<CartResponseDto> modifyOptionsByIdx(
+            @RequestBody CartOptionModifyRequestDto cartRequestDto,
+            @PathVariable(name = "storeId") Long storeId,
+            @PathVariable("cartIdx") int cartIdx,
+            @CookieValue(name = "guestId") UUID guestId,
             Authentication authentication
     ) {
-        ProcessedCartDto processedCartDto = cartService.modifyItem(guestId, cartIdx, cartRequestDto, authentication);
+        List<CustomRuleRequest> customRuleRequests = cartRequestDto.getCustomRuleRequests();
+        ProcessedCartDto processedCartDto = cartService.modifyItem(storeId, guestId, cartIdx, customRuleRequests, authentication);
         CartResponseDto cartResponseDto = cartResponseDtoMapper.toCartResponseDto(processedCartDto);
         return ResponseEntity.ok(
                 cartResponseDto
         );
     }
 
-    @DeleteMapping("/api/v1/cart/{idx}")
-    public ResponseEntity<CartResponseDto> removeItemByIdx(
-            @PathVariable("idx") int cartIdx,
-            @CookieValue(name = "guestId") String guestId,
+    @PatchMapping("/api/v1/store/{storeId}/cart/{cartIdx}/product")
+    public ResponseEntity<CartResponseDto> modifyProductByIdx(
+            @RequestBody CartProductModifyRequestDto cartRequestDto,
+            @PathVariable(name = "storeId") Long storeId,
+            @PathVariable(name = "cartIdx") int cartIdx,
+            @CookieValue(name = "guestId") UUID guestId,
             Authentication authentication
     ) {
-        ProcessedCartDto processedCartDto = cartService.deleteItem(guestId, cartIdx, authentication);
+        int quantity = cartRequestDto.getQuantity();
+        ProcessedCartDto processedCartDto = cartService.modifyItemQuantity(storeId, guestId, cartIdx, quantity, authentication);
+        CartResponseDto cartResponseDto = cartResponseDtoMapper.toCartResponseDto(processedCartDto);
+        return ResponseEntity.ok(
+                cartResponseDto
+        );
+    }
+
+    @DeleteMapping("/api/v1/store/{storeId}/cart/{cartIdx}")
+    public ResponseEntity<CartResponseDto> removeItemByIdx(
+            @PathVariable(name = "storeId") Long storeId,
+            @PathVariable(name = "cartIdx") int cartIdx,
+            @CookieValue(name = "guestId") UUID guestId,
+            Authentication authentication
+    ) {
+        ProcessedCartDto processedCartDto = cartService.deleteItem(storeId, guestId, cartIdx, authentication);
+        CartResponseDto cartResponseDto = cartResponseDtoMapper.toCartResponseDto(processedCartDto);
+        return ResponseEntity.ok(
+                cartResponseDto
+        );
+    }
+
+    @DeleteMapping("/api/v1/store/{storeId}/cart")
+    public ResponseEntity<CartResponseDto> removeAllItemByIdx(
+            @PathVariable(name = "storeId") Long storeId,
+            @CookieValue(name = "guestId") UUID guestId,
+            Authentication authentication
+    ) {
+        ProcessedCartDto processedCartDto = cartService.deleteAllItem(storeId, guestId, authentication);
         CartResponseDto cartResponseDto = cartResponseDtoMapper.toCartResponseDto(processedCartDto);
         return ResponseEntity.ok(
                 cartResponseDto

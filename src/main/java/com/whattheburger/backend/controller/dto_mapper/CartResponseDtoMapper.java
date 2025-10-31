@@ -1,15 +1,13 @@
 package com.whattheburger.backend.controller.dto_mapper;
 
 import com.whattheburger.backend.controller.dto.cart.*;
-import com.whattheburger.backend.domain.CustomRule;
-import com.whattheburger.backend.domain.Product;
-import com.whattheburger.backend.domain.ProductOption;
-import com.whattheburger.backend.domain.ProductOptionTrait;
+import com.whattheburger.backend.domain.*;
 import com.whattheburger.backend.service.dto.cart.ProcessedCartDto;
 import com.whattheburger.backend.service.dto.cart.ProcessedCustomRuleDto;
 import com.whattheburger.backend.service.dto.cart.ProcessedProductDto;
 import com.whattheburger.backend.service.dto.cart.ProcessedTraitDto;
 import com.whattheburger.backend.service.dto.cart.calculator.ProcessedOptionDto;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -19,11 +17,24 @@ import java.util.Optional;
 
 @Component
 public class CartResponseDtoMapper {
+    @Value("${aws.s3-bucket-name}")
+    private String s3bucketName;
+    @Value("${aws.s3-url-postfix}")
+    private String s3postFix;
     public ProductResponseDto toProductResponse(
             ProcessedProductDto processedProductDto
     ) {
+        String publicUrl = "https://" + s3bucketName + "." + s3postFix + "/";
+        StoreProduct storeProduct = processedProductDto.getStoreProduct();
+        Product product = storeProduct.getProduct();
+        String productImageUrl = Optional.ofNullable(product.getImageSource())
+                .map(imageSource -> publicUrl + imageSource)
+                .orElse(null);
 
-        Product product = processedProductDto.getProduct();
+        // Override price
+        BigDecimal productPrice = Optional.ofNullable(storeProduct.getOverridePrice())
+                .orElse(product.getPrice());
+
         List<ProcessedCustomRuleDto> processedCustomRuleDtos = processedProductDto.getProcessedCustomRuleDtos();
 
         List<CustomRuleResponseDto> customRuleResponses = new ArrayList<>();
@@ -34,6 +45,9 @@ public class CartResponseDtoMapper {
             List<OptionResponseDto> optionResponses = new ArrayList<>();
             for (ProcessedOptionDto processedOptionDto : processedOptionDtos) {
                 ProductOption productOption = processedOptionDto.getProductOption();
+                String optionImageUrl = Optional.ofNullable(productOption.getOption().getImageSource())
+                        .map(imageSource -> publicUrl + imageSource)
+                        .orElse(null);
 
                 QuantityDetailResponse quantityDetailResponse = Optional.ofNullable(processedOptionDto.getProcessedQuantityDto())
                         .map(processedQuantityDto ->
@@ -79,7 +93,7 @@ public class CartResponseDtoMapper {
                                 .basePrice(productOption.getExtraPrice())
                                 .countType(productOption.getCountType())
                                 .defaultQuantity(productOption.getDefaultQuantity())
-                                .imageSource(productOption.getOption().getImageSource())
+                                .imageSource(optionImageUrl)
                                 .isDefault(productOption.getIsDefault())
                                 .isSelected(processedOptionDto.getIsSelected())
                                 .maxQuantity(productOption.getMaxQuantity())
@@ -110,15 +124,15 @@ public class CartResponseDtoMapper {
         ProductResponseDto productResponse = ProductResponseDto
                 .builder()
                 .customRuleResponses(customRuleResponses)
-                .basePrice(product.getPrice())
-                .productId(product.getId())
+                .basePrice(productPrice)
+                .storeProductId(storeProduct.getId())
                 .productName(product.getName())
                 .briefInfo(product.getBriefInfo())
                 .calories(product.getCalories())
                 .productExtraPrice(processedProductDto.getCalculatedExtraPrice())
                 .productTotalPrice(processedProductDto.getCalculatedProductPrice())
                 .productType(product.getProductType())
-                .imageSource(product.getImageSource())
+                .imageSource(productImageUrl)
                 .quantity(processedProductDto.getQuantity())
                 .build();
 

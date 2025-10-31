@@ -7,6 +7,7 @@ import com.stripe.net.Webhook;
 import com.whattheburger.backend.controller.dto.CheckoutRequestDto;
 import com.whattheburger.backend.controller.dto.CheckoutResponseDto;
 import com.whattheburger.backend.controller.dto.order.OrderFormRequestDto;
+import com.whattheburger.backend.domain.order.OrderSession;
 import com.whattheburger.backend.service.CheckoutService;
 import com.whattheburger.backend.service.OrderService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,6 +19,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import retrofit2.http.Path;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -35,14 +37,15 @@ public class CheckoutController {
     private final CheckoutService checkoutService;
     private final OrderService orderService;
 
-    @PostMapping("/api/v1/checkout")
+    @PostMapping("/api/v1/checkout/{orderSessionId}")
     public ResponseEntity<CheckoutResponseDto> createCheckoutSession(
             @RequestBody OrderFormRequestDto formRequestDto,
+            @PathVariable(name = "orderSessionId") UUID orderSessionId,
             @CookieValue(name = "guestId") UUID guestId,
             Authentication authentication
     ) {
-        orderService.updateOrderSession(formRequestDto, authentication, guestId);
-        Session checkoutSession = checkoutService.createCheckoutSession(guestId, authentication);
+        OrderSession orderSession = orderService.updateOrderSession(formRequestDto, orderSessionId, authentication, guestId);
+        Session checkoutSession = checkoutService.createCheckoutSession(orderSession, guestId, authentication);
         String redirectUrl = checkoutSession.getUrl();
         log.info("URL {}", redirectUrl);
         return new ResponseEntity<>(

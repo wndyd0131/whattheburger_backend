@@ -13,8 +13,9 @@ import java.util.List;
 @Data
 @Builder
 public class ProductCalculationDetail {
-    private Long productId;
+    private Long storeProductId;
     private List<CustomRuleCalculationDetail> customRuleCalculationDetails;
+    private Integer quantity;
     private BigDecimal calculatedTotalPrice;
     private BigDecimal calculatedExtraPrice;
 }

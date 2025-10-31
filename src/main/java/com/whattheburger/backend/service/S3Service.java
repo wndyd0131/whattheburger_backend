@@ -23,7 +23,7 @@ public class S3Service {
 
     private final AmazonS3 amazonS3;
 
-    @Value("${aws.bucket-name}")
+    @Value("${aws.s3-bucket-name}")
     private String bucketName;
 
     public String uploadFile(MultipartFile file) throws IOException {

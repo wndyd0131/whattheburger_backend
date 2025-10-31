@@ -12,16 +12,20 @@ import jakarta.persistence.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Slf4j
 @Component
 public class OrderSessionFactory {
-    public OrderSession createFromCartDto(ProcessedCartDto cartDto, OrderType orderType) {
+    public OrderSession createFromCartDto(ProcessedCartDto cartDto, OrderType orderType, Long storeId) {
         OrderSession orderSession = OrderSession
                 .builder()
+                .sessionId(UUID.randomUUID())
+                .storeId(storeId)
                 .orderStatus(OrderStatus.PENDING)
                 .orderType(orderType)
                 .paymentStatus(PaymentStatus.UNPAID)
@@ -36,7 +40,7 @@ public class OrderSessionFactory {
         return orderSession;
     }
 
-    public void overwriteFromCartDto(ProcessedCartDto cartDto, OrderType orderType, OrderSession orderSession) {
+    public void overwriteFromCartDto(ProcessedCartDto cartDto, OrderType orderType, Long storeId, OrderSession orderSession) {
         List<ProcessedProductDto> processedProductDtos = cartDto.getProcessedProductDtos();
         List<OrderSessionProduct> orderSessionProducts = processedProductDtos.stream()
                 .map(this::createFromProductDto)
@@ -44,16 +48,24 @@ public class OrderSessionFactory {
         orderSession.renewOrderSession(
                 orderSessionProducts,
                 orderType,
+                storeId,
                 cartDto.getTotalPrice()
         );
     }
 
     private OrderSessionProduct createFromProductDto(ProcessedProductDto productDto) {
-        Product product = productDto.getProduct();
+        StoreProduct storeProduct = productDto.getStoreProduct();
+        Product product = storeProduct.getProduct();
+
+        BigDecimal productPrice = Optional.ofNullable(storeProduct.getOverridePrice())
+                .orElse(product.getPrice());
+
+        log.info("Calculated Product Price {}", productDto.getCalculatedProductPrice());
+
         return OrderSessionProduct
                 .builder()
-                .basePrice(product.getPrice())
-                .productId(product.getId())
+                .basePrice(productPrice)
+                .storeProductId(storeProduct.getId())
                 .extraPrice(productDto.getCalculatedExtraPrice())
                 .productType(product.getProductType())
                 .name(product.getName())

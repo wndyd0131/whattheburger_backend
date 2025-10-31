@@ -43,7 +43,6 @@ public class ProductCreateRequestDto {
         private Long optionId;
         private Boolean isDefault;
         private CountType countType;
-        private MeasureType measureType;
         private Integer defaultQuantity;
         private Integer maxQuantity;
         private BigDecimal extraPrice;

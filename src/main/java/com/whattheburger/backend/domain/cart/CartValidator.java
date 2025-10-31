@@ -17,17 +17,19 @@ import java.util.Optional;
 @Slf4j
 public class CartValidator {
     public List<ValidatedCartDto> validate (
-            List<Cart> carts,
-            Map<Long, Product> productMap,
+            CartList cartList,
+            Map<Long, StoreProduct> storeProductMap,
             Map<Long, CustomRule> customRuleMap,
             Map<Long, ProductOption> productOptionMap,
             Map<Long, ProductOptionTrait> productOptionTraitMap,
             Map<Long, ProductOptionOptionQuantity> quantityMap
     ) throws ResourceNotFoundException {
+        List<Cart> carts = cartList.getCarts();
+        Long storeId = cartList.getStoreId();
         List<ValidatedCartDto> validatedCartDtos = new ArrayList<>();
 
         for (Cart cart : carts) {
-            ValidatedCartDto validatedCartDto = validate(cart, productMap, customRuleMap, productOptionMap, productOptionTraitMap, quantityMap);
+            ValidatedCartDto validatedCartDto = validate(storeId, cart, storeProductMap, customRuleMap, productOptionMap, productOptionTraitMap, quantityMap);
 
             validatedCartDtos.add(validatedCartDto);
         }
@@ -35,20 +37,25 @@ public class CartValidator {
     }
 
     public ValidatedCartDto validate(
+            Long storeId,
             Cart cart,
-            Map<Long, Product> productMap,
+            Map<Long, StoreProduct> storeProductMap,
             Map<Long, CustomRule> customRuleMap,
             Map<Long, ProductOption> productOptionMap,
             Map<Long, ProductOptionTrait> productOptionTraitMap,
             Map<Long, ProductOptionOptionQuantity> quantityMap
     ) {
-        Long productId = cart.getProductId();
-        log.info("Product Id {}", productId);
-        Product product = Optional.ofNullable(productMap.get(productId))
-                .orElseThrow(() -> new ProductNotFoundException(productId));
+        Long storeProductId = cart.getStoreProductId();
+        log.info("storeProduct Id {}", storeProductId);
+        StoreProduct storeProduct = Optional.ofNullable(storeProductMap.get(storeProductId))
+                .orElseThrow(() -> new StoreProductNotFoundException(storeProductId));
+        if (!storeProduct.getStore().getId().equals(storeId))
+            throw new IllegalArgumentException(
+                    "StoreProduct " + storeProduct.getId() + " does not belong to store " + storeId
+            );
 
         ValidatedProduct validatedProduct = new ValidatedProduct(
-                product,
+                storeProduct,
                 cart.getQuantity() // product quantity
         );
 

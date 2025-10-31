@@ -14,7 +14,7 @@ import java.util.List;
 @Data
 @Builder
 public class ProductResponseDto {
-    private Long productId;
+    private Long storeProductId;
     private String productName;
     private ProductType productType;
     private BigDecimal basePrice;

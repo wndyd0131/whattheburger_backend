@@ -15,7 +15,7 @@ import java.util.List;
 @Builder
 public class OrderSessionProductResponseDto {
     private Long id;
-    private Long productId;
+    private Long storeProductId;
     private Integer quantity;
     //    private String forWhom;
     private String name;

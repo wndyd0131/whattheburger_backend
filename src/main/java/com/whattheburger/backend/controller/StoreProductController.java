@@ -1,4 +1,4 @@
-package com.whattheburger.backend.controller.store;
+package com.whattheburger.backend.controller;
 
 import com.whattheburger.backend.controller.dto.CategorizedStoreProductsReadDto;
 import com.whattheburger.backend.controller.dto.store.StoreProductCreateRequestDto;
@@ -54,21 +54,21 @@ public class StoreProductController {
         return ResponseEntity.ok(storeProductsDto);
     }
 
-    @GetMapping("/api/v1/store/{storeId}/product/{productId}")
+    @GetMapping("/api/v1/store/{storeId}/product/{storeProductId}")
     public ResponseEntity<StoreProductReadByProductIdDto> fetchStoreProduct(
             @PathVariable(name = "storeId") Long storeId,
-            @PathVariable(name = "productId") Long productId
+            @PathVariable(name = "storeProductId") Long storeProductId
     ) {
-        StoreProductReadByProductIdDto storeProductDto = storeProductService.getProductById(storeId, productId);
+        StoreProductReadByProductIdDto storeProductDto = storeProductService.getProductById(storeId, storeProductId);
         return ResponseEntity.ok(storeProductDto);
     }
-    @PostMapping("/api/v1/store/{storeId}/product/{productId}")
+    @PostMapping("/api/v1/store/{storeId}/product/{storeProductId}")
     public void modifyProduct(
             @PathVariable Long storeId,
-            @PathVariable Long productId,
+            @PathVariable Long storeProductId,
             @RequestBody StoreProductModifyRequestDto storeProductDto
     ) {
-        storeProductService.modifyProduct(storeId, productId, storeProductDto);
+        storeProductService.modifyProduct(storeId, storeProductId, storeProductDto);
 
         // delta info (create api -> backend diff checking)
     }

@@ -2,19 +2,19 @@ package com.whattheburger.backend.service;
 
 import com.whattheburger.backend.controller.dto.cart.*;
 import com.whattheburger.backend.domain.*;
-import com.whattheburger.backend.domain.cart.Cart;
-import com.whattheburger.backend.domain.cart.CartCalculator;
-import com.whattheburger.backend.domain.cart.CartList;
-import com.whattheburger.backend.domain.cart.CartValidator;
+import com.whattheburger.backend.domain.cart.*;
 import com.whattheburger.backend.dto_mapper.CartDtoMapper;
 import com.whattheburger.backend.repository.*;
+import com.whattheburger.backend.security.UserDetailsImpl;
 import com.whattheburger.backend.service.dto.cart.ProcessedCartDto;
 import com.whattheburger.backend.service.dto.cart.ProcessedProductDto;
 import com.whattheburger.backend.service.dto.cart.calculator.CalculatedCartDto;
 import com.whattheburger.backend.service.dto.cart.ValidatedCartDto;
 import com.whattheburger.backend.service.dto.cart.calculator.ProductCalculationDetail;
-import com.whattheburger.backend.service.dto.cart.calculator.ProductCalculatorDto;
+import com.whattheburger.backend.service.exception.cart.CartNotFoundException;
 import com.whattheburger.backend.service.exception.cart.InvalidCartIndexException;
+import com.whattheburger.backend.util.SessionKey;
+import com.whattheburger.backend.util.UserType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -33,6 +33,8 @@ import java.util.stream.Collectors;
 public class CartService {
 
     private final RedisTemplate<String, CartList> rt;
+    private final CartSessionStorage cartSessionStorage;
+    private final StoreProductRepository storeProductRepository;
     private final ProductRepository productRepository;
     private final CustomRuleRepository customRuleRepository;
     private final ProductOptionRepository productOptionRepository;
@@ -42,22 +44,25 @@ public class CartService {
     private final CartValidator cartValidator;
     private final CartCalculator cartCalculator;
 
-    public ProcessedCartDto saveCart(String guestId, Authentication authentication, CartRequestDto cartRequestDto) {
+    public ProcessedCartDto saveCart(Long storeId, UUID guestId, Authentication authentication, CartCreateRequestDto cartRequestDto) {
+        String sessionKey = getSessionKey(guestId, storeId, authentication);
+        log.info("WRITE SESSION KEY {}", sessionKey);
 
-        String sessionKey = getSessionKey(guestId, authentication);
+        Cart cart = new Cart(cartRequestDto.getStoreProductId(), cartRequestDto.getQuantity(), cartRequestDto.getCustomRuleRequests());
 
-        Cart cart = new Cart(cartRequestDto.getStoreId(), cartRequestDto.getProductId(), cartRequestDto.getQuantity(), cartRequestDto.getCustomRuleRequests());
+        CartList cartList = cartSessionStorage.load(sessionKey)
+                .orElse(new CartList(storeId, new ArrayList<>()));
 
-        CartList cartList = Optional.ofNullable(rt.opsForValue().get("cart:" + sessionKey)).orElse(new CartList(new ArrayList<>()));
         log.info("CartList {}", cartList);
         cartList.getCarts().add(cart);
-        rt.opsForValue().set("cart:"+sessionKey, cartList);
-        return loadCart(sessionKey, authentication);
+        cartSessionStorage.save(sessionKey, cartList);
+        return loadCart(storeId, guestId, authentication);
     }
 
-    public ProcessedCartDto processCart(List<Cart> carts) {
-        Set<Long> productIds = carts
-                .stream().map(Cart::getProductId).collect(Collectors.toSet());
+    public ProcessedCartDto processCart(CartList cartList) {
+        List<Cart> carts = cartList.getCarts();
+        Set<Long> storeProductIds = carts.stream()
+                .map(Cart::getStoreProductId).collect(Collectors.toSet());
         Set<Long> customRuleIds = new HashSet<>();
         Set<Long> productOptionIds = new HashSet<>();
         Set<Long> productOptionTraitIds = new HashSet<>();
@@ -65,8 +70,8 @@ public class CartService {
 
         initIdSets(carts, customRuleIds, productOptionIds, productOptionOptionQuantityIds, productOptionTraitIds);
 
-        Map<Long, Product> productMap = productRepository.findAllById(productIds)
-                .stream().collect(Collectors.toMap(Product::getId, Function.identity()));
+        Map<Long, StoreProduct> storeProductMap = storeProductRepository.findAllById(storeProductIds)
+                .stream().collect(Collectors.toMap(StoreProduct::getId, Function.identity()));
         Map<Long, CustomRule> customRuleMap = customRuleRepository.findAllById(customRuleIds)
                 .stream().collect(Collectors.toMap(CustomRule::getId, Function.identity()));
         Map<Long, ProductOption> productOptionMap = productOptionRepository.findAllById(productOptionIds)
@@ -77,8 +82,8 @@ public class CartService {
                 .stream().collect(Collectors.toMap(ProductOptionOptionQuantity::getId, Function.identity()));
 
         List<ValidatedCartDto> validatedCartDtos = cartValidator.validate(
-                carts,
-                productMap,
+                cartList,
+                storeProductMap,
                 customRuleMap,
                 productOptionMap,
                 productOptionTraitMap,
@@ -87,7 +92,7 @@ public class CartService {
 
         CalculatedCartDto calculatedCartDto = cartCalculator.calculateTotalPrice(
                 carts,
-                productMap,
+                storeProductMap,
                 customRuleMap,
                 productOptionMap,
                 productOptionTraitMap,
@@ -103,28 +108,29 @@ public class CartService {
         return processedCartDto;
     }
 
-    public ProcessedCartDto loadCart(String guestId, Authentication authentication) {
+    public ProcessedCartDto loadCart(Long storeId, UUID guestId, Authentication authentication) {
 
-        String sessionKey = getSessionKey(guestId, authentication);
+        String sessionKey = getSessionKey(guestId, storeId, authentication);
+        log.info("LOAD SESSION KEY {}", sessionKey);
 
-        CartList cartList = Optional.ofNullable(rt.opsForValue().get("cart:" + sessionKey)).orElse(new CartList(new ArrayList<>()));
+        CartList cartList = cartSessionStorage.load(sessionKey)
+                .orElse(new CartList(storeId, new ArrayList<>()));
 
-        List<Cart> carts = cartList.getCarts();
-
-        ProcessedCartDto processedCartDto = processCart(carts);
+        ProcessedCartDto processedCartDto = processCart(cartList);
 
         return processedCartDto;
     }
 
-    public ProcessedProductDto loadCartByIdx(String guestId, int cartIdx, Authentication authentication) {
-        String sessionKey = getSessionKey(guestId, authentication);
+    public ProcessedProductDto loadCartByIdx(Long storeId, UUID guestId, int cartIdx, Authentication authentication) {
+        String sessionKey = getSessionKey(guestId, storeId, authentication);
 
-        CartList cartList = Optional.ofNullable(rt.opsForValue().get("cart:" + sessionKey)).orElse(new CartList(new ArrayList<>()));
+        CartList cartList = cartSessionStorage.load(sessionKey)
+                .orElse(new CartList(storeId, new ArrayList<>()));
         log.info("CartList {}", cartList);
         List<Cart> carts = cartList.getCarts();
 
-        Set<Long> productIds = carts
-                .stream().map(Cart::getProductId).collect(Collectors.toSet());
+        Set<Long> storeProductIds = carts
+                .stream().map(Cart::getStoreProductId).collect(Collectors.toSet());
         Set<Long> customRuleIds = new HashSet<>();
         Set<Long> productOptionIds = new HashSet<>();
         Set<Long> productOptionTraitIds = new HashSet<>();
@@ -132,8 +138,8 @@ public class CartService {
 
         initIdSets(carts, customRuleIds, productOptionIds, productOptionOptionQuantityIds, productOptionTraitIds);
 
-        Map<Long, Product> productMap = productRepository.findAllById(productIds)
-                .stream().collect(Collectors.toMap(Product::getId, Function.identity()));
+        Map<Long, StoreProduct> storeProductMap = storeProductRepository.findAllById(storeProductIds)
+                .stream().collect(Collectors.toMap(StoreProduct::getId, Function.identity()));
         Map<Long, CustomRule> customRuleMap = customRuleRepository.findAllById(customRuleIds)
                 .stream().collect(Collectors.toMap(CustomRule::getId, Function.identity()));
         Map<Long, ProductOption> productOptionMap = productOptionRepository.findAllById(productOptionIds)
@@ -147,8 +153,8 @@ public class CartService {
         if (cartIdx >= 0 && cartIdx < carts.size()) {
             Cart cart = carts.get(cartIdx);
 
-            ValidatedCartDto validatedCartDto = cartValidator.validate(cart, productMap, customRuleMap, productOptionMap, productOptionTraitMap, quantityMap);
-            ProductCalculationDetail productCalculationDetail = cartCalculator.calculateProductPrice(cart, productMap, customRuleMap, productOptionMap, productOptionTraitMap, quantityMap);
+            ValidatedCartDto validatedCartDto = cartValidator.validate(storeId, cart, storeProductMap, customRuleMap, productOptionMap, productOptionTraitMap, quantityMap);
+            ProductCalculationDetail productCalculationDetail = cartCalculator.calculateProductPrice(cart, storeProductMap, customRuleMap, productOptionMap, productOptionTraitMap, quantityMap);
 
             ProcessedProductDto processedProductDto = cartDtoMapper.toProcessedProductDto(validatedCartDto, productCalculationDetail);
 
@@ -157,40 +163,86 @@ public class CartService {
         throw new InvalidCartIndexException(cartIdx);
     }
 
-    public ProcessedCartDto modifyItem(String guestId, int cartIdx, CartModifyRequestDto cartRequestDto, Authentication authentication) {
+    public ProcessedCartDto modifyItem(Long storeId, UUID guestId, int cartIdx, List<CustomRuleRequest> customRuleRequests, Authentication authentication) {
 
-        String sessionKey = getSessionKey(guestId, authentication);
+        String sessionKey = getSessionKey(guestId, storeId, authentication);
 
 //        Cart cart = new Cart(cartRequestDto.getProductId(), cartRequestDto.getQuantity(), cartRequestDto.getCustomRuleRequests());
-        CartList cartList = Optional.ofNullable(rt.opsForValue().get("cart:" + sessionKey)).orElse(new CartList(new ArrayList<>()));
+        CartList cartList = cartSessionStorage.load(sessionKey)
+                .orElse(new CartList(storeId, new ArrayList<>()));
         log.info("CartList {}", cartList);
         List<Cart> carts = cartList.getCarts();
 
         if (cartIdx >= 0 && cartIdx < carts.size()) {
             Cart cart = carts.get(cartIdx);
-            cart.updateCustomRules(cartRequestDto.getCustomRuleRequests());
-            rt.opsForValue().set("cart:"+sessionKey, cartList);
+            cart.updateCustomRules(customRuleRequests);
+            cartSessionStorage.save(sessionKey, cartList);
         } else {
             throw new InvalidCartIndexException(cartIdx);
         }
-        return loadCart(sessionKey, authentication);
+        return loadCart(storeId, guestId, authentication);
     }
 
-    public ProcessedCartDto deleteItem(String guestId, int cartIdx, Authentication authentication) {
+    public ProcessedCartDto modifyItemQuantity(Long storeId, UUID guestId, int cartIdx, int quantity, Authentication authentication) {
 
-        String sessionKey = getSessionKey(guestId, authentication);
+        String sessionKey = getSessionKey(guestId, storeId, authentication);
 
-        CartList cartList = Optional.ofNullable(rt.opsForValue().get("cart:" + sessionKey)).orElse(new CartList(new ArrayList<>()));
+//        Cart cart = new Cart(cartRequestDto.getProductId(), cartRequestDto.getQuantity(), cartRequestDto.getCustomRuleRequests());
+        CartList cartList = cartSessionStorage.load(sessionKey)
+                .orElse(new CartList(storeId, new ArrayList<>()));
+        log.info("CartList {}", cartList);
+        List<Cart> carts = cartList.getCarts();
+
+        if (cartIdx >= 0 && cartIdx < carts.size()) {
+            Cart cart = carts.get(cartIdx);
+            cart.updateProduct(quantity);
+            cartSessionStorage.save(sessionKey, cartList);
+        } else {
+            throw new InvalidCartIndexException(cartIdx);
+        }
+        return loadCart(storeId, guestId, authentication);
+    }
+
+    public ProcessedCartDto deleteItem(Long storeId, UUID guestId, int cartIdx, Authentication authentication) {
+
+        String sessionKey = getSessionKey(guestId, storeId, authentication);
+
+        CartList cartList = cartSessionStorage.load(sessionKey)
+                .orElse(new CartList(storeId, new ArrayList<>()));
         List<Cart> carts = cartList.getCarts();
         log.info("CartList {}", cartList);
         if (cartIdx >= 0 && cartIdx < carts.size()) {
             carts.remove(cartIdx);
-            rt.opsForValue().set("cart:"+sessionKey, cartList);
+            cartSessionStorage.save(sessionKey, cartList);
         } else {
             throw new InvalidCartIndexException(cartIdx);
         }
 
-        return loadCart(sessionKey, authentication);
+        return loadCart(storeId, guestId, authentication);
+    }
+
+    public UUID getSessionId(String sessionKey) {
+        CartList cartList = cartSessionStorage.load(sessionKey)
+                .orElseThrow(() -> new CartNotFoundException(sessionKey));
+        return cartList.getSessionId();
+    }
+
+    public void cleanUp(UUID sessionId) {
+        cartSessionStorage.remove(sessionId);
+    }
+
+    public ProcessedCartDto deleteAllItem(Long storeId, UUID guestId, Authentication authentication) {
+
+        String sessionKey = getSessionKey(guestId, storeId, authentication);
+
+        CartList cartList = cartSessionStorage.load(sessionKey)
+                .orElse(new CartList(storeId, new ArrayList<>()));
+        cartList.clearCartList();
+        log.info("CartList {}", cartList);
+        cartSessionStorage.save(sessionKey, cartList);
+
+
+        return loadCart(storeId, guestId, authentication);
     }
 
     private void initIdSets(List<Cart> carts, Set<Long> customRuleIds, Set<Long> productOptionIds, Set<Long> productOptionOptionQuantityIds, Set<Long> productOptionTraitIds) {
@@ -215,22 +267,35 @@ public class CartService {
         }
     }
 
-    private String getSessionKey(String guestId, Authentication authentication) {
+    private String getSessionKey(UUID guestId, Long storeId, Authentication authentication) {
         boolean isUser = authentication != null && authentication.isAuthenticated() && !(authentication instanceof AnonymousAuthenticationToken);
         log.info("isUser {}", isUser);
         if (isUser) {
             Object principal = authentication.getPrincipal();
             if (principal instanceof UserDetails userDetails) {
-                return userDetails.getUsername();
+                return "cart:store" + storeId + ":" + userDetails.getUsername();
             }
             log.info("Principal {}", principal);
         }
-        return guestId;
+        return "cart:store" + storeId + ":" + guestId;
+    }
+
+    private SessionKey getSessionKey(UUID guestId, Authentication authentication) {
+        boolean isUser = authentication != null && authentication.isAuthenticated() && !(authentication instanceof AnonymousAuthenticationToken);
+        log.info("isUser {}", isUser);
+        if (isUser) {
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof UserDetailsImpl userDetailsImpl) {
+                return new SessionKey(UserType.USER, "user:" + userDetailsImpl.getUsername());
+            }
+            log.info("Principal {}", principal);
+        }
+        return new SessionKey(UserType.GUEST, "guest:" + guestId.toString());
     }
 
     private Map<Class<?>, Map<Long, ?>> fetchAllRelatedEntitiesToMap(List<Cart> carts) {
         Set<Long> productIds = carts
-                .stream().map(Cart::getProductId).collect(Collectors.toSet());
+                .stream().map(Cart::getStoreProductId).collect(Collectors.toSet());
         Set<Long> customRuleIds = new HashSet<>();
         Set<Long> productOptionIds = new HashSet<>();
         Set<Long> productOptionTraitIds = new HashSet<>();

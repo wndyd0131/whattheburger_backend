@@ -6,6 +6,7 @@ import com.whattheburger.backend.domain.Store;
 import com.whattheburger.backend.repository.StoreRepository;
 import com.whattheburger.backend.service.dto.MapboxResponse;
 import com.whattheburger.backend.service.dto.NearByStoreDto;
+import com.whattheburger.backend.service.exception.StoreNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,11 @@ import java.util.List;
 public class StoreService {
     private final StoreRepository storeRepository;
     private final MapboxService mapboxService;
+
+    public Store findStoreById(Long storeId) {
+        return storeRepository.findById(storeId)
+                .orElseThrow(() -> new StoreNotFoundException(storeId));
+    }
 
     public List<NearByStoreDto> findStoresNearBy(Double lon, Double lat, Double radiusMeter) {
         List<Store> stores = storeRepository.findNearBy(lon, lat, radiusMeter);

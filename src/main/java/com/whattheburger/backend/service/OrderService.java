@@ -42,16 +42,19 @@ import java.util.stream.Collectors;
 @Slf4j
 public class OrderService {
 
+    private final StoreService storeService;
     private final CartService cartService;
     private final OrderStorage orderStorage;
     private final OrderSessionStorage orderSessionStorage;
     private final OrderSessionFactory orderSessionFactory;
     private final OrderFactory orderFactory;
 
-    public OrderSession updateOrderSession(OrderFormRequestDto orderFormRequestDto, Authentication authentication, UUID guestId) {
+    public OrderSession updateOrderSession(OrderFormRequestDto orderFormRequestDto, UUID sessionId, Authentication authentication, UUID guestId) {
         SessionKey sessionKey = getSessionKey(guestId, authentication);
         OrderSession orderSession = orderSessionStorage.load(sessionKey)
                 .orElseThrow(() -> new OrderSessionNotFoundException(sessionKey.key()));
+        if (!orderSession.getSessionId().equals(sessionId))
+            throw new OrderSessionNotFoundException(sessionId.toString());
 
         if (orderFormRequestDto instanceof DeliveryOrderFormRequestDto deliveryFormRequest) {
             orderSession.changeAddressInfo(
@@ -86,13 +89,13 @@ public class OrderService {
         return orderStorage.save(order);
     }
 
-    public Order loadOrderByCheckoutSessionId(String checkoutSessionId) {
+    public Order loadOrderByCheckoutSessionId(UUID guestId, Authentication authentication, String checkoutSessionId) {
         return orderStorage.loadByCheckoutSessionId(checkoutSessionId)
                 .orElseThrow(() -> new OrderNotFoundException());
     }
 
-    public OrderSession createOrderSession(UUID guestId, Authentication authentication, OrderType orderType) {
-        ProcessedCartDto processedCartDto = cartService.loadCart(guestId.toString(), authentication);
+    public OrderSession createOrderSession(Long storeId, UUID guestId, Authentication authentication, OrderType orderType) {
+        ProcessedCartDto processedCartDto = cartService.loadCart(storeId, guestId, authentication);
 
         SessionKey sessionKey = getSessionKey(guestId, authentication);
 
@@ -101,27 +104,51 @@ public class OrderService {
                     orderSessionFactory.overwriteFromCartDto(
                             processedCartDto,
                             orderType,
+                            storeId,
                             existingSession
                     );
                     return existingSession;
                 })
-                .orElseGet(() -> orderSessionFactory.createFromCartDto(processedCartDto, orderType));
+                .orElseGet(() -> orderSessionFactory.createFromCartDto(processedCartDto, orderType, storeId));
 
         orderSessionStorage.save(sessionKey.key(), orderSession);
         return orderSession;
     }
 
-    public OrderSession loadOrderSession(UUID guestId, Authentication authentication) {
+    public void cleanUp(UUID orderSessionId) {
+        orderSessionStorage.remove(orderSessionId);
+    }
+
+    public OrderSession loadOrderSession(Long storeId, UUID sessionId, UUID guestId, Authentication authentication) {
         SessionKey sessionKey = getSessionKey(guestId, authentication);
 
         OrderSession orderSession = orderSessionStorage.load(sessionKey)
-                .orElseThrow(() -> new OrderSessionNotFoundException(sessionKey.key()));
+                .orElseThrow(() -> new OrderSessionNotFoundException(sessionId.toString()));
+        if (!orderSession.getSessionId().equals(sessionId)) {
+            throw new OrderSessionNotFoundException(sessionId.toString());
+        }
+        if (!orderSession.getStoreId().equals(storeId)) {
+            throw new OrderSessionNotFoundException(sessionId.toString(), storeId);
+        }
 
         return orderSession;
     }
 
-    public Order transferFromOrderSession(OrderSession orderSession) {
-        Order order = orderFactory.createFromOrderSession(orderSession);
+    public OrderSession loadOrderSessionBySessionId(UUID sessionId, UUID guestId, Authentication authentication) {
+        OrderSession orderSession = orderSessionStorage.load(sessionId)
+                .orElseThrow(() -> new OrderSessionNotFoundException(sessionId.toString()));
+
+        return orderSession;
+    }
+
+    public Order transferFromOrderSession(UUID orderSessionId) {
+        Order order = orderSessionStorage.load(orderSessionId)
+                .map(orderSession -> {
+                    Long storeId = orderSession.getStoreId();
+                    Store store = storeService.findStoreById(storeId);
+                    return orderFactory.createFromOrderSession(orderSession, store);
+                })
+                .orElseThrow(() -> new OrderSessionNotFoundException(orderSessionId.toString()));
         return order;
     }
 
@@ -253,7 +280,7 @@ public class OrderService {
 
     private void initIdSets(List<OrderSessionProduct> sessionProducts, Set<Long> productIds, Set<Long> customRuleIds, Set<Long> productOptionIds, Set<Long> productOptionOptionQuantityIds, Set<Long> productOptionTraitIds) {
         for (OrderSessionProduct sessionProduct : sessionProducts) { // add requested ids to each set to validate
-            productIds.add(sessionProduct.getProductId());
+            productIds.add(sessionProduct.getStoreProductId());
             List<OrderSessionCustomRule> sessionCustomRules = sessionProduct.getOrderSessionCustomRules();
             for (OrderSessionCustomRule sessionCustomRule : sessionCustomRules) {
                 customRuleIds.add(sessionCustomRule.getCustomRuleId());

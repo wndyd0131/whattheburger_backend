@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
@@ -26,8 +27,12 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
         log.error("Authentication", authException);
 
         ObjectMapper objectMapper = new ObjectMapper();
+        String message = "Authentication failed";
 
-        ErrorResponse errorResponse = new ErrorResponse("Invalid JWT token", HttpStatus.UNAUTHORIZED.value());
+        if (authException instanceof BadCredentialsException)
+            message = "Invalid email or password";
+
+        ErrorResponse errorResponse = new ErrorResponse(message, HttpStatus.UNAUTHORIZED.value());
         String responseBody = objectMapper.writeValueAsString(errorResponse);
 
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);

@@ -35,13 +35,15 @@ public class OrderController {
 //                HttpStatus.CREATED
 //        );
 //    }
-    @PostMapping("/api/v1/order")
+    @PostMapping("/api/v1/orderSession/store/{storeId}")
     public ResponseEntity<OrderSessionResponseDto> createOrderSession(
+            @RequestBody OrderSessionCreateRequestDto orderSessionRequestDto,
+            @PathVariable(name = "storeId") Long storeId,
             @CookieValue(name = "guestId") UUID guestId,
-            @CookieValue(name = "orderType") OrderType orderType,
             Authentication authentication
     ) {
-        OrderSession orderSession = orderService.createOrderSession(guestId, authentication, orderType);
+        OrderType orderType = orderSessionRequestDto.getOrderType();
+        OrderSession orderSession = orderService.createOrderSession(storeId, guestId, authentication, orderType);
         OrderSessionResponseDto orderSessionResponseDto = orderSessionResponseDtoMapper.toOrderSessionResponseDto(orderSession);
         return new ResponseEntity<>(
                 orderSessionResponseDto,
@@ -49,12 +51,14 @@ public class OrderController {
         );
     }
 
-    @GetMapping("/api/v1/order")
+    @GetMapping("/api/v1/orderSession/{sessionId}/store/{storeId}")
     public ResponseEntity<OrderSessionResponseDto> loadOrderSession(
             @CookieValue(name = "guestId") UUID guestId,
+            @PathVariable(name = "sessionId") UUID sessionId,
+            @PathVariable(name = "storeId") Long storeId,
             Authentication authentication
     ) {
-        OrderSession orderSession = orderService.loadOrderSession(guestId, authentication);
+        OrderSession orderSession = orderService.loadOrderSession(storeId, sessionId, guestId, authentication);
         OrderSessionResponseDto orderSessionResponseDto = orderSessionResponseDtoMapper.toOrderSessionResponseDto(orderSession);
         return ResponseEntity.ok(orderSessionResponseDto);
     }
@@ -79,7 +83,7 @@ public class OrderController {
             Authentication authentication
     ) {
         log.info("Checkout called {}", checkoutSessionId);
-        Order order = orderService.loadOrderByCheckoutSessionId(checkoutSessionId);
+        Order order = orderService.loadOrderByCheckoutSessionId(guestId, authentication, checkoutSessionId);
         return ResponseEntity.ok(
                 orderResponseDtoMapper.toOrderResponseDto(order)
         );

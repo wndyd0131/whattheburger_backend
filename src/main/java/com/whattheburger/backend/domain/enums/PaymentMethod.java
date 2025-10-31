@@ -1,5 +1,5 @@
 package com.whattheburger.backend.domain.enums;
 
 public enum PaymentMethod {
-    CREDIT_CARD, CASH, PAYPAL, GIFT_CARD
+    CASH, CREDIT_CARD, PAYPAL, GIFT_CARD
 }

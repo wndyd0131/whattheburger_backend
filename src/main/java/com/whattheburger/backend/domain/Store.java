@@ -1,5 +1,6 @@
 package com.whattheburger.backend.domain;
 
+import com.whattheburger.backend.domain.order.Order;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -36,6 +37,9 @@ public class Store {
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User owner;
+
+    @OneToMany(mappedBy = "store")
+    private List<Order> orders = new ArrayList<>();
 
     @OneToMany(mappedBy = "store")
     private List<StoreProduct> storeProducts = new ArrayList<>();

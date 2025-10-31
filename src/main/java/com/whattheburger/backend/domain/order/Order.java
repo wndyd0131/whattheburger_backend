@@ -1,5 +1,6 @@
 package com.whattheburger.backend.domain.order;
 
+import com.whattheburger.backend.domain.Store;
 import com.whattheburger.backend.domain.User;
 import com.whattheburger.backend.domain.enums.*;
 import jakarta.persistence.*;
@@ -26,6 +27,8 @@ public class Order {
     private UUID orderNumber;
     @Column(precision = 10, scale = 2)
     private BigDecimal totalPrice;
+    @Embedded
+    private CardInfo cardInfo;
     @Enumerated(EnumType.STRING)
     private OrderStatus orderStatus; //
     @Enumerated(EnumType.STRING)
@@ -49,11 +52,14 @@ public class Order {
     private PickupInfo pickupInfo;
     @Column(unique = true)
     private String checkoutSessionId;
-    // private Store store;
 
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;
+
+    @ManyToOne
+    @JoinColumn(name = "store_id")
+    private Store store;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderProduct> orderProducts = new ArrayList<>();
@@ -81,6 +87,15 @@ public class Order {
     public void changeUser(User user) {
         this.user = user;
         this.guestInfo = null;
+    }
+
+    public void changeCardInfo(String cardBrand, String cardLast4, Long cardExpireMonth, Long cardExpireYear) {
+        this.cardInfo = new CardInfo(
+                cardBrand,
+                cardLast4,
+                cardExpireMonth,
+                cardExpireYear
+        );
     }
 
     public void changeGuestInfo(GuestInfo guestInfo) {

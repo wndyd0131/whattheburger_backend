@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 @NoArgsConstructor // deserialize
 @Data // serialize
 public class StoreProductReadByProductIdDto {
-    private Long productId;
+    private Long storeProductId;
     private String productName;
     private BigDecimal productPrice;
     private String imageSource;

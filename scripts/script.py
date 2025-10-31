@@ -1,10 +1,21 @@
 from sqlalchemy import create_engine, MetaData, Table
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 
+import os
 from OSMPythonTools.overpass import overpassQueryBuilder, Overpass
 from OSMPythonTools.nominatim import Nominatim
 
-engine = create_engine("mysql+pymysql://root:1234@localhost:3306/whataburger_dev")
+db_user = os.environ.get("SPRING_DATASOURCE_USERNAME", "root")
+db_password = os.environ.get("SPRING_DATASOURCE_PASSWORD", "1234")
+db_host = os.environ.get("SPRING_DATASOURCE_HOST", "localhost")
+db_port = os.environ.get("SPRING_DATASOURCE_PORT", "3306")
+db_name = os.environ.get("SPRING_DATASOURCE_NAME", "whattheburger_dev")
+
+db_url = f"mysql+pymysql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+
+print(db_url)
+
+engine = create_engine(db_url)
 
 nominatim = Nominatim()
 

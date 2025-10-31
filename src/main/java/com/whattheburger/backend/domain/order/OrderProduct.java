@@ -22,7 +22,7 @@ public class OrderProduct {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "order_product_id")
     private Long id;
-    private Long productId;
+    private Long storeProductId;
     private Integer quantity;
     private String forWhom;
     private String name;

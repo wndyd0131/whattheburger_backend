@@ -19,6 +19,8 @@ import java.util.UUID;
 @Builder
 @Getter
 public class OrderSession {
+    private UUID sessionId;
+    private Long storeId;
     private BigDecimal totalPrice;
     private OrderStatus orderStatus;
     private OrderType orderType;
@@ -38,13 +40,19 @@ public class OrderSession {
 //        this.orderProducts.addAll(orderProducts);
     }
 
+    public void changeSessionId(UUID sessionId) {
+        this.sessionId = sessionId;
+    }
+
     public void renewOrderSession(
             List<OrderSessionProduct> orderSessionProducts,
             OrderType orderType,
+            Long storeId,
             BigDecimal totalPrice
     ) {
         this.orderSessionProducts = orderSessionProducts;
         this.totalPrice = totalPrice;
+        this.storeId = storeId;
         this.orderType = orderType;
     }
 

@@ -43,3 +43,5 @@ note.txt
 
 ### VS Code ###
 .vscode/
+
+.env

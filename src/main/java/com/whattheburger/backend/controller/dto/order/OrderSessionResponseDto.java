@@ -16,6 +16,8 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class OrderSessionResponseDto {
+    private UUID sessionId;
+    private Long storeId;
     private BigDecimal totalPrice;
     private OrderStatus orderStatus;
     private OrderType orderType;

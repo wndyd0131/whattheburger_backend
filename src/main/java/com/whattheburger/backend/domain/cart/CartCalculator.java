@@ -1,6 +1,7 @@
 package com.whattheburger.backend.domain.cart;
 
 import com.whattheburger.backend.domain.*;
+import com.whattheburger.backend.domain.enums.DeltaType;
 import com.whattheburger.backend.service.dto.cart.calculator.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +11,8 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Component
 @Slf4j
@@ -22,17 +25,20 @@ public class CartCalculator {
 
     public CalculatedCartDto calculateTotalPrice(
             List<Cart> carts,
-            Map<Long, Product> productMap,
+            Map<Long, StoreProduct> storeProductMap,
             Map<Long, CustomRule> customRuleMap,
             Map<Long, ProductOption> productOptionMap,
             Map<Long, ProductOptionTrait> productOptionTraitMap,
             Map<Long, ProductOptionOptionQuantity> quantityMap
     ) {
         List<ProductCalculationDetail> productCalculationDetails = carts.stream()
-                .map(cart -> calculateProductPrice(cart, productMap, customRuleMap, productOptionMap, productOptionTraitMap, quantityMap))
+                .map(cart -> calculateProductPrice(cart, storeProductMap, customRuleMap, productOptionMap, productOptionTraitMap, quantityMap))
                 .toList();
         BigDecimal cartTotalPrice = productCalculationDetails.stream()
-                .map(ProductCalculationDetail::getCalculatedTotalPrice)
+                .map(productCalculationDetail -> {
+                    BigDecimal quantity = BigDecimal.valueOf(productCalculationDetail.getQuantity());
+                    return productCalculationDetail.getCalculatedTotalPrice().multiply(quantity);
+                })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         CartCalculationResult cartCalculationResult = new CartCalculationResult(
                 productCalculationDetails,
@@ -46,6 +52,7 @@ public class CartCalculator {
             Cart cart,
             Map<Long, CustomRule> customRuleMap,
             Map<Long, ProductOption> productOptionMap,
+            Map<Long, StoreOptionDelta> optionDeltaMap,
             Map<Long, ProductOptionTrait> productOptionTraitMap,
             Map<Long, ProductOptionOptionQuantity> quantityMap
     ) {
@@ -55,6 +62,25 @@ public class CartCalculator {
                     List<OptionCalculatorDto> optionCalculatorDtos = customRuleRequest.getOptionRequests().stream()
                             .map(optionRequest -> {
                                 ProductOption productOption = productOptionMap.get(optionRequest.getProductOptionId());
+
+                                record OptionDelta(BigDecimal price) {}
+                                // Option conditioning
+                                OptionDelta optionDelta = Optional.ofNullable(optionDeltaMap.get(productOption.getId()))
+                                        .map(storeOptionDelta -> {
+                                            if (storeOptionDelta.getDeltaType() == DeltaType.OVERRIDE) {
+                                                return new OptionDelta(
+                                                        storeOptionDelta.getOverridePrice()
+                                                );
+                                            } else {
+                                                return new OptionDelta(
+                                                        null
+                                                );
+                                            }
+                                        })
+                                        .orElse(
+                                                new OptionDelta(productOption.getExtraPrice())
+                                        );
+
                                 // quantity handling
                                 QuantityCalculatorDto quantityCalculatorDto = Optional.ofNullable(optionRequest.getQuantityDetailRequest())
                                         .map(quantityDetailRequest -> {
@@ -90,7 +116,7 @@ public class CartCalculator {
                                 return OptionCalculatorDto
                                         .builder()
                                         .productOptionId(productOption.getId())
-                                        .price(productOption.getExtraPrice())
+                                        .price(optionDelta.price)
                                         .isDefault(productOption.getIsDefault())
                                         .defaultQuantity(productOption.getDefaultQuantity())
                                         .isSelected(optionRequest.getIsSelected())
@@ -115,18 +141,30 @@ public class CartCalculator {
 
     public ProductCalculationDetail calculateProductPrice(
             Cart cart,
-            Map<Long, Product> productMap,
+            Map<Long, StoreProduct> storeProductMap,
             Map<Long, CustomRule> customRuleMap,
             Map<Long, ProductOption> productOptionMap,
             Map<Long, ProductOptionTrait> productOptionTraitMap,
             Map<Long, ProductOptionOptionQuantity> quantityMap
     ) {
-        Product product = productMap.get(cart.getProductId());
-        CustomRuleCalculationResult customRuleCalculationResult = calculateExtraPrice(cart, customRuleMap, productOptionMap, productOptionTraitMap, quantityMap);
+        StoreProduct storeProduct = storeProductMap.get(cart.getStoreProductId());
+        Map<Long, StoreOptionDelta> optionDeltaMap = storeProduct.getStoreOptionDeltas().stream()
+                .collect(Collectors.toMap(storeOptionDelta -> storeOptionDelta.getProductOption().getId(), Function.identity()));
+
+        BigDecimal productPrice = Optional.ofNullable(storeProduct.getOverridePrice())
+                .orElse(storeProduct.getProduct().getPrice());
+        CustomRuleCalculationResult customRuleCalculationResult = calculateExtraPrice(
+                cart,
+                customRuleMap,
+                productOptionMap,
+                optionDeltaMap,
+                productOptionTraitMap,
+                quantityMap
+        );
         ProductCalculatorDto productCalculatorDto = ProductCalculatorDto
                 .builder()
-                .productId(product.getId())
-                .basePrice(product.getPrice())
+                .storeProductId(storeProduct.getId())
+                .basePrice(productPrice)
                 .quantity(cart.getQuantity())
                 .customRuleCalculationResult(customRuleCalculationResult)
                 .build();

@@ -2,6 +2,9 @@ package com.whattheburger.backend.controller.dto.order;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.whattheburger.backend.domain.enums.*;
+import com.whattheburger.backend.domain.order.AddressInfo;
+import com.whattheburger.backend.domain.order.CardInfo;
+import com.whattheburger.backend.domain.order.ContactInfo;
 import com.whattheburger.backend.domain.order.GuestInfo;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,6 +22,7 @@ import java.util.UUID;
 public class OrderResponseDto {
     private Long id;
     private UUID orderNumber;
+    private Long storeId;
     private BigDecimal totalPrice;
     private OrderStatus orderStatus;
     private OrderType orderType;
@@ -28,6 +32,9 @@ public class OrderResponseDto {
     private DiscountType discountType;
     private BigDecimal taxAmount;
     private GuestInfo guestInfo;
+    private CardInfo cardInfo;
+    private ContactInfo contactInfo;
+    private AddressInfo addressInfo;
     @JsonProperty("productResponses")
     private List<ProductResponseDto> productResponseDtos;
 }

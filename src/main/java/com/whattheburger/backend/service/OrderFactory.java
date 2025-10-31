@@ -17,9 +17,10 @@ import java.util.*;
 @Slf4j
 public class OrderFactory {
 
-    public Order createFromOrderSession(OrderSession orderSession) {
+    public Order createFromOrderSession(OrderSession orderSession, Store store) {
         Order.OrderBuilder orderBuilder = Order.builder()
                 .orderType(orderSession.getOrderType())
+                .store(store)
                 .orderStatus(orderSession.getOrderStatus())
                 .orderNote(orderSession.getOrderNote())
                 .paymentStatus(orderSession.getPaymentStatus())
@@ -46,10 +47,10 @@ public class OrderFactory {
     }
 
     private OrderProduct createOrderProduct(OrderSessionProduct sessionProduct, Order order) {
-        log.info("Product ID {}", sessionProduct.getProductId());
+        log.info("Product ID {}", sessionProduct.getStoreProductId());
         OrderProduct orderProduct = OrderProduct
                 .builder()
-                .productId(sessionProduct.getProductId())
+                .storeProductId(sessionProduct.getStoreProductId())
                 .quantity(sessionProduct.getQuantity())
                 .name(sessionProduct.getName())
                 .totalPrice(sessionProduct.getTotalPrice())

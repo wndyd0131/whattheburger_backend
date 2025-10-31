@@ -24,7 +24,7 @@ public class CategorizedStoreProductsReadDto {
     @NoArgsConstructor
     @Builder
     public static class StoreProductDto {
-        private Long productId;
+        private Long storeProductId;
         private String name;
         private BigDecimal price;
         private String briefInfo;

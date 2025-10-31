@@ -11,5 +11,6 @@ public interface OrderSessionStorage {
     void save(String sessionKey, OrderSession orderSession);
     Optional<OrderSession> load(SessionKey sessionKey);
     Optional<String> loadSessionId(SessionKey sessionKey);
-    Optional<OrderSession> load(String sessionId);
+    Optional<OrderSession> load(UUID sessionId);
+    void remove(UUID sessionId);
 }

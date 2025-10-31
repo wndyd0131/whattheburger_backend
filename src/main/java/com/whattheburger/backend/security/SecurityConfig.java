@@ -1,6 +1,7 @@
 package com.whattheburger.backend.security;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -33,6 +34,9 @@ public class SecurityConfig {
     private final JwtFilter jwtFilter;
     private final AuthenticationEntryPoint authenticationEntryPoint;
 
+    @Value("${client.url}")
+    private String clientUrl;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -48,7 +52,7 @@ public class SecurityConfig {
                         (auth) -> auth
                                 .requestMatchers(HttpMethod.POST, "/api/v1/register", "/api/v1/login").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/api/v1/users").authenticated()
-                                .requestMatchers(HttpMethod.GET, "/api/v1/products").permitAll()
+                                .requestMatchers(HttpMethod.GET, "/api/v1/products").hasRole("ADMIN")
                                 .requestMatchers("/ws/**").permitAll()
                                 .anyRequest().permitAll()
                 );
@@ -62,8 +66,10 @@ public class SecurityConfig {
     @Bean
     UrlBasedCorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE"));
+        configuration.setAllowedOrigins(Arrays.asList(
+                clientUrl
+        ));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Origin", "Content-Type", "Accept", "Authorization"));
         configuration.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

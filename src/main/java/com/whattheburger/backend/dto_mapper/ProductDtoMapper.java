@@ -54,7 +54,6 @@ public class ProductDtoMapper {
                 .extraPrice(optionRequest.getExtraPrice())
                 .isDefault(optionRequest.getIsDefault())
                 .maxQuantity(optionRequest.getMaxQuantity())
-                .measureType(optionRequest.getMeasureType())
                 .optionId(optionRequest.getOptionId())
                 .orderIndex(optionRequest.getOrderIndex())
                 .quantityDetails(optionRequest.getQuantityDetails())
