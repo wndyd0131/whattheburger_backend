@@ -27,6 +27,7 @@ public class CategorizedStoreProductsReadDto {
         private Long storeProductId;
         private String name;
         private BigDecimal price;
+        private Double calories;
         private String briefInfo;
         private String imageSource;
         private ProductType productType;

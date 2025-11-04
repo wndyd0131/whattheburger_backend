@@ -1,4 +1,4 @@
-package com.whattheburger.backend.config.websocket;
+package com.whattheburger.backend.util;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -47,9 +47,7 @@ public class OrderTrackingWebSocketHandler extends TextWebSocketHandler {
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         executorService.submit(() -> {
             try {
-                log.info("It starts here");
                 GeocodingResult[] results = GeocodingApi.geocode(geoApiContext, "716 Settlement St.").await();
-                log.info("It stops here");
                 Gson gson = new GsonBuilder().setPrettyPrinting().create();
                 String s = gson.toJson(results[0].geometry.location);
                 log.info("location {}", s);

@@ -21,6 +21,7 @@ public class ProductReadByProductIdDto {
     private Long productId;
     private String productName;
     private BigDecimal productPrice;
+    private Double productCalories;
     private String imageSource;
     private String briefInfo;
     private List<OptionResponse> optionResponses;

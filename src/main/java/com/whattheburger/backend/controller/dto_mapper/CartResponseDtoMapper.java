@@ -17,18 +17,16 @@ import java.util.Optional;
 
 @Component
 public class CartResponseDtoMapper {
-    @Value("${aws.s3-bucket-name}")
-    private String s3bucketName;
-    @Value("${aws.s3-url-postfix}")
-    private String s3postFix;
+    @Value("${aws.s3.public-url}")
+    private String s3PublicUrl;
+
     public ProductResponseDto toProductResponse(
             ProcessedProductDto processedProductDto
     ) {
-        String publicUrl = "https://" + s3bucketName + "." + s3postFix + "/";
         StoreProduct storeProduct = processedProductDto.getStoreProduct();
         Product product = storeProduct.getProduct();
         String productImageUrl = Optional.ofNullable(product.getImageSource())
-                .map(imageSource -> publicUrl + imageSource)
+                .map(imageSource -> s3PublicUrl + "/" + imageSource)
                 .orElse(null);
 
         // Override price
@@ -46,7 +44,7 @@ public class CartResponseDtoMapper {
             for (ProcessedOptionDto processedOptionDto : processedOptionDtos) {
                 ProductOption productOption = processedOptionDto.getProductOption();
                 String optionImageUrl = Optional.ofNullable(productOption.getOption().getImageSource())
-                        .map(imageSource -> publicUrl + imageSource)
+                        .map(imageSource -> s3PublicUrl + "/" + imageSource)
                         .orElse(null);
 
                 QuantityDetailResponse quantityDetailResponse = Optional.ofNullable(processedOptionDto.getProcessedQuantityDto())

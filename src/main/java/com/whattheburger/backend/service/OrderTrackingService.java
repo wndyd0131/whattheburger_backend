@@ -1,6 +1,6 @@
 package com.whattheburger.backend.service;
 
-import com.whattheburger.backend.config.websocket.OrderTrackingWebSocketHandler;
+import com.whattheburger.backend.util.OrderTrackingWebSocketHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

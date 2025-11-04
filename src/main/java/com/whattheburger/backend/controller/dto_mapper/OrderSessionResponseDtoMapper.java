@@ -12,10 +12,9 @@ import java.util.Optional;
 @Component
 @Slf4j
 public class OrderSessionResponseDtoMapper {
-    @Value("${aws.s3-bucket-name}")
-    private String s3bucketName;
-    @Value("${aws.s3-url-postfix}")
-    private String s3urlPostfix;
+
+    @Value("${aws.s3.public-url}")
+    private String s3PublicUrl;
 
     public OrderSessionResponseDto toOrderSessionResponseDto(OrderSession orderSession) {
         return OrderSessionResponseDto
@@ -32,9 +31,8 @@ public class OrderSessionResponseDtoMapper {
 
     private OrderSessionProductResponseDto toProductResponseDto(OrderSessionProduct sessionProduct) {
         log.info("storeProduct ID {}", sessionProduct.getStoreProductId());
-        String publicUrl = "https://" + s3bucketName + "." + s3urlPostfix + "/";
         String productImageUrl = Optional.ofNullable(sessionProduct.getImageSource())
-                .map(imageSource -> publicUrl + imageSource)
+                .map(imageSource -> s3PublicUrl + "/" + imageSource)
                 .orElse(null);
         OrderSessionProductResponseDto productResponseDto = OrderSessionProductResponseDto
                 .builder()

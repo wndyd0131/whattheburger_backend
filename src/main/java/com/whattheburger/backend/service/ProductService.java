@@ -13,6 +13,7 @@ import com.whattheburger.backend.service.dto.ProductReadByProductIdDto;
 import com.whattheburger.backend.service.exception.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -26,6 +27,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class ProductService {
+
+    @Value("${aws.s3.public-url}")
+    private String s3PublicUrl;
+
     private final ProductRepository productRepository;
     private final OptionRepository optionRepository;
     private final ProductOptionRepository productOptionRepository;
@@ -96,13 +101,12 @@ public class ProductService {
 
     public ProductReadByProductIdDto getProductById(Long productId) {
         Product product = productRepository.findById(productId).orElseThrow(() -> new ProductNotFoundException(productId));
-        String publicUrl = null;
-        try {
-            publicUrl = s3Service.getPublicUrl(product.getImageSource());
-        } catch (Exception e) {
-            log.error("Failed to load file from S3 {}", e.getMessage(), e);
-        }
-        return ProductReadByProductIdDto.toDto(product, publicUrl);
+
+        String productImageUrl = Optional.ofNullable(product.getImageSource())
+                .map(imageSource -> s3PublicUrl + "/" + imageSource)
+                .orElse(null);
+
+        return ProductReadByProductIdDto.toDto(product, productImageUrl);
     }
 
     private void saveCategoryProduct(List<Long> categoryIds, Product product) {

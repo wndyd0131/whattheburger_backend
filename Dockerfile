@@ -15,4 +15,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY --from=build /app/build/libs/*.jar app.jar
 COPY --from=build /app/scripts ./scripts
-ENTRYPOINT ["java", "-jar", "build/libs/app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]

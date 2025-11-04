@@ -16,6 +16,7 @@ public class ProductReadResponseDto {
     private Long productId;
     private String name;
     private BigDecimal price;
+    private Double calories;
     private String briefInfo;
     private String imageSource;
     private ProductType productType;

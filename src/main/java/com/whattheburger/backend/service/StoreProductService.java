@@ -34,6 +34,9 @@ import static com.whattheburger.backend.service.dto.store.StoreProductsReadDto.*
 @Slf4j
 public class StoreProductService {
 
+    @Value("${aws.s3.public-url}")
+    private String s3PublicUrl;
+
     private final ProductRepository productRepository;
     private final CustomRuleRepository customRuleRepository;
     private final ProductOptionRepository productOptionRepository;
@@ -47,11 +50,6 @@ public class StoreProductService {
     private final ModificationStrategyResolver modificationStrategyResolver;
     private final CategoryRepository categoryRepository;
     private final S3Service s3Service;
-
-    @Value("${aws.s3-bucket-name}")
-    private String s3bucketName;
-    @Value("${aws.s3-url-postfix}")
-    private String s3postFix;
 
     @Transactional
     public void registerProductToStores(Long productId, List<Long> storeIds) {
@@ -207,6 +205,7 @@ public class StoreProductService {
                             .productType(product.getProductType())
                             .imageSource(product.getImageSource())
                             .price(storeProduct.getOverridePrice())
+                            .calories(product.getCalories())
                             .briefInfo(product.getBriefInfo())
                             .categories(categoryDtos)
                             .build();
@@ -249,12 +248,11 @@ public class StoreProductService {
                     List<CategorizedStoreProductsReadDto.StoreProductDto> storeProductDtos = productOrders.stream()
                             .map(productOrder -> {
                                 StoreProduct storeProduct = productOrder.storeProduct;
-                                String publicUrl = null;
-                                try {
-                                    publicUrl = s3Service.getPublicUrl(storeProduct.getProduct().getImageSource());
-                                } catch (Exception e) {
-                                    log.error("Failed to load file from S3 {}", e.getMessage(), e);
-                                }
+
+                                String productImageUrl = Optional.ofNullable(storeProduct.getProduct().getImageSource())
+                                        .map(imageSource -> s3PublicUrl + "/" + imageSource)
+                                        .orElse(null);
+
                                 Product product = storeProduct.getProduct();
                                 BigDecimal productPrice = Optional.ofNullable(storeProduct.getOverridePrice())
                                         .orElse(product.getPrice());
@@ -263,8 +261,9 @@ public class StoreProductService {
                                         .storeProductId(storeProduct.getId())
                                         .briefInfo(product.getBriefInfo())
                                         .name(product.getName())
-                                        .imageSource(publicUrl)
+                                        .imageSource(productImageUrl)
                                         .price(productPrice)
+                                        .calories(product.getCalories())
                                         .productType(product.getProductType())
                                         .build();
                             }).toList();
@@ -287,7 +286,6 @@ public class StoreProductService {
     }
 
     public StoreProductReadByProductIdDto getProductById(Long storeId, Long storeProductId) {
-        String publicUrl = "https://" + s3bucketName + "." + s3postFix + "/";
         StoreProduct storeProduct = storeProductRepository.findById(storeProductId)
                 .orElseThrow(() -> new StoreProductNotFoundException(storeProductId));
 
@@ -298,7 +296,7 @@ public class StoreProductService {
         String productImageUrl = null;
         String productImageSource = storeProduct.getProduct().getImageSource();
         if (productImageSource != null) {
-            productImageUrl = publicUrl + productImageSource;
+            productImageUrl = s3PublicUrl + "/" + productImageSource;
         }
 
         Product product = storeProduct.getProduct();
@@ -329,7 +327,7 @@ public class StoreProductService {
             String optionImageUrl = null;
             String optionImageSource = option.getImageSource();
             if (optionImageSource != null) {
-                optionImageUrl = publicUrl + optionImageSource;
+                optionImageUrl = s3PublicUrl + "/" + optionImageSource;
             }
             List<StoreProductReadByProductIdDto.QuantityDetailResponse> quantityDetailResponses = productOption.getProductOptionOptionQuantities()
                     .stream()
@@ -397,6 +395,7 @@ public class StoreProductService {
                 .storeProductId(storeProduct.getId())
                 .productName(product.getName())
                 .productPrice(productPrice)
+                .productCalories(product.getCalories())
                 .imageSource(productImageUrl)
                 .briefInfo(product.getBriefInfo())
                 .optionResponses(optionResponses)
