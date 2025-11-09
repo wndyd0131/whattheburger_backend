@@ -5,7 +5,6 @@ import com.whattheburger.backend.domain.Option;
 import com.whattheburger.backend.domain.Product;
 import com.whattheburger.backend.domain.ProductOption;
 import com.whattheburger.backend.domain.enums.CountType;
-import com.whattheburger.backend.domain.enums.MeasureType;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -30,7 +29,6 @@ public class MockOptionFactory {
                 .customRule(mockCustomRule)
                 .isDefault(false)
                 .countType(CountType.COUNTABLE)
-                .measureType(MeasureType.COUNT)
                 .defaultQuantity(0)
                 .maxQuantity(0)
                 .extraPrice(BigDecimal.ZERO)

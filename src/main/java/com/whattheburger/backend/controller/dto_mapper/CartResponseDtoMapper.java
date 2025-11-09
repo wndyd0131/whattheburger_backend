@@ -95,7 +95,6 @@ public class CartResponseDtoMapper {
                                 .isDefault(productOption.getIsDefault())
                                 .isSelected(processedOptionDto.getIsSelected())
                                 .maxQuantity(productOption.getMaxQuantity())
-                                .measureType(productOption.getMeasureType())
                                 .optionName(productOption.getOption().getName())
                                 .optionQuantity(processedOptionDto.getQuantity())
                                 .optionTotalPrice(processedOptionDto.getCalculatedOptionPrice())

@@ -1,6 +1,5 @@
 package com.whattheburger.backend.domain;
 import com.whattheburger.backend.domain.enums.CountType;
-import com.whattheburger.backend.domain.enums.MeasureType;
 import com.whattheburger.backend.domain.order.OrderProductOption;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -23,8 +22,8 @@ public class ProductOption {
     @Column(name = "product_option_id")
     private Long id;
     private Boolean isDefault;
+    @Enumerated(EnumType.STRING)
     private CountType countType;
-    private MeasureType measureType;
     private Integer defaultQuantity;
     private Integer maxQuantity;
     @Column(precision = 10, scale = 2)
@@ -58,7 +57,6 @@ public class ProductOption {
             CustomRule customRule,
             Boolean isDefault,
             CountType countType,
-            MeasureType measureType,
             Integer defaultQuantity,
             Integer maxQuantity,
             BigDecimal extraPrice,
@@ -69,7 +67,6 @@ public class ProductOption {
         this.customRule = customRule;
         this.isDefault = isDefault;
         this.countType = countType;
-        this.measureType = measureType;
         this.defaultQuantity = defaultQuantity;
         this.maxQuantity = maxQuantity;
         this.extraPrice = extraPrice;

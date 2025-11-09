@@ -1,8 +1,5 @@
 package com.whattheburger.backend.controller.dto.store;
 
-import com.whattheburger.backend.controller.dto.product.QuantityDto;
-import com.whattheburger.backend.domain.enums.CountType;
-import com.whattheburger.backend.domain.enums.MeasureType;
 import com.whattheburger.backend.domain.enums.ModifyType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

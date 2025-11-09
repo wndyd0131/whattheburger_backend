@@ -80,7 +80,6 @@ public class ProductControllerTest {
                 .defaultQuantity(1)
                 .maxQuantity(1)
                 .extraPrice(BigDecimal.ZERO)
-                .measureType(MeasureType.COUNT)
                 .orderIndex(0)
                 .option(option)
                 .customRule(customRule)

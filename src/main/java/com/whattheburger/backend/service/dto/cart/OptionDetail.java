@@ -1,7 +1,6 @@
 package com.whattheburger.backend.service.dto.cart;
 
 import com.whattheburger.backend.domain.enums.CountType;
-import com.whattheburger.backend.domain.enums.MeasureType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,7 +18,6 @@ public class OptionDetail {
     private Boolean isSelected;
     private List<OptionTraitDetail> optionTraitDetails;
     private CountType countType;
-    private MeasureType measureType;
     private String optionName;
     private Integer orderIndex;
     private QuantityDetail quantityDetail;

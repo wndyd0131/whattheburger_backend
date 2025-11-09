@@ -7,7 +7,6 @@ import com.whattheburger.backend.domain.Category;
 import com.whattheburger.backend.domain.Option;
 import com.whattheburger.backend.domain.OptionTrait;
 import com.whattheburger.backend.domain.enums.CustomRuleType;
-import com.whattheburger.backend.domain.enums.MeasureType;
 import com.whattheburger.backend.domain.enums.OptionTraitType;
 import com.whattheburger.backend.domain.enums.ProductType;
 import com.whattheburger.backend.repository.*;
@@ -18,8 +17,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
@@ -28,7 +25,6 @@ import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @ExtendWith(SpringExtension.class)
@@ -86,7 +82,6 @@ public class ProductControllerIntegrationTest {
                         .builder()
                         .optionId(option.getId())
                         .isDefault(true)
-                        .measureType(MeasureType.COUNT)
                         .defaultQuantity(1)
                         .maxQuantity(1)
                         .extraPrice(BigDecimal.ZERO)

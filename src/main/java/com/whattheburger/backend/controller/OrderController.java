@@ -35,7 +35,7 @@ public class OrderController {
 //                HttpStatus.CREATED
 //        );
 //    }
-    @PostMapping("/api/v1/orderSession/store/{storeId}")
+    @PostMapping("/api/v1/order-session/store/{storeId}")
     public ResponseEntity<OrderSessionResponseDto> createOrderSession(
             @RequestBody OrderSessionCreateRequestDto orderSessionRequestDto,
             @PathVariable(name = "storeId") Long storeId,
@@ -51,7 +51,7 @@ public class OrderController {
         );
     }
 
-    @GetMapping("/api/v1/orderSession/{sessionId}/store/{storeId}")
+    @GetMapping("/api/v1/order-session/{sessionId}/store/{storeId}")
     public ResponseEntity<OrderSessionResponseDto> loadOrderSession(
             @CookieValue(name = "guestId") UUID guestId,
             @PathVariable(name = "sessionId") UUID sessionId,
@@ -76,7 +76,16 @@ public class OrderController {
 //        );
 //    }
 
-    @GetMapping("/api/v1/order/checkoutSession/{sessionId}")
+    @GetMapping("/api/v1/order-session/checkout-session/{sessionId}")
+    public ResponseEntity<OrderSessionResponseDto> loadOrderSessionByCheckoutSessionId(
+            @PathVariable(name = "sessionId") String checkoutSessionId
+    ) {
+        OrderSession orderSession = orderService.loadOrderSessionByCheckoutSessionId(checkoutSessionId);
+        OrderSessionResponseDto orderSessionResponseDto = orderSessionResponseDtoMapper.toOrderSessionResponseDto(orderSession);
+        return ResponseEntity.ok(orderSessionResponseDto);
+    }
+
+    @GetMapping("/api/v1/order/checkout-session/{sessionId}")
     public ResponseEntity<OrderResponseDto> loadOrderByCheckoutSessionId(
             @PathVariable(name = "sessionId") String checkoutSessionId,
             @CookieValue(name = "guestId") UUID guestId,

@@ -9,8 +9,9 @@ import java.util.UUID;
 
 public interface OrderSessionStorage {
     void save(String sessionKey, OrderSession orderSession);
+    void save(OrderSession orderSession);
     Optional<OrderSession> load(SessionKey sessionKey);
-    Optional<String> loadSessionId(SessionKey sessionKey);
+    Optional<OrderSession> load(String sessionKey);
     Optional<OrderSession> load(UUID sessionId);
     void remove(UUID sessionId);
 }

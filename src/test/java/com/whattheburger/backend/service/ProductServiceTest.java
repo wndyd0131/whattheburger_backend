@@ -93,7 +93,6 @@ public class ProductServiceTest {
                 mockCustomRule,
                 Boolean.FALSE,
                 CountType.COUNTABLE,
-                MeasureType.COUNT,
                 0,
                 0,
                 BigDecimal.ZERO,
@@ -132,7 +131,6 @@ public class ProductServiceTest {
                 .optionId(optionId)
                 .isDefault(true)
                 .countType(CountType.COUNTABLE)
-                .measureType(MeasureType.COUNT)
                 .defaultQuantity(0)
                 .maxQuantity(0)
                 .extraPrice(BigDecimal.ZERO)

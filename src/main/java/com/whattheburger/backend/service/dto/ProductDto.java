@@ -3,7 +3,6 @@ package com.whattheburger.backend.service.dto;
 import com.whattheburger.backend.domain.Product;
 import com.whattheburger.backend.domain.enums.CountType;
 import com.whattheburger.backend.domain.enums.CustomRuleType;
-import com.whattheburger.backend.domain.enums.MeasureType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -33,7 +32,6 @@ public class ProductDto {
         private BigDecimal extraPrice; //productOption
         private Double calories;
         private CountType countType;
-        private MeasureType measureType;
         private String imageSource;
         private Integer orderIndex;
         private CustomRuleResponse customRuleResponse;

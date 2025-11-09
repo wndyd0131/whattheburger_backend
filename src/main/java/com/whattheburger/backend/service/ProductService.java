@@ -157,7 +157,6 @@ public class ProductService {
                 newCustomRule,
                 optionRequest.getIsDefault(),
                 optionRequest.getCountType(),
-                optionRequest.getMeasureType(),
                 optionRequest.getDefaultQuantity(),
                 optionRequest.getMaxQuantity(),
                 optionRequest.getExtraPrice(),

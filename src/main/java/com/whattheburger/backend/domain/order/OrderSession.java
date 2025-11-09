@@ -20,6 +20,7 @@ import java.util.UUID;
 @Getter
 public class OrderSession {
     private UUID sessionId;
+    private String checkoutSessionId;
     private Long storeId;
     private BigDecimal totalPrice;
     private OrderStatus orderStatus;
@@ -32,6 +33,8 @@ public class OrderSession {
     private GuestInfo guestInfo;
     private PickupInfo pickupInfo;
     private DiscountType discountType;
+    private Long orderStatusModifiedTime;
+    private Integer orderStatusDuration;
     private List<OrderSessionProduct> orderSessionProducts = new ArrayList<>();
 
     public void assignOrderSessionProducts(List<OrderSessionProduct> orderSessionProducts) {
@@ -68,6 +71,16 @@ public class OrderSession {
                 email,
                 phoneNum
         );
+    }
+
+    public void updatePaymentStatus(PaymentStatus paymentStatus) {
+        this.paymentStatus = paymentStatus;
+    }
+
+    public void updateOrderStatus(OrderStatus orderStatus, Long time, Integer duration) {
+        this.orderStatus = orderStatus;
+        this.orderStatusModifiedTime = time;
+        this.orderStatusDuration = duration;
     }
 
     public void changeAddressInfo(

@@ -19,19 +19,25 @@ public class RedisOrderSessionStorage implements OrderSessionStorage {
     @Override
     public void save(String sessionKey, OrderSession orderSession) {
         UUID sessionId = orderSession.getSessionId();
-        stringRedisTemplate.opsForValue().set("order:" + sessionKey, sessionId.toString());
+        stringRedisTemplate.opsForValue().set(sessionKey, sessionId.toString());
         rt.opsForValue().set(sessionId.toString(), orderSession);
+    }
+
+    @Override
+    public void save(OrderSession orderSession) {
+        rt.opsForValue().set(orderSession.getSessionId().toString(), orderSession);
     }
 
     @Override
     public Optional<OrderSession> load(SessionKey sessionKey) throws OrderSessionKeyNotFoundException {
         return Optional.ofNullable(stringRedisTemplate.opsForValue().get("order:" + sessionKey.key()))
-                .flatMap(orderSessionKey -> Optional.ofNullable(rt.opsForValue().get(orderSessionKey)));
+                .flatMap(sessionId -> Optional.ofNullable(rt.opsForValue().get(sessionId)));
     }
 
     @Override
-    public Optional<String> loadSessionId(SessionKey sessionKey) {
-        return Optional.ofNullable(stringRedisTemplate.opsForValue().get("order:" + sessionKey.key()));
+    public Optional<OrderSession> load(String sessionKey) {
+        return Optional.ofNullable(stringRedisTemplate.opsForValue().get(sessionKey))
+                .flatMap(sessionId -> Optional.ofNullable(rt.opsForValue().get(sessionId)));
     }
 
     @Override

@@ -38,7 +38,7 @@ public class Order {
     @Enumerated(EnumType.STRING)
     private PaymentMethod paymentMethod; //
     private String orderNote;
-    @Enumerated
+    @Enumerated(EnumType.STRING)
     private DiscountType discountType;
     @Column(precision = 10, scale = 2)
     private BigDecimal taxAmount;

@@ -382,7 +382,6 @@ public class StoreProductService {
                     .extraPrice(optionDelta.price)
                     .calories(option.getCalories())
                     .countType(productOption.getCountType())
-                    .measureType(productOption.getMeasureType())
                     .imageSource(optionImageUrl)
                     .orderIndex(productOption.getOrderIndex())
                     .customRuleResponse(customRuleResponse)

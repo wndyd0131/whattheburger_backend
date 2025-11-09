@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 
 @Service
@@ -55,17 +56,25 @@ public class CheckoutService {
         UUID cartSessionId = cartService.getSessionId(cartSessionKey);
 
         Stripe.apiKey = secretKey;
+
         SessionCreateParams.Builder paramsBuilder = SessionCreateParams.builder()
                 .setMode(SessionCreateParams.Mode.PAYMENT)
                 .putMetadata("orderSessionId", orderSessionId.toString())
                 .putMetadata("cartSessionId", cartSessionId.toString())
                 .setSuccessUrl(successUrl + "?session_id={CHECKOUT_SESSION_ID}");
 
+        SessionCreateParams.PaymentIntentData paymentIntentData = SessionCreateParams.PaymentIntentData
+                .builder()
+                .putMetadata("orderSessionId", orderSessionId.toString())
+                .putMetadata("cartSessionId", cartSessionId.toString())
+                .build();
+
         for (OrderSessionProduct orderSessionProduct : orderSession.getOrderSessionProducts()) {
             BigDecimal totalPrice = orderSessionProduct.getTotalPrice();
             log.info("total price {}", totalPrice);
             BigDecimal priceInCents = totalPrice.multiply(BigDecimal.valueOf(100));
             paramsBuilder
+                    .setPaymentIntentData(paymentIntentData)
                     .addLineItem(
                             SessionCreateParams.LineItem.builder()
                                     .setPriceData(SessionCreateParams.LineItem.PriceData
@@ -88,6 +97,7 @@ public class CheckoutService {
 
         try {
             Session session = Session.create(params);
+            orderSessionStorage.save("checkout_session:" + session.getId(), orderSession);
             return session;
         } catch (StripeException e) {
             e.printStackTrace();
@@ -145,9 +155,13 @@ public class CheckoutService {
         if (orderSessionId == null)
             throw new IllegalStateException("key orderSessionId does not exist in stripe metadata");
 
-        Order order = orderService.transferFromOrderSession(UUID.fromString(orderSessionId));
+        OrderSession orderSession = orderService.loadOrderSessionByOrderSessionId(UUID.fromString(orderSessionId));
+        orderService.updateOrderSessionPaymentStatus(orderSession, PaymentStatus.PAID);
+        Integer randomDuration = new Random().nextInt(20, 30) * 1000;
+        orderService.updateOrderSessionOrderStatus(orderSession, OrderStatus.PENDING, System.currentTimeMillis(), randomDuration);
 
-        order.changeOrderStatus(OrderStatus.CONFIRMED);
+        Order order = orderService.transferFromOrderSession(orderSession);
+        order.changeOrderStatus(OrderStatus.PENDING);
         order.changePaymentStatus(PaymentStatus.PAID);
 
         if (paymentMethodObject != null && paymentMethodObject.getCard() != null) {
@@ -161,13 +175,24 @@ public class CheckoutService {
         }
 
         cartService.cleanUp(UUID.fromString(cartSessionId));
-        orderService.cleanUp(UUID.fromString(orderSessionId));
+//        orderService.cleanUp(UUID.fromString(orderSessionId));
 
         order.changeCheckoutSessionId(session.getId());
         Order savedOrder = orderService.saveOrder(order);
 
-        orderTrackingService.sendReadyFlag(order.getOrderNumber().toString());
         log.info("Order ID {}", savedOrder.getId());
+    }
+
+    public void handlePaymentIntentSucceeded(
+            PaymentIntent paymentIntent
+    ) {
+        log.info("Payment intent succeeded");
+        Map<String, String> metadata = paymentIntent.getMetadata();
+        String orderSessionId = metadata.get("orderSessionId");
+        log.info("Order session id: {}", orderSessionId);
+        OrderSession orderSession = orderService.loadOrderSessionByOrderSessionId(UUID.fromString(orderSessionId));
+        orderService.updateOrderSessionPaymentStatus(orderSession, PaymentStatus.PENDING);
+        log.info("Order payment status: {}", orderSession.getPaymentStatus());
     }
 
 //    public void handlePaymentIntentSucceeded(

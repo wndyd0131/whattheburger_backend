@@ -21,9 +21,6 @@ public class OrderTrackingService {
                             "status", "COMPLETE"
                     )
             );
-            orderTrackingWebSocketHandler.sendUpdate(
-                    orderNumber, readyFlag
-            );
         }, 10, TimeUnit.SECONDS);
     }
 }

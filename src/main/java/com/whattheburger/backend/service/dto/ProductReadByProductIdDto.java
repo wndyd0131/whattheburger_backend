@@ -39,7 +39,6 @@ public class ProductReadByProductIdDto {
         private BigDecimal extraPrice; //productOption
         private Double calories;
         private CountType countType;
-        private MeasureType measureType;
         private String imageSource;
         private Integer orderIndex;
         private CustomRuleResponse customRuleResponse;
@@ -146,7 +145,6 @@ public class ProductReadByProductIdDto {
                     .extraPrice(productOption.getExtraPrice())
                     .calories(option.getCalories())
                     .countType(productOption.getCountType())
-                    .measureType(productOption.getMeasureType())
                     .imageSource(option.getImageSource())
                     .orderIndex(productOption.getOrderIndex())
                     .customRuleResponse(customRuleResponse)

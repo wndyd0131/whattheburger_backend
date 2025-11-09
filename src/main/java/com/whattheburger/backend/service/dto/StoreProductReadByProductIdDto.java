@@ -38,7 +38,6 @@ public class StoreProductReadByProductIdDto {
         private BigDecimal extraPrice; //productOption
         private Double calories;
         private CountType countType;
-        private MeasureType measureType;
         private String imageSource;
         private Integer orderIndex;
         private CustomRuleResponse customRuleResponse;

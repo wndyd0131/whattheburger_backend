@@ -97,13 +97,13 @@ public class CheckoutController {
                         session
                 );
                 break;
-//            case "payment_intent.succeeded":
-//                PaymentIntent paymentIntent = (PaymentIntent) stripeObject;
-//                log.info("Payment Intent {}", paymentIntent);
-//                checkoutService.handlePaymentIntentSucceeded(
-//                        paymentIntent
-//                );
-//                break;
+            case "payment_intent.succeeded":
+                PaymentIntent paymentIntent = (PaymentIntent) stripeObject;
+                log.info("Payment Intent {}", paymentIntent);
+                checkoutService.handlePaymentIntentSucceeded(
+                        paymentIntent
+                );
+                break;
             case "payment_method.attached":
                 PaymentMethod paymentMethod = (PaymentMethod) stripeObject;
                 break;

@@ -23,6 +23,7 @@ public class OrderProductOption {
     private Long id;
     private Long productOptionId;
     private String name;
+    @Enumerated(EnumType.STRING)
     private CountType countType;
     @Column(precision = 10, scale = 2)
     private BigDecimal totalPrice;
