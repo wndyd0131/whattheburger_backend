@@ -11,7 +11,8 @@ import java.util.List;
 
 public class MockCartFactory {
     public static CartList createCartList() {
-        return getCartList(
+        Long storeId = 1L;
+        Cart cart1 = getCart(
                 1L,
                 1,
                 1L,
@@ -21,12 +22,9 @@ public class MockCartFactory {
                 1L,
                 1
         );
-    }
-
-    public static CartList createNonExistingProductIdCartList() {
-        return getCartList(
+        Cart cart2 = getCart(
                 2L,
-                1,
+                2,
                 1L,
                 1L,
                 1,
@@ -34,10 +32,17 @@ public class MockCartFactory {
                 1L,
                 1
         );
+        return new CartList(
+                storeId,
+                List.of(
+                        cart1,
+                        cart2
+                )
+        );
     }
 
-    private static CartList getCartList(
-            Long productId,
+    private static Cart getCart(
+            Long storeProductId,
             Integer cartQuantity,
             Long customRuleId,
             Long productOptionId,
@@ -70,13 +75,10 @@ public class MockCartFactory {
                         optionRequests
                 )
         );
-        List<Cart> carts = List.of(
-                new Cart(
-                        productId,
-                        cartQuantity,
-                        customRuleRequests
-                )
+        return new Cart(
+                storeProductId,
+                cartQuantity,
+                customRuleRequests
         );
-        return new CartList(carts);
     }
 }

@@ -11,6 +11,7 @@ import com.whattheburger.backend.service.dto.cart.ProcessedProductDto;
 import com.whattheburger.backend.service.dto.cart.calculator.CalculatedCartDto;
 import com.whattheburger.backend.service.dto.cart.ValidatedCartDto;
 import com.whattheburger.backend.service.dto.cart.calculator.ProductCalculationDetail;
+import com.whattheburger.backend.service.exception.StoreNotFoundException;
 import com.whattheburger.backend.service.exception.cart.CartNotFoundException;
 import com.whattheburger.backend.service.exception.cart.InvalidCartIndexException;
 import com.whattheburger.backend.util.SessionKey;
@@ -18,6 +19,7 @@ import com.whattheburger.backend.util.UserType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -34,6 +36,7 @@ public class CartService {
 
     private final RedisTemplate<String, CartList> rt;
     private final CartSessionStorage cartSessionStorage;
+    private final StoreRepository storeRepository;
     private final StoreProductRepository storeProductRepository;
     private final ProductRepository productRepository;
     private final CustomRuleRepository customRuleRepository;
@@ -45,6 +48,8 @@ public class CartService {
     private final CartCalculator cartCalculator;
 
     public ProcessedCartDto saveCart(Long storeId, UUID guestId, Authentication authentication, CartCreateRequestDto cartRequestDto) {
+        storeRepository.findById(storeId)
+                .orElseThrow(() -> new StoreNotFoundException(storeId));
         String sessionKey = getSessionKey(guestId, storeId, authentication);
         log.info("WRITE SESSION KEY {}", sessionKey);
 
@@ -122,6 +127,8 @@ public class CartService {
     }
 
     public ProcessedProductDto loadCartByIdx(Long storeId, UUID guestId, int cartIdx, Authentication authentication) {
+        storeRepository.findById(storeId)
+                .orElseThrow(() -> new StoreNotFoundException(storeId));
         String sessionKey = getSessionKey(guestId, storeId, authentication);
 
         CartList cartList = cartSessionStorage.load(sessionKey)
@@ -164,7 +171,8 @@ public class CartService {
     }
 
     public ProcessedCartDto modifyItem(Long storeId, UUID guestId, int cartIdx, List<CustomRuleRequest> customRuleRequests, Authentication authentication) {
-
+        storeRepository.findById(storeId)
+                .orElseThrow(() -> new StoreNotFoundException(storeId));
         String sessionKey = getSessionKey(guestId, storeId, authentication);
 
 //        Cart cart = new Cart(cartRequestDto.getProductId(), cartRequestDto.getQuantity(), cartRequestDto.getCustomRuleRequests());
@@ -184,7 +192,8 @@ public class CartService {
     }
 
     public ProcessedCartDto modifyItemQuantity(Long storeId, UUID guestId, int cartIdx, int quantity, Authentication authentication) {
-
+        storeRepository.findById(storeId)
+                .orElseThrow(() -> new StoreNotFoundException(storeId));
         String sessionKey = getSessionKey(guestId, storeId, authentication);
 
 //        Cart cart = new Cart(cartRequestDto.getProductId(), cartRequestDto.getQuantity(), cartRequestDto.getCustomRuleRequests());
@@ -203,8 +212,28 @@ public class CartService {
         return loadCart(storeId, guestId, authentication);
     }
 
-    public ProcessedCartDto deleteItem(Long storeId, UUID guestId, int cartIdx, Authentication authentication) {
+    @PreAuthorize("hasRole('USER')")
+    public ProcessedCartDto mergeCart(Long storeId, UUID guestId, Authentication authentication) {
+        storeRepository.findById(storeId)
+                .orElseThrow(() -> new StoreNotFoundException(storeId));
+        String userKey = getUserKey(storeId, authentication);
+        String guestKey = getGuestKey(storeId, guestId);
+        CartList userCartList = cartSessionStorage.load(userKey)
+                .orElse(new CartList(storeId, new ArrayList<>()));
+        CartList guestCartList = cartSessionStorage.load(guestKey)
+                .orElse(new CartList(storeId, new ArrayList<>()));
+        List<Cart> carts = userCartList.getCarts();
+        guestCartList.getCarts().stream()
+                .forEach(cart -> carts.add(cart));
+        guestCartList.clearCartList();
+        cartSessionStorage.save(userKey, userCartList);
+        cartSessionStorage.save(guestKey, guestCartList);
+        return loadCart(storeId, guestId, authentication);
+    }
 
+    public ProcessedCartDto deleteItem(Long storeId, UUID guestId, int cartIdx, Authentication authentication) {
+        storeRepository.findById(storeId)
+                .orElseThrow(() -> new StoreNotFoundException(storeId));
         String sessionKey = getSessionKey(guestId, storeId, authentication);
 
         CartList cartList = cartSessionStorage.load(sessionKey)
@@ -232,7 +261,8 @@ public class CartService {
     }
 
     public ProcessedCartDto deleteAllItem(Long storeId, UUID guestId, Authentication authentication) {
-
+        storeRepository.findById(storeId)
+                .orElseThrow(() -> new StoreNotFoundException(storeId));
         String sessionKey = getSessionKey(guestId, storeId, authentication);
 
         CartList cartList = cartSessionStorage.load(sessionKey)
@@ -271,26 +301,26 @@ public class CartService {
         boolean isUser = authentication != null && authentication.isAuthenticated() && !(authentication instanceof AnonymousAuthenticationToken);
         log.info("isUser {}", isUser);
         if (isUser) {
-            Object principal = authentication.getPrincipal();
-            if (principal instanceof UserDetails userDetails) {
-                return "cart:store" + storeId + ":" + userDetails.getUsername();
-            }
+            UserDetails principal = (UserDetails) authentication.getPrincipal();
             log.info("Principal {}", principal);
+            return "cart:store:" + storeId + ":" + principal.getUsername();
         }
-        return "cart:store" + storeId + ":" + guestId;
+        return "cart:store:" + storeId + ":" + guestId;
     }
 
-    private SessionKey getSessionKey(UUID guestId, Authentication authentication) {
+    private String getUserKey(Long storeId, Authentication authentication) {
         boolean isUser = authentication != null && authentication.isAuthenticated() && !(authentication instanceof AnonymousAuthenticationToken);
         log.info("isUser {}", isUser);
         if (isUser) {
-            Object principal = authentication.getPrincipal();
-            if (principal instanceof UserDetailsImpl userDetailsImpl) {
-                return new SessionKey(UserType.USER, "user:" + userDetailsImpl.getUsername());
-            }
+            UserDetails principal = (UserDetails) authentication.getPrincipal();
             log.info("Principal {}", principal);
+            return "cart:store:" + storeId + ":" + principal.getUsername();
         }
-        return new SessionKey(UserType.GUEST, "guest:" + guestId.toString());
+        throw new IllegalStateException();
+    }
+
+    private String getGuestKey(Long storeId, UUID guestId) {
+        return "cart:store:" + storeId + ":" + guestId;
     }
 
     private Map<Class<?>, Map<Long, ?>> fetchAllRelatedEntitiesToMap(List<Cart> carts) {

@@ -1,6 +1,8 @@
 package com.whattheburger.backend.domain;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -11,8 +13,10 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
+@AllArgsConstructor
 @NoArgsConstructor
 @Getter
+@Builder
 @Table(uniqueConstraints = {
         @UniqueConstraint(columnNames = {"store_id", "product_id"})
 })

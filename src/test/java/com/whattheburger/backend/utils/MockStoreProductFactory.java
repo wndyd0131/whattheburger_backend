@@ -3,9 +3,7 @@ package com.whattheburger.backend.utils;
 import com.whattheburger.backend.controller.dto.store.StoreCustomRuleModifyRequest;
 import com.whattheburger.backend.controller.dto.store.StoreOptionModifyRequest;
 import com.whattheburger.backend.controller.dto.store.StoreProductModifyRequestDto;
-import com.whattheburger.backend.domain.Product;
-import com.whattheburger.backend.domain.Store;
-import com.whattheburger.backend.domain.StoreProduct;
+import com.whattheburger.backend.domain.*;
 import com.whattheburger.backend.domain.enums.ModifyType;
 
 import java.math.BigDecimal;
@@ -16,6 +14,28 @@ public class MockStoreProductFactory {
     public static StoreProduct createStoreProduct(Store store, Product product) {
         return new StoreProduct(store, product);
     }
+    public static StoreProduct createStoreProduct(
+            Long storeProductId,
+            BigDecimal overridePrice,
+            Boolean isActive,
+            Store store,
+            Product product
+    ) {
+        StoreProduct storeProduct = new StoreProduct(
+                storeProductId,
+                overridePrice,
+                isActive,
+                store,
+                product,
+                new ArrayList<>(),
+                new ArrayList<>(),
+                new ArrayList<>(),
+                new ArrayList<>()
+        );
+        return storeProduct;
+    }
+
+
     public static StoreProductModifyRequestDto createStoreProductEditRequestDto() {
         StoreOptionModifyRequest optionModifyRequest = StoreOptionModifyRequest
                 .builder()

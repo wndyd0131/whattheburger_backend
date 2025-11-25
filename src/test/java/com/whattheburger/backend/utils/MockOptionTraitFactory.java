@@ -7,8 +7,10 @@ import com.whattheburger.backend.domain.enums.OptionTraitType;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.List;
 
 public class MockOptionTraitFactory {
+
     public static OptionTrait createMockOptionTrait() {
         return OptionTrait
                 .builder()
@@ -19,6 +21,23 @@ public class MockOptionTraitFactory {
                 .productOptionTraits(new ArrayList<>())
                 .build();
     }
+
+    public static OptionTrait createMockOptionTrait(
+            Long traitId,
+            String traitName,
+            String labelCode,
+            OptionTraitType optionTraitType
+    ) {
+                return OptionTrait
+                .builder()
+                .id(traitId)
+                .name(traitName)
+                .labelCode(labelCode)
+                .optionTraitType(optionTraitType)
+                .productOptionTraits(new ArrayList<>())
+                .build();
+    }
+
     public static ProductOptionTrait createMockProductOptionTrait(ProductOption mockProductOption, OptionTrait mockOptionTrait) {
         ProductOptionTrait productOptionTrait = ProductOptionTrait
                 .builder()
@@ -28,6 +47,28 @@ public class MockOptionTraitFactory {
                 .defaultSelection(0)
                 .extraPrice(BigDecimal.ZERO)
                 .extraCalories(0D)
+                .build();
+        mockProductOption.getProductOptionTraits().add(productOptionTrait);
+        mockOptionTrait.getProductOptionTraits().add(productOptionTrait);
+        return productOptionTrait;
+    }
+
+    public static ProductOptionTrait createMockProductOptionTrait(
+            Long productOptionTraitId,
+            Integer defaultSelection,
+            BigDecimal extraPrice,
+            Double extraCalories,
+            ProductOption mockProductOption,
+            OptionTrait mockOptionTrait
+    ) {
+        ProductOptionTrait productOptionTrait = ProductOptionTrait
+                .builder()
+                .id(productOptionTraitId)
+                .productOption(mockProductOption)
+                .optionTrait(mockOptionTrait)
+                .defaultSelection(defaultSelection)
+                .extraPrice(extraPrice)
+                .extraCalories(extraCalories)
                 .build();
         mockProductOption.getProductOptionTraits().add(productOptionTrait);
         mockOptionTrait.getProductOptionTraits().add(productOptionTrait);

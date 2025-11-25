@@ -69,6 +69,16 @@ public class CartController {
         );
     }
 
+    @PatchMapping("/api/v1/store/{storeId}/cart")
+    public ResponseEntity<CartResponseDto> mergeCart(
+            @PathVariable(name = "storeId") Long storeId,
+            @CookieValue(name = "guestId") UUID guestId,
+            Authentication authentication
+    ) {
+        cartService.mergeCart(storeId, guestId, authentication);
+        return null;
+    }
+
     @PatchMapping("/api/v1/store/{storeId}/cart/{cartIdx}/option")
     public ResponseEntity<CartResponseDto> modifyOptionsByIdx(
             @RequestBody CartOptionModifyRequestDto cartRequestDto,

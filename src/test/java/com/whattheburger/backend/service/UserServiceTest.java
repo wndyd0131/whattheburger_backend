@@ -46,7 +46,7 @@ class UserServiceTest {
                 userDto.getFirstName(),
                 userDto.getLastName(),
                 userDto.getPhoneNum(),
-                userDto.getZipcode(),
+                userDto.getZipCode(),
                 userDto.getEmail(),
                 userDto.getPassword(),
                 Role.USER
