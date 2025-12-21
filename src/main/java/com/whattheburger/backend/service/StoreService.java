@@ -21,12 +21,12 @@ public class StoreService {
     private final StoreRepository storeRepository;
     private final MapboxService mapboxService;
 
-    public Store findStoreById(Long storeId) {
+    public Store loadStoreById(Long storeId) {
         return storeRepository.findById(storeId)
                 .orElseThrow(() -> new StoreNotFoundException(storeId));
     }
 
-    public List<NearByStoreDto> findStoresNearBy(Double lon, Double lat, Double radiusMeter) {
+    public List<NearByStoreDto> loadStoresNearBy(Double lon, Double lat, Double radiusMeter) {
         List<Store> stores = storeRepository.findNearBy(lon, lat, radiusMeter);
         List<Point> coordinates = new ArrayList<>();
         coordinates.add(Point.fromLngLat(lon, lat));
@@ -57,7 +57,7 @@ public class StoreService {
         return nearByStoreDtos;
     }
 
-    public List<Store> findAllStores() {
+    public List<Store> loadAllStores() {
         return storeRepository.findAll();
     }
 }

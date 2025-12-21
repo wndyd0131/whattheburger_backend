@@ -251,6 +251,7 @@ public class CartService {
     }
 
     public UUID getSessionId(String sessionKey) {
+        log.info("session key log {}", sessionKey);
         CartList cartList = cartSessionStorage.load(sessionKey)
                 .orElseThrow(() -> new CartNotFoundException(sessionKey));
         return cartList.getSessionId();

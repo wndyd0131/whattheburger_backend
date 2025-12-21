@@ -44,17 +44,16 @@ public class OrderService {
 
     private final StoreService storeService;
     private final CartService cartService;
+    private final UserService userService;
     private final OrderStorage orderStorage;
+    private final OrderRepository orderRepository;
     private final OrderSessionStorage orderSessionStorage;
     private final OrderSessionFactory orderSessionFactory;
     private final OrderFactory orderFactory;
 
-    public OrderSession updateOrderSession(OrderFormRequestDto orderFormRequestDto, UUID sessionId, Authentication authentication, UUID guestId) {
-        SessionKey sessionKey = getSessionKey(guestId, authentication);
-        OrderSession orderSession = orderSessionStorage.load(sessionKey)
-                .orElseThrow(() -> new OrderSessionNotFoundException(sessionKey.key()));
-        if (!orderSession.getSessionId().equals(sessionId))
-            throw new OrderSessionNotFoundException(sessionId.toString());
+    public OrderSession updateOrderSession(OrderFormRequestDto orderFormRequestDto, UUID orderSessionId, Authentication authentication, UUID guestId) {
+        OrderSession orderSession = orderSessionStorage.load(orderSessionId)
+                .orElseThrow(() -> new OrderSessionNotFoundException(orderSessionId.toString()));
 
         if (orderFormRequestDto instanceof DeliveryOrderFormRequestDto deliveryFormRequest) {
             orderSession.changeAddressInfo(
@@ -69,7 +68,7 @@ public class OrderService {
                     deliveryFormRequest.email(),
                     deliveryFormRequest.phoneNum()
             );
-            orderSessionStorage.save("order:" + sessionKey.key(), orderSession);
+            orderSessionStorage.save(orderSession);
         } else if (orderFormRequestDto instanceof PickupOrderFormRequestDto pickUpFormRequest) {
             orderSession.changeContactInfo(
                     pickUpFormRequest.firstName(),
@@ -78,7 +77,7 @@ public class OrderService {
                     pickUpFormRequest.phoneNum()
             );
             orderSession.changeETA(pickUpFormRequest.eta());
-            orderSessionStorage.save("order:" + sessionKey.key(), orderSession);
+            orderSessionStorage.save(orderSession);
         } else {
             throw new IllegalStateException();
         }
@@ -94,12 +93,11 @@ public class OrderService {
                 .orElseThrow(() -> new OrderNotFoundException());
     }
 
-    public OrderSession createOrderSession(Long storeId, UUID guestId, Authentication authentication, OrderType orderType) {
+    public OrderSession createOrderSession(Long storeId, UUID guestId, UUID orderSessionId, Authentication authentication, OrderType orderType) {
         ProcessedCartDto processedCartDto = cartService.loadCart(storeId, guestId, authentication);
 
-        SessionKey sessionKey = getSessionKey(guestId, authentication);
-
-        OrderSession orderSession = orderSessionStorage.load(sessionKey)
+        // add security
+        OrderSession orderSession = orderSessionStorage.load(orderSessionId)
                 .map(existingSession -> {
                     orderSessionFactory.overwriteFromCartDto(
                             processedCartDto,
@@ -107,11 +105,22 @@ public class OrderService {
                             storeId,
                             existingSession
                     );
+                    log.info("session exists");
                     return existingSession;
                 })
-                .orElseGet(() -> orderSessionFactory.createFromCartDto(processedCartDto, orderType, storeId));
-
-        orderSessionStorage.save("order:" + sessionKey.key(), orderSession);
+                .orElseGet(() -> {
+                    log.info("session does not exist");
+                    Long userId = null;
+                    log.info("Authenticated {}", authentication.isAuthenticated());
+                    if (authentication.isAuthenticated()) {
+                        UserDetailsImpl principal = (UserDetailsImpl) authentication.getPrincipal();
+                        userId = principal.getUserId();
+                    }
+                    log.info("order session user id: {}", userId);
+                    return orderSessionFactory.createFromCartDto(processedCartDto, userId, orderType, storeId);
+                });
+        log.info("current session key {}", orderSession.getSessionId());
+        orderSessionStorage.save(orderSession);
         return orderSession;
     }
 
@@ -124,16 +133,14 @@ public class OrderService {
         orderSessionStorage.remove(orderSessionId);
     }
 
-    public OrderSession loadOrderSession(Long storeId, UUID sessionId, UUID guestId, Authentication authentication) {
-        SessionKey sessionKey = getSessionKey(guestId, authentication);
+    public OrderSession loadOrderSession(Long storeId, UUID orderSessionId, UUID guestId, Authentication authentication) {
+//        SessionKey sessionKey = getSessionKey(guestId, authentication);
 
-        OrderSession orderSession = orderSessionStorage.load(sessionKey)
-                .orElseThrow(() -> new OrderSessionNotFoundException(sessionId.toString()));
-        if (!orderSession.getSessionId().equals(sessionId)) {
-            throw new OrderSessionNotFoundException(sessionId.toString());
-        }
+        OrderSession orderSession = orderSessionStorage.load(orderSessionId)
+                .orElseThrow(() -> new OrderSessionNotFoundException(orderSessionId.toString()));
+
         if (!orderSession.getStoreId().equals(storeId)) {
-            throw new OrderSessionNotFoundException(sessionId.toString(), storeId);
+            throw new OrderSessionNotFoundException(orderSessionId.toString(), storeId);
         }
 
         return orderSession;
@@ -146,9 +153,9 @@ public class OrderService {
         return orderSession;
     }
 
-    public OrderSession loadOrderSessionByOrderSessionId(UUID sessionId) {
-        return orderSessionStorage.load(sessionId)
-                .orElseThrow(() -> new OrderSessionNotFoundException(sessionId.toString()));
+    public OrderSession loadOrderSessionByOrderSessionId(UUID orderSessionId) {
+        return orderSessionStorage.load(orderSessionId)
+                .orElseThrow(() -> new OrderSessionNotFoundException(orderSessionId.toString()));
     }
 
     public OrderSession loadOrderSessionByCheckoutSessionId(String checkoutSessionId) {
@@ -159,9 +166,11 @@ public class OrderService {
 
     public Order transferFromOrderSession(OrderSession orderSession) {
         Long storeId = orderSession.getStoreId();
-        Store store = storeService.findStoreById(storeId);
-        return orderFactory.createFromOrderSession(orderSession, store);
-
+        Long userId = orderSession.getUserId();
+        log.info("orderSession.userId: {}", userId);
+        User user = userService.loadUserById(userId);
+        Store store = storeService.loadStoreById(storeId);
+        return orderFactory.createFromOrderSession(orderSession, user, store);
     }
 
 //    public Order createOrderPreview(UUID guestId, Authentication authentication, OrderType orderType) {
@@ -218,9 +227,14 @@ public class OrderService {
 //        }
 //    }
 
-    public Order loadOrder(UUID orderNumber) {
-        return orderStorage.loadByOrderNumber(orderNumber)
-                .orElseThrow(() -> OrderNotFoundException.forOrder(orderNumber));
+    public Order loadOrder(UUID orderNumber, Authentication authentication) {
+        if (authentication.isAuthenticated()) {
+            UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+            Long userId = userDetails.getUserId();
+            return orderStorage.loadByOrderNumber(orderNumber, userId)
+                    .orElseThrow(() -> OrderNotFoundException.forOrder(orderNumber));
+        }
+        throw new IllegalStateException();
     }
 
     public void updateOrderSessionOrderStatus(OrderSession orderSession, OrderStatus orderStatus, Long startTime, Integer duration) {
@@ -282,6 +296,10 @@ public class OrderService {
 
     }
 
+//    private String getSessionKey(UUID orderSessionId) {
+//        return "order:" + orderSessionId;
+//    }
+
     private SessionKey getSessionKey(UUID guestId, Authentication authentication) {
         boolean isUser = authentication != null && authentication.isAuthenticated() && !(authentication instanceof AnonymousAuthenticationToken);
         log.info("isUser {}", isUser);
@@ -313,5 +331,16 @@ public class OrderService {
                 }
             }
         }
+    }
+
+    public List<Order> loadOrders(
+            Authentication authentication
+    ) {
+        if (authentication.isAuthenticated()) {
+            UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+            Long userId = userDetails.getUserId();
+            return orderRepository.findByUserId(userId);
+        }
+        throw new IllegalStateException();
     }
 }

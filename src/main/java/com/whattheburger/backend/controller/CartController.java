@@ -31,7 +31,7 @@ public class CartController {
             @RequestBody CartCreateRequestDto cartRequestDto,
             @CookieValue(name = "guestId", required = false) UUID guestId,
             Authentication authentication
-            ) {
+    ) {
         log.info("GUEST_ID: {}", guestId);
         ProcessedCartDto processedCartDto = cartService.saveCart(storeId, guestId, authentication, cartRequestDto);
         CartResponseDto cartResponseDto = cartResponseDtoMapper.toCartResponseDto(processedCartDto);

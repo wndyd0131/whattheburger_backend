@@ -1,7 +1,7 @@
 package com.whattheburger.backend.controller;
 
 import com.whattheburger.backend.controller.dto.store.NearByStoreReadResponseDto;
-import com.whattheburger.backend.controller.dto.store.StoreReadResponse;
+import com.whattheburger.backend.controller.dto.store.StoreResponseDto;
 import com.whattheburger.backend.domain.Address;
 import com.whattheburger.backend.domain.Coordinate;
 import com.whattheburger.backend.domain.Store;
@@ -21,10 +21,10 @@ public class StoreController {
     private final StoreService storeService;
 
     @GetMapping("/api/v1/store")
-    public ResponseEntity<List<StoreReadResponse>> getAllStores() {
-        List<Store> stores = storeService.findAllStores();
-        List<StoreReadResponse> storeReadResponses = stores.stream()
-                .map(store -> StoreReadResponse
+    public ResponseEntity<List<StoreResponseDto>> getAllStores() {
+        List<Store> stores = storeService.loadAllStores();
+        List<StoreResponseDto> storeReadResponses = stores.stream()
+                .map(store -> StoreResponseDto
                         .builder()
                         .storeId(store.getId())
                         .overpassId(store.getOverpassId())
@@ -42,7 +42,7 @@ public class StoreController {
             @RequestParam(name = "lat") Double lat,
             @RequestParam(name = "radiusMeter") Double radiusMeter
     ) {
-        List<NearByStoreDto> storeDtos = storeService.findStoresNearBy(lon, lat, radiusMeter);
+        List<NearByStoreDto> storeDtos = storeService.loadStoresNearBy(lon, lat, radiusMeter);
         return ResponseEntity.ok(
                 storeDtos.stream()
                         .map(storeDto -> {

@@ -8,7 +8,7 @@ import java.time.LocalTime;
 @AllArgsConstructor
 @Getter
 @Builder
-public class StoreReadResponse {
+public class StoreResponseDto {
     private Long storeId;
     private Long overpassId;
     private Long houseNumber;

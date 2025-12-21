@@ -16,13 +16,13 @@ public class RedisCartSessionStorage implements CartSessionStorage{
     @Override
     public void save(String sessionKey, CartList cartList) {
         UUID sessionId = cartList.getSessionId();
-        stringRedisTemplate.opsForValue().set("cart:" + sessionKey, sessionId.toString());
+        stringRedisTemplate.opsForValue().set(sessionKey, sessionId.toString());
         rt.opsForValue().set(sessionId.toString(), cartList);
     }
 
     @Override
     public Optional<CartList> load(String sessionKey) {
-        return Optional.ofNullable(stringRedisTemplate.opsForValue().get("cart:" + sessionKey))
+        return Optional.ofNullable(stringRedisTemplate.opsForValue().get(sessionKey))
                 .flatMap(cartSessionKey -> Optional.ofNullable(rt.opsForValue().get(cartSessionKey)));
     }
 

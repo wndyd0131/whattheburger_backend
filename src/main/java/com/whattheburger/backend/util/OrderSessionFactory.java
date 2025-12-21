@@ -21,7 +21,7 @@ import java.util.UUID;
 @Slf4j
 @Component
 public class OrderSessionFactory {
-    public OrderSession createFromCartDto(ProcessedCartDto cartDto, OrderType orderType, Long storeId) {
+    public OrderSession createFromCartDto(ProcessedCartDto cartDto, Long userId, OrderType orderType, Long storeId) {
         OrderSession orderSession = OrderSession
                 .builder()
                 .sessionId(UUID.randomUUID())
@@ -30,6 +30,7 @@ public class OrderSessionFactory {
                 .orderType(orderType)
                 .paymentStatus(PaymentStatus.UNPAID)
                 .totalPrice(cartDto.getTotalPrice())
+                .userId(userId)
                 .orderSessionProducts(
                         cartDto.getProcessedProductDtos().stream()
                                 .map(this::createFromProductDto)

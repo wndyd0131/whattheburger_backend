@@ -1,0 +1,105 @@
+@startuml
+'https://plantuml.com/class-diagram
+
+abstract class AbstractList
+abstract AbstractCollection
+interface List
+interface Collection
+
+enum ProductType {
+ONLY
+MEAL
+}
+enum CountType {
+COUNTABLE
+UNCOUNTABLE
+NONE
+}
+enum OptionTraitType {
+BINARY
+}
+
+class User {
+}
+class Store {
+- id: Long
+- overpassId: Long
+- houseNumber: Long
+- closeTime: LocalTime
+- openTime: LocalTime
+- branch: String
+- phoneNum: String
+- website: String
+}
+class Product {
+- id: Long
+- name: String
+- price: BigDecimal
+- briefInfo: String
+- imageSource: String
+- calories: Double
+- productType: ProductType
+}
+class ProductOption {
+- id: Long
+- isDefault: Boolean
+- countType: CountType
+- defaultQuantity: Integer
+- maxQuantity: Integer
+- extraPrice: BigDecimal
+- orderIndex: Integer
+}
+class ProductOptionTrait {
+- id: Long
+- defaultSelection: Integer
+- extraPrice: BigDecimal
+- extraCalories: Double
+}
+
+class CustomRule {
+}
+class Option {
+}
+class Quantity {
+}
+class OptionTrait {
+- id: Long
+- name: String
+- labelCode: String
+- optionTraitType: OptionTraitType
+}
+class StoreProduct {
+}
+class Order {
+}
+class Address
+class Category
+class CategoryProduct
+class CategoryStoreProduct
+
+' Relationship
+Store "many" --> "1" User
+Store "1" *-- "many" StoreProduct
+Store "1" -- "many" Order
+Product "1" -- "many" StoreProduct
+Product "1" *-- "many" CategoryProduct
+Category "1" -- "many" CategoryProduct
+Product "1" *-- "many" ProductOption
+Option "1" -- "many" ProductOption
+ProductOption "1" *-- "many" ProductOptionTrait
+OptionTrait "1" -- "many" ProductOptionTrait
+CustomRule "1" -- "many" ProductOption
+
+List <|-- AbstractList
+Collection <|-- AbstractCollection
+
+Collection <|- List
+AbstractCollection <|- AbstractList
+AbstractList <|-- ArrayList
+
+class ArrayList {
+Object[] elementData
+size()
+}
+
+@enduml

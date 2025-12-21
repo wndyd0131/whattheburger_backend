@@ -2,13 +2,15 @@ package com.whattheburger.backend.controller.dto_mapper;
 
 import com.whattheburger.backend.controller.dto.order.*;
 import com.whattheburger.backend.controller.dto.order.QuantityDetail;
-import com.whattheburger.backend.domain.enums.*;
+import com.whattheburger.backend.controller.dto.store.NearByStoreReadResponseDto;
+import com.whattheburger.backend.controller.dto.store.StoreResponseDto;
+import com.whattheburger.backend.domain.Store;
 import com.whattheburger.backend.domain.order.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,12 +21,37 @@ public class OrderResponseDtoMapper {
     @Value("${aws.s3.public-url}")
     private String s3PublicUrl;
 
-    public OrderResponseDto toOrderResponseDto(Order order) {
-        OrderResponseDto orderResponseDto = OrderResponseDto
+    public List<OrderResponseDto> toOrderResponseDto(List<Order> orders) {
+        ArrayList<OrderResponseDto> orderResponseDtos = new ArrayList<>();
+        for  (Order order : orders) {
+            orderResponseDtos.add(
+                    OrderResponseDto
+                            .builder()
+                            .id(order.getId())
+                            .orderNumber(order.getOrderNumber())
+                            .orderStatus(order.getOrderStatus())
+                            .createdAt(order.getCreatedAt())
+                            .updatedAt(order.getUpdatedAt())
+                            .orderType(order.getOrderType())
+                            .storeId(order.getStore().getId())
+                            .totalPrice(order.getTotalPrice())
+                            .build()
+            );
+        }
+        return orderResponseDtos;
+    }
+    public List<OrderDetailResponseDto> toOrderDetailResponseDto(List<Order> orders) {
+        ArrayList<OrderDetailResponseDto> orderDetailResponseDtos = new ArrayList<>();
+        for  (Order order : orders) {
+            orderDetailResponseDtos.add(toOrderDetailResponseDto(order));
+        }
+        return orderDetailResponseDtos;
+    }
+    public OrderDetailResponseDto toOrderDetailResponseDto(Order order) {
+        OrderDetailResponseDto orderDetailResponseDto = OrderDetailResponseDto
                 .builder()
                 .id(order.getId())
                 .orderNumber(order.getOrderNumber())
-                .storeId(order.getStore().getId())
                 .totalPrice(order.getTotalPrice())
                 .orderStatus(order.getOrderStatus())
                 .orderType(order.getOrderType())
@@ -37,10 +64,36 @@ public class OrderResponseDtoMapper {
                 .contactInfo(order.getContactInfo())
                 .cardInfo(order.getCardInfo())
                 .addressInfo(order.getAddressInfo())
-                .productResponseDtos(order.getOrderProducts().stream()
+                .productResponse(order.getOrderProducts().stream()
                         .map(this::toProductResponseDto).toList())
+                .storeResponse(toStoreResponseDto(order.getStore()))
                 .build();
-        return orderResponseDto;
+        return orderDetailResponseDto;
+    }
+
+    private StoreResponseDto toStoreResponseDto(Store store) {
+        return StoreResponseDto
+                .builder()
+                .storeId(store.getId())
+                .houseNumber(store.getHouseNumber())
+                .overpassId(store.getOverpassId())
+                .openTime(store.getOpenTime())
+                .closeTime(store.getCloseTime())
+                .phoneNum(store.getPhoneNum())
+                .website(store.getWebsite())
+                .branch(store.getBranch())
+                .coordinate(
+                        new NearByStoreReadResponseDto.CoordinateDto(store.getCoordinate().getLatitude(), store.getCoordinate().getLongitude())
+                )
+                .address(
+                        new NearByStoreReadResponseDto.AddressDto(
+                                store.getAddress().getCity(),
+                                store.getAddress().getStreet(),
+                                store.getAddress().getState(),
+                                store.getAddress().getZipcode()
+                        )
+                )
+                .build();
     }
 
     private ProductResponseDto toProductResponseDto(OrderProduct orderProduct) {

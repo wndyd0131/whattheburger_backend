@@ -11,7 +11,9 @@ import com.whattheburger.backend.domain.enums.PaymentMethod;
 import com.whattheburger.backend.domain.enums.PaymentStatus;
 import com.whattheburger.backend.domain.order.*;
 import com.whattheburger.backend.exception.ApiException;
+import com.whattheburger.backend.repository.checkout.CheckoutSessionStorage;
 import com.whattheburger.backend.security.UserDetailsImpl;
+import com.whattheburger.backend.service.exception.ResourceNotFoundException;
 import com.whattheburger.backend.util.SessionKey;
 import com.whattheburger.backend.util.UserType;
 import lombok.RequiredArgsConstructor;
@@ -38,8 +40,7 @@ public class CheckoutService {
     private String successUrl;
 
     private final OrderService orderService;
-    private final OrderSessionStorage orderSessionStorage;
-    private final OrderFactory orderFactory;
+    private final CheckoutSessionStorage checkoutSessionStorage;
     private final OrderTrackingService orderTrackingService;
     private final CartService cartService;
 
@@ -97,7 +98,7 @@ public class CheckoutService {
 
         try {
             Session session = Session.create(params);
-            orderSessionStorage.save("checkout_session:" + session.getId(), orderSession);
+            checkoutSessionStorage.save(session.getId(), orderSessionId);
             return session;
         } catch (StripeException e) {
             e.printStackTrace();
@@ -118,6 +119,10 @@ public class CheckoutService {
         return new SessionKey(UserType.GUEST, "guest:" + guestId.toString());
     }
 
+    public String getOrderSessionId(String checkoutSessionId) {
+        return checkoutSessionStorage.getOrderSessionId(checkoutSessionId)
+                .orElseThrow(() -> new ResourceNotFoundException("checkoutSessionId not found"));
+    }
 
     public void handleCheckoutSessionCompleted(
             Session session
@@ -217,10 +222,10 @@ public class CheckoutService {
         if (isUser) {
             Object principal = authentication.getPrincipal();
             if (principal instanceof UserDetails userDetails) {
-                return "cart:store" + storeId + ":" + userDetails.getUsername();
+                return "cart:store:" + storeId + ":" + userDetails.getUsername();
             }
             log.info("Principal {}", principal);
         }
-        return "cart:store" + storeId + ":" + guestId;
+        return "cart:store:" + storeId + ":" + guestId;
     }
 }

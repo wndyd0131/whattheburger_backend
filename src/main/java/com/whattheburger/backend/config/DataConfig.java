@@ -88,7 +88,7 @@ public class DataConfig {
                 }
                 System.out.println("Stores loaded successfully");
             }
-            List<Store> stores = storeService.findAllStores();
+            List<Store> stores = storeService.loadAllStores();
 
             if (productSeedingFlag) {
                 ObjectMapper objectMapper = new ObjectMapper();

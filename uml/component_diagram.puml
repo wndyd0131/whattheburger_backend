@@ -1,0 +1,49 @@
+@startuml
+
+component "Auth" as Auth
+component "User" as User
+component "Store" as Store
+component "Menu" as Menu
+component "Cart" as Cart
+component "Order" as Order
+component "Payment" as Payment
+component "Order Tracking" as Tracking
+component "Stripe API" as Stripe
+
+database "MySQL" as DB {
+}
+database "Redis" as Cache {
+}
+
+' Provided interfaces
+Auth--IAuth
+User--IUser
+Store--IStore
+Menu--IMenu
+Cart--ICart
+Order--IOrder
+
+' Required interfaces
+[Menu]..(IStore
+[User]..(IAuth
+[Cart]..(IAuth
+[Cart]..(IStore
+[Order]..(IAuth
+[Order]..(IStore
+[Order]..(ICart
+[Payment]..(IOrder
+[Tracking]..(IOrder
+
+[Auth]-up->DB
+[User]-up->DB
+[Store]-up->DB
+[Menu]-up->DB
+[Cart]-up->DB
+[Order]-up->DB
+
+[Cart]-up->Cache
+[Order]-up->Cache
+
+[Payment]-up->Stripe
+
+@enduml

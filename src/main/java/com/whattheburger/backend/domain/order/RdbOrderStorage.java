@@ -26,6 +26,11 @@ public class RdbOrderStorage implements OrderStorage {
     }
 
     @Override
+    public Optional<Order> loadByOrderNumber(UUID orderNumber, Long userId) {
+        return orderRepository.findByUserIdAndOrderNumber(userId, orderNumber);
+    }
+
+    @Override
     public Optional<Order> loadByUserInfoAndOrderNumberAndPaymentStatuses(OrderOwnerKey orderOwnerKey, UUID orderNumber, Collection<PaymentStatus> paymentStatuses) {
         if (orderOwnerKey instanceof UserKey u) {
             return orderRepository.findByUserIdAndOrderNumberAndPaymentStatusIn(u.userId(), orderNumber, paymentStatuses);

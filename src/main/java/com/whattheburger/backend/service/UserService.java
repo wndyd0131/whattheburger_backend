@@ -8,6 +8,7 @@ import com.whattheburger.backend.security.exception.UserPrincipalNotFoundExcepti
 import com.whattheburger.backend.repository.UserRepository;
 import com.whattheburger.backend.security.UserDetailsImpl;
 import com.whattheburger.backend.service.dto.AuthUserDto;
+import com.whattheburger.backend.service.exception.user.UserNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -53,9 +54,11 @@ public class UserService {
             throw new IllegalArgumentException("The user already exists");
     }
 
-    public User findUser(Long userId) {
+    public User loadUserById(Long userId) {
+        if (userId == null)
+            return null;
         return userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("There is no such user"));
+                .orElseThrow(() -> new UserNotFoundException(userId));
     }
 
     public AuthUserDto getAuthenticatedUser(Authentication authentication) {

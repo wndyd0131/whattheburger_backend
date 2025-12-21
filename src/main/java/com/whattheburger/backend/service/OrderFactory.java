@@ -17,7 +17,7 @@ import java.util.*;
 @Slf4j
 public class OrderFactory {
 
-    public Order createFromOrderSession(OrderSession orderSession, Store store) {
+    public Order createFromOrderSession(OrderSession orderSession, User user, Store store) {
         Order.OrderBuilder orderBuilder = Order.builder()
                 .orderType(orderSession.getOrderType())
                 .store(store)
@@ -27,6 +27,7 @@ public class OrderFactory {
                 .discountType(orderSession.getDiscountType())
                 .taxAmount(orderSession.getTaxAmount())
                 .totalPrice(orderSession.getTotalPrice())
+                .user(user)
                 .contactInfo(orderSession.getContactInfo());
 
         if (orderSession.getOrderType() == OrderType.DELIVERY) {

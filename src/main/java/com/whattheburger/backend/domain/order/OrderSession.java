@@ -22,6 +22,7 @@ public class OrderSession {
     private UUID sessionId;
     private String checkoutSessionId;
     private Long storeId;
+    private Long userId;
     private BigDecimal totalPrice;
     private OrderStatus orderStatus;
     private OrderType orderType;

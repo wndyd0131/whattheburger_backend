@@ -1,0 +1,22 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+autonumber
+
+== Add to Cart ==
+
+User -> CartController: addToCart
+CartController -> Redis: saveCart
+Redis -> CartController: loadCart
+CartController -> CartCalculator: calculateCart
+CartCalculator -> CartController: calculateCart
+CartController -> User: loadCart
+
+== Place Order ==
+User -> OrderController: createOrderSession
+OrderController -> User: createOrderSession
+User -> OrderController: placeOrder
+OrderController -> Stripe: placeOrder
+Stripe -> CheckoutController: webhook
+
+@enduml
