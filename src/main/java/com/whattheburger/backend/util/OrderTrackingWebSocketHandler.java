@@ -11,6 +11,7 @@ import com.google.maps.errors.InvalidRequestException;
 import com.google.maps.model.GeocodingResult;
 import com.google.maps.model.LatLng;
 import com.whattheburger.backend.domain.enums.OrderStatus;
+import com.whattheburger.backend.domain.order.Order;
 import com.whattheburger.backend.domain.order.OrderSession;
 import com.whattheburger.backend.service.OrderService;
 import lombok.RequiredArgsConstructor;
@@ -54,85 +55,79 @@ public class OrderTrackingWebSocketHandler extends TextWebSocketHandler {
                 .orElseThrow(() -> new IllegalArgumentException());
         OrderSession orderSession = orderService.loadOrderSessionByOrderSessionId(UUID.fromString(orderSessionId));
         log.info("order session id: {}", orderSessionId);
+        Long orderId = orderSession.getOrderId();
+        Order order = orderService.loadOrderByOrderId(orderId);
 
         sessionMap.put(orderSessionId, session);
 
+        // event listen -> send update
+        sendUpdate(orderSessionId, toStatusData(order.getOrderStatus()));
 
-        // create new session
-        ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
-        ExecutorService executorService = Executors.newSingleThreadExecutor();
-
-        // Paid
-        // Confirm Order
-        // Preparation
-        // Delivery
-
-        scheduleStep(scheduledExecutorService, orderSession);
 
         log.info("session size {}", sessionMap.size());
     }
 
-    private void scheduleStep(ScheduledExecutorService scheduledExecutorService, OrderSession orderSession) {
-        // check orderStatus, if then see the time, if time elapsed then go to next step
-            // if time passed, then go to next step (Cooking)
-            // if not, then send update to the client
-
-        WebSocketSession session = sessionMap.get(orderSession.getSessionId().toString());
-        log.info("order session id: {}", orderSession.getSessionId());
-        log.info("session: {}", session);
-
-        // current - (createdTime + (lastModifiedTime - createdTime) + duration)
-        //
-
-        // websocket connection
-        // orderSessionId -> orderSession -> status, modifiedTime, duration
-
-        while (true) {
-            OrderStatus orderStatus = orderSession.getOrderStatus();
-            log.info("Current order status: {}", orderStatus.name());
-
-            if (orderStatus == OrderStatus.COMPLETED) {
-                Map<String, Object> statusObject = toStatusData(orderStatus);
-                sendUpdate(session, statusObject);
-                cleanUp(session, scheduledExecutorService, orderSession);
-                return;
-            }
-            Long orderStatusModifiedTime = orderSession.getOrderStatusModifiedTime();
-            Integer orderStatusDuration = orderSession.getOrderStatusDuration();
-            Long orderStatusEndTime = orderStatusModifiedTime + orderStatusDuration;
-            Long remaining = orderStatusEndTime - System.currentTimeMillis();
-
-            if (remaining <= 0) { // if elapsed, then transition to next step
-                OrderStatus nextStatus = getNextStatus(orderStatus);
-                if (nextStatus == OrderStatus.COMPLETED) {
-                    Map<String, Object> statusObject = toStatusData(nextStatus);
-                    orderService.updateOrderSessionOrderStatus(orderSession, nextStatus, orderStatusEndTime, 0); // CONFIRMED
-                    sendUpdate(session, statusObject);
-                    cleanUp(session, scheduledExecutorService, orderSession);
-                    return;
-                }
-                Integer newDuration = getRandomDuration(nextStatus);
-                orderService.updateOrderSessionOrderStatus(orderSession, nextStatus, orderStatusEndTime, newDuration); // CONFIRMED
-
-                continue;
-            } // if not, then re-execute after remaining time
-            log.info("Current order status: {}", orderStatus.name());
-
-            sendUpdate(session, toStatusData(orderStatus));
-            scheduledExecutorService.schedule(() -> {
-                OrderSession updatedOrderSession = orderService.loadOrderSessionByOrderSessionId(orderSession.getSessionId()); // getting up-to-date orderSession from redis
-                scheduleStep(scheduledExecutorService, updatedOrderSession);
-            }, remaining, TimeUnit.MILLISECONDS);
-            return;
-        }
-    }
+//    private void scheduleStep(ScheduledExecutorService scheduledExecutorService, OrderSession orderSession) {
+//        // check orderStatus, if then see the time, if time elapsed then go to next step
+//            // if time passed, then go to next step (Cooking)
+//            // if not, then send update to the client
+//
+//        WebSocketSession session = sessionMap.get(orderSession.getSessionId().toString());
+//        log.info("order session id: {}", orderSession.getSessionId());
+//        log.info("session: {}", session);
+//
+//        // current - (createdTime + (lastModifiedTime - createdTime) + duration)
+//        //
+//
+//        // websocket connection
+//        // orderSessionId -> orderSession -> status, modifiedTime, duration
+//
+//        while (true) {
+//            OrderStatus orderStatus = orderSession.getOrderStatus();
+//            log.info("Current order status: {}", orderStatus.name());
+//
+//            if (orderStatus == OrderStatus.COMPLETED) {
+//                Map<String, Object> statusObject = toStatusData(orderStatus);
+//                sendUpdate(session, statusObject);
+//                cleanUp(session, scheduledExecutorService, orderSession);
+//                return;
+//            }
+//            Long orderStatusModifiedTime = orderSession.getOrderStatusModifiedTime();
+//            Integer orderStatusDuration = orderSession.getOrderStatusDuration();
+//            Long orderStatusEndTime = orderStatusModifiedTime + orderStatusDuration;
+//            Long remaining = orderStatusEndTime - System.currentTimeMillis();
+//
+//            if (remaining <= 0) { // if elapsed, then transition to next step
+//                OrderStatus nextStatus = getNextStatus(orderStatus);
+//                if (nextStatus == OrderStatus.COMPLETED) {
+//                    Map<String, Object> statusObject = toStatusData(nextStatus);
+//                    orderService.updateOrderSessionOrderStatus(orderSession, nextStatus, orderStatusEndTime, 0); // CONFIRMED
+//                    sendUpdate(session, statusObject);
+//                    cleanUp(session, scheduledExecutorService, orderSession);
+//                    return;
+//                }
+//                Integer newDuration = getRandomDuration(nextStatus);
+//                orderService.updateOrderSessionOrderStatus(orderSession, nextStatus, orderStatusEndTime, newDuration); // CONFIRMED
+//
+//                continue;
+//            } // if not, then re-execute after remaining time
+//            log.info("Current order status: {}", orderStatus.name());
+//
+//            sendUpdate(session, toStatusData(orderStatus));
+//            scheduledExecutorService.schedule(() -> {
+//                OrderSession updatedOrderSession = orderService.loadOrderSessionByOrderSessionId(orderSession.getSessionId()); // getting up-to-date orderSession from redis
+//                scheduleStep(scheduledExecutorService, updatedOrderSession);
+//            }, remaining, TimeUnit.MILLISECONDS);
+//            return;
+//        }
+//    }
 
     private OrderStatus getNextStatus(OrderStatus orderStatus) {
         switch (orderStatus) {
             case PENDING -> {
-                return OrderStatus.CONFIRMED;
+                return OrderStatus.CONFIRMING;
             }
-            case CONFIRMED -> {
+            case CONFIRMING -> {
                 return OrderStatus.PREPARING;
             }
             case PREPARING -> {
@@ -149,7 +144,7 @@ public class OrderTrackingWebSocketHandler extends TextWebSocketHandler {
 
     private Integer getRandomDuration(OrderStatus orderStatus) {
         switch (orderStatus) {
-            case CONFIRMED -> {
+            case CONFIRMING -> {
                 return 0;
             }
             case PREPARING -> {
@@ -191,16 +186,18 @@ public class OrderTrackingWebSocketHandler extends TextWebSocketHandler {
         return Map.of("payload", Map.of("orderStatus", orderStatus.name()));
     }
 
-    public void sendUpdate(WebSocketSession session, Object data) {
+    public void sendUpdate(String orderSessionId, Object data) {
+        WebSocketSession session =
+                Optional.ofNullable(
+                        sessionMap.get(orderSessionId)
+                ).orElseThrow(() -> new IllegalArgumentException());
         log.info("send update to session id: {}", session.getId());
-        if (session != null) {
-            try {
-                String jsonData = objectMapper.writeValueAsString(data);
-                session.sendMessage(new TextMessage(jsonData));
-                log.info("Sent {}", jsonData);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+        try {
+            String jsonData = objectMapper.writeValueAsString(data);
+            session.sendMessage(new TextMessage(jsonData));
+            log.info("Sent {}", jsonData);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 

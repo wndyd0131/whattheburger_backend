@@ -51,6 +51,11 @@ public class OrderService {
     private final OrderSessionFactory orderSessionFactory;
     private final OrderFactory orderFactory;
 
+    public Order loadOrderByOrderId(Long orderId) {
+        return orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
+    }
+
     public OrderSession updateOrderSession(OrderFormRequestDto orderFormRequestDto, UUID orderSessionId, Authentication authentication, UUID guestId) {
         OrderSession orderSession = orderSessionStorage.load(orderSessionId)
                 .orElseThrow(() -> new OrderSessionNotFoundException(orderSessionId.toString()));
@@ -88,6 +93,11 @@ public class OrderService {
         return orderStorage.save(order);
     }
 
+    public void addOrderToOrderSession(Order order, OrderSession orderSession) {
+        orderSession.updateOrderId(order.getId());
+        orderSessionStorage.save(orderSession);
+    }
+
     public Order loadOrderByCheckoutSessionId(UUID guestId, Authentication authentication, String checkoutSessionId) {
         return orderStorage.loadByCheckoutSessionId(checkoutSessionId)
                 .orElseThrow(() -> new OrderNotFoundException());
@@ -122,6 +132,11 @@ public class OrderService {
         log.info("current session key {}", orderSession.getSessionId());
         orderSessionStorage.save(orderSession);
         return orderSession;
+    }
+
+    public void updateOrderStatus(Order order, OrderStatus orderStatus) {
+        order.updateOrderStatus(orderStatus);
+        orderRepository.save(order);
     }
 
     public void updateOrderSessionPaymentStatus(OrderSession orderSession, PaymentStatus paymentStatus) {
@@ -170,7 +185,10 @@ public class OrderService {
         log.info("orderSession.userId: {}", userId);
         User user = userService.loadUserById(userId);
         Store store = storeService.loadStoreById(storeId);
-        return orderFactory.createFromOrderSession(orderSession, user, store);
+        Order newOrder = orderFactory.createFromOrderSession(orderSession, user, store);
+        log.info("orderSession.getOrderId: {}", orderSession.getOrderId());
+        orderSessionStorage.save(orderSession);
+        return newOrder;
     }
 
 //    public Order createOrderPreview(UUID guestId, Authentication authentication, OrderType orderType) {

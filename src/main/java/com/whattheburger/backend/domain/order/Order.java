@@ -5,6 +5,7 @@ import com.whattheburger.backend.domain.User;
 import com.whattheburger.backend.domain.enums.*;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.LastModifiedDate;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -67,6 +68,8 @@ public class Order {
 
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
+
+    @LastModifiedDate
     @Column(nullable = false)
     private Instant updatedAt;
 
@@ -121,7 +124,7 @@ public class Order {
         this.orderType = orderType;
     }
 
-    public void changeOrderStatus(OrderStatus orderStatus) {
+    public void updateOrderStatus(OrderStatus orderStatus) {
         this.orderStatus = orderStatus;
     }
 

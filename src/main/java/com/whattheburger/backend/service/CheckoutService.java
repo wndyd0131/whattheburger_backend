@@ -163,10 +163,10 @@ public class CheckoutService {
         OrderSession orderSession = orderService.loadOrderSessionByOrderSessionId(UUID.fromString(orderSessionId));
         orderService.updateOrderSessionPaymentStatus(orderSession, PaymentStatus.PAID);
         Integer randomDuration = new Random().nextInt(20, 30) * 1000;
-        orderService.updateOrderSessionOrderStatus(orderSession, OrderStatus.PENDING, System.currentTimeMillis(), randomDuration);
+        orderService.updateOrderSessionOrderStatus(orderSession, OrderStatus.CONFIRMING, System.currentTimeMillis(), randomDuration);
 
         Order order = orderService.transferFromOrderSession(orderSession);
-        order.changeOrderStatus(OrderStatus.PENDING);
+        order.updateOrderStatus(OrderStatus.CONFIRMING);
         order.changePaymentStatus(PaymentStatus.PAID);
 
         if (paymentMethodObject != null && paymentMethodObject.getCard() != null) {
@@ -179,11 +179,14 @@ public class CheckoutService {
             log.info("Card {} ****{} exp {}/{}", brand, last4, expMonth, expYear);
         }
 
+        orderTrackingService.scheduleOrder(orderSession, order);
+
         cartService.cleanUp(UUID.fromString(cartSessionId));
 //        orderService.cleanUp(UUID.fromString(orderSessionId));
 
         order.changeCheckoutSessionId(session.getId());
         Order savedOrder = orderService.saveOrder(order);
+        orderService.addOrderToOrderSession(savedOrder, orderSession);
 
         log.info("Order ID {}", savedOrder.getId());
     }
@@ -210,7 +213,7 @@ public class CheckoutService {
 //        Order order = orderSessionStorage.load(sessionId)
 //                .map(orderSession -> orderFactory.createFromOrderSession(orderSession))
 //                .orElseThrow(() -> new OrderSessionNotFoundException(sessionId));
-//        order.changeOrderStatus(OrderStatus.CONFIRMED);
+//        order.updateOrderStatus(OrderStatus.CONFIRMED);
 //        order.changePaymentStatus(PaymentStatus.PAID);
 //        order.changePaymentMethod(PaymentMethod.CASH);
 //        orderService.saveOrder(order);

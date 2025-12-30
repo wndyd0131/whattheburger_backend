@@ -22,6 +22,7 @@ public class OrderSession {
     private UUID sessionId;
     private String checkoutSessionId;
     private Long storeId;
+    private Long orderId;
     private Long userId;
     private BigDecimal totalPrice;
     private OrderStatus orderStatus;
@@ -105,6 +106,12 @@ public class OrderSession {
             pickupInfo.changeETA(eta);
         }
     }
-        // PICK UP
+
+    public void updateOrderId(
+            Long orderId
+    ) {
+        this.orderId = orderId;
+    }
+    // PICK UP
 
 }
