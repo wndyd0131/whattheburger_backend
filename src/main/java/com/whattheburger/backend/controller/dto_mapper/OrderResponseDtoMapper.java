@@ -8,6 +8,7 @@ import com.whattheburger.backend.domain.Store;
 import com.whattheburger.backend.domain.order.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -21,11 +22,12 @@ public class OrderResponseDtoMapper {
     @Value("${aws.s3.public-url}")
     private String s3PublicUrl;
 
-    public List<OrderResponseDto> toOrderResponseDto(List<Order> orders) {
-        ArrayList<OrderResponseDto> orderResponseDtos = new ArrayList<>();
+    public OrderListResponseDto toOrderListResponseDto(Page<Order> orderPage) {
+        List<Order> orders = orderPage.toList();
+        ArrayList<OrderDto> orderDtos = new ArrayList<>();
         for  (Order order : orders) {
-            orderResponseDtos.add(
-                    OrderResponseDto
+            orderDtos.add(
+                    OrderDto
                             .builder()
                             .id(order.getId())
                             .orderNumber(order.getOrderNumber())
@@ -38,7 +40,31 @@ public class OrderResponseDtoMapper {
                             .build()
             );
         }
-        return orderResponseDtos;
+        return OrderListResponseDto
+                .builder()
+                .orderCount(orderPage.getTotalElements())
+                .orders(orderDtos)
+                .build();
+    }
+
+    public List<OrderDto> toOrderResponseDto(List<Order> orders) {
+        ArrayList<OrderDto> orderDtos = new ArrayList<>();
+        for  (Order order : orders) {
+            orderDtos.add(
+                    OrderDto
+                            .builder()
+                            .id(order.getId())
+                            .orderNumber(order.getOrderNumber())
+                            .orderStatus(order.getOrderStatus())
+                            .createdAt(order.getCreatedAt())
+                            .updatedAt(order.getUpdatedAt())
+                            .orderType(order.getOrderType())
+                            .storeId(order.getStore().getId())
+                            .totalPrice(order.getTotalPrice())
+                            .build()
+            );
+        }
+        return orderDtos;
     }
     public List<OrderDetailResponseDto> toOrderDetailResponseDto(List<Order> orders) {
         ArrayList<OrderDetailResponseDto> orderDetailResponseDtos = new ArrayList<>();

@@ -3,6 +3,9 @@ package com.whattheburger.backend.repository;
 import com.whattheburger.backend.domain.enums.OrderStatus;
 import com.whattheburger.backend.domain.enums.PaymentStatus;
 import com.whattheburger.backend.domain.order.Order;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -16,6 +19,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     Optional<Order> findByUserIdAndOrderStatus(Long userId, OrderStatus orderStatus);
     Optional<Order> findByGuestInfo_GuestIdAndOrderStatus(UUID guestId, OrderStatus orderStatus);
     List<Order> findByUserId(Long userId);
+    Page<Order> findByUserId(Long userId, PageRequest pageRequest);
     List<Order> findByUserIdAndPaymentStatusIn(Long userId, Collection<PaymentStatus> paymentStatuses);
     Optional<Order> findByOrderNumber(UUID orderNumber);
     Optional<Order> findByUserIdAndOrderNumberAndOrderStatusIn(Long userId, UUID orderNumber, Collection<OrderStatus> orderStatuses);

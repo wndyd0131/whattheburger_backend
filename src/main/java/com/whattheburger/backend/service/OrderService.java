@@ -6,6 +6,7 @@ import com.whattheburger.backend.controller.dto.cart.OptionTraitRequest;
 import com.whattheburger.backend.controller.dto.order.DeliveryOrderFormRequestDto;
 import com.whattheburger.backend.controller.dto.order.OrderFormRequestDto;
 import com.whattheburger.backend.controller.dto.order.PickupOrderFormRequestDto;
+import com.whattheburger.backend.controller.enums.OrderSortType;
 import com.whattheburger.backend.domain.*;
 import com.whattheburger.backend.domain.cart.Cart;
 import com.whattheburger.backend.domain.cart.CartList;
@@ -26,6 +27,9 @@ import com.whattheburger.backend.util.SessionKey;
 import com.whattheburger.backend.util.UserType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -358,6 +362,20 @@ public class OrderService {
             UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
             Long userId = userDetails.getUserId();
             return orderRepository.findByUserId(userId);
+        }
+        throw new IllegalStateException();
+    }
+
+    public Page<Order> loadOrders(
+            OrderSortType sortType,
+            int pageNumber,
+            int pageSize,
+            Authentication authentication
+    ) {
+        if (authentication.isAuthenticated()) {
+            UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+            Long userId = userDetails.getUserId();
+            return orderRepository.findByUserId(userId, PageRequest.of(pageNumber, pageSize, sortType.getSort()));
         }
         throw new IllegalStateException();
     }

@@ -3,6 +3,7 @@ package com.whattheburger.backend.controller;
 import com.whattheburger.backend.controller.dto.order.*;
 import com.whattheburger.backend.controller.dto_mapper.OrderResponseDtoMapper;
 import com.whattheburger.backend.controller.dto_mapper.OrderSessionResponseDtoMapper;
+import com.whattheburger.backend.controller.enums.OrderSortType;
 import com.whattheburger.backend.domain.enums.OrderType;
 import com.whattheburger.backend.domain.order.Order;
 import com.whattheburger.backend.domain.order.OrderSession;
@@ -13,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -109,13 +111,16 @@ public class OrderController {
     }
 
     @GetMapping("/api/v1/order/list")
-    public ResponseEntity<List<OrderResponseDto>> fetchAllOrders(
+    public ResponseEntity<OrderListResponseDto> fetchAllOrders(
+            @RequestParam(defaultValue = "CREATED_AT_DESC", name = "sort") OrderSortType sortType,
+            @RequestParam(defaultValue = "0", name = "pageNumber") int pageNumber,
+            @RequestParam(defaultValue = "10", name = "pageSize") int pageSize,
             Authentication authentication
     ) {
-        List<Order> orders = orderService.loadOrders(authentication);
-        List<OrderResponseDto> orderResponseDtos = orderResponseDtoMapper.toOrderResponseDto(orders);
+        Page<Order> orders = orderService.loadOrders(sortType, pageNumber, pageSize, authentication);
+        OrderListResponseDto orderListResponseDto = orderResponseDtoMapper.toOrderListResponseDto(orders);
         return ResponseEntity.ok(
-                orderResponseDtos
+                orderListResponseDto
         );
     }
 
