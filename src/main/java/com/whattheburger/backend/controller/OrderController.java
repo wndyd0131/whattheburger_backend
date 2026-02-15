@@ -124,6 +124,10 @@ public class OrderController {
         );
     }
 
+
+    /**
+     * Load order details
+     */
     @GetMapping("/api/v1/order/{orderNumber}/detail")
     public ResponseEntity<OrderDetailResponseDto> fetchOrderDetail(
             @PathVariable(name = "orderNumber") UUID orderNumber,
