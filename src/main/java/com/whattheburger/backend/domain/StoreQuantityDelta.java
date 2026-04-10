@@ -9,7 +9,7 @@ import java.math.BigDecimal;
 public class StoreQuantityDelta {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Id
-    @Column(name = "store_option_delta_id")
+    @Column(name = "store_quantity_delta_id")
     private Long id;
     @Column(precision = 10, scale = 2)
     private BigDecimal overridePrice;

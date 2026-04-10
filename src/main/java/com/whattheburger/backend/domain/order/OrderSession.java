@@ -9,6 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -100,7 +101,7 @@ public class OrderSession {
     }
 
     public void changeETA(
-            LocalDateTime eta
+            Instant eta
     ) {
         if (pickupInfo != null) {
             pickupInfo.changeETA(eta);

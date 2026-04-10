@@ -165,7 +165,7 @@ public class Order {
     }
 
     public void changeETA(
-            LocalDateTime eta
+            Instant eta
     ) {
         if (pickupInfo != null) {
             pickupInfo.changeETA(eta);

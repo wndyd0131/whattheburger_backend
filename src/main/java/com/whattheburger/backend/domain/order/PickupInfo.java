@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 @Embeddable
@@ -12,10 +13,10 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Getter
 public class PickupInfo {
-    private LocalDateTime eta;
-    private LocalDateTime arrivedTime;
+    private Instant eta;
+    private Instant arrivedTime;
 
-    public void changeETA(LocalDateTime eta) {
+    public void changeETA(Instant eta) {
         this.eta = eta;
     }
 }
