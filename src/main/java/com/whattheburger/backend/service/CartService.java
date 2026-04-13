@@ -60,8 +60,11 @@ public class CartService {
 
         log.info("CartList {}", cartList);
         cartList.getCarts().add(cart);
+
+        ProcessedCartDto processedCartDto = processCart(cartList);
+
         cartSessionStorage.save(sessionKey, cartList);
-        return loadCart(storeId, guestId, authentication);
+        return processedCartDto;
     }
 
     public ProcessedCartDto processCart(CartList cartList) {
