@@ -1,6 +1,5 @@
 package com.whattheburger.backend.integration;
 
-
 import com.whattheburger.backend.controller.ProductController;
 import com.whattheburger.backend.controller.dto.product.ProductCreateRequestDto;
 import com.whattheburger.backend.domain.Category;
@@ -9,30 +8,28 @@ import com.whattheburger.backend.domain.OptionTrait;
 import com.whattheburger.backend.domain.enums.CustomRuleType;
 import com.whattheburger.backend.domain.enums.OptionTraitType;
 import com.whattheburger.backend.domain.enums.ProductType;
-import com.whattheburger.backend.repository.*;
+import com.whattheburger.backend.integration.support.BaseIntegrationTest;
+import com.whattheburger.backend.repository.CategoryRepository;
+import com.whattheburger.backend.repository.CustomRuleRepository;
+import com.whattheburger.backend.repository.OptionRepository;
+import com.whattheburger.backend.repository.OptionTraitRepository;
+import com.whattheburger.backend.repository.ProductOptionRepository;
+import com.whattheburger.backend.repository.ProductOptionTraitRepository;
+import com.whattheburger.backend.repository.ProductRepository;
 import com.whattheburger.backend.service.ProductService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-
-@ExtendWith(SpringExtension.class)
-@SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("test")
+public class ProductControllerIntegrationTest extends BaseIntegrationTest {
 
-public class ProductControllerIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
     @Autowired
@@ -76,7 +73,6 @@ public class ProductControllerIntegrationTest {
                         .build()
         );
 
-
         List<ProductCreateRequestDto.OptionRequest> optionRequests = Arrays.asList(
                 ProductCreateRequestDto.OptionRequest
                         .builder()
@@ -114,20 +110,20 @@ public class ProductControllerIntegrationTest {
         List<Long> categoryIds = Arrays.asList(1L);
         List<ProductCreateRequestDto.CustomRuleRequest> customRuleRequests = buildValidCustomRuleRequests();
 
-//        ResponseEntity<String> responseEntity = productController.createProduct(
-//                ProductCreateRequestDto
-//                        .builder()
-//                        .productName(productName)
-//                        .productPrice(productPrice)
-//                        .productCalories(productCalories)
-//                        .productType(productType)
-//                        .briefInfo(briefInfo)
-//                        .imageSource(imageSource)
-//                        .categoryIds(categoryIds)
-//                        .customRuleRequests(customRuleRequests)
-//                        .build()
-//        );
-//
-//        assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        //        ResponseEntity<String> responseEntity = productController.createProduct(
+        //                ProductCreateRequestDto
+        //                        .builder()
+        //                        .productName(productName)
+        //                        .productPrice(productPrice)
+        //                        .productCalories(productCalories)
+        //                        .productType(productType)
+        //                        .briefInfo(briefInfo)
+        //                        .imageSource(imageSource)
+        //                        .categoryIds(categoryIds)
+        //                        .customRuleRequests(customRuleRequests)
+        //                        .build()
+        //        );
+        //
+        //        assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     }
 }

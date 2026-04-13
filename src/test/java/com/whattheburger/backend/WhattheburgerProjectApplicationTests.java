@@ -1,17 +1,9 @@
 package com.whattheburger.backend;
 
+import com.whattheburger.backend.integration.support.BaseIntegrationTest;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
 
-@ExtendWith(SpringExtension.class)
-@SpringBootTest
-@TestPropertySource(
-		locations = "classpath:application-integrationtest.properties"
-)
-class WhattheburgerProjectApplicationTests {
+class WhattheburgerProjectApplicationTests extends BaseIntegrationTest {
 
 	@Test
 	void contextLoads() {

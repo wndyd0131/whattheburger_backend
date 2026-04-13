@@ -52,22 +52,22 @@ public class MapboxService {
 
             MatrixResponse body = response.body();
             log.info("Matrix API call succeeded!");
-            log.info("Code: {}", response.code());
-            log.info("Coordinates: {}", coordinates.size());
-            log.info("Distances: {}", body.distances().size());
-            log.info("Durations: {}", body.durations().size());
+            log.info("Response code: {}", response.code());
+            log.info("Coordinates count: {}", coordinates.size());
+            log.info("Distances count: {}", body.distances().size());
+            log.info("Durations count: {}", body.durations().size());
 
             List<Double[]> distanceMatrix = body.distances();
             for (int i = 1; i < distanceMatrix.size(); i++) {
                 distances.add(distanceMatrix.get(i)[0]);
             }
-            System.out.println(distances);
+            log.info("Distance list: {}", distances);
 
             List<Double[]> durationMatrix = body.durations();
             for (int i = 1; i < durationMatrix.size(); i++) {
                 durations.add(durationMatrix.get(i)[0]);
             }
-            System.out.println(durations);
+            log.info("Duration list: {}", durations);
 
         } catch (IOException e) {
             e.printStackTrace();
