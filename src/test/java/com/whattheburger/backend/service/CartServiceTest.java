@@ -6,6 +6,7 @@ import com.whattheburger.backend.domain.cart.*;
 import com.whattheburger.backend.domain.enums.*;
 import com.whattheburger.backend.dto_mapper.CartDtoMapper;
 import com.whattheburger.backend.repository.*;
+import com.whattheburger.backend.service.exception.cart.StoreProductNotInStoreException;
 import com.whattheburger.backend.security.UserDetailsImpl;
 import com.whattheburger.backend.service.dto.cart.*;
 import com.whattheburger.backend.utils.*;
@@ -22,11 +23,13 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -41,7 +44,10 @@ public class CartServiceTest {
     @Mock OptionTraitRepository optionTraitRepository;
     @Mock ProductOptionTraitRepository productOptionTraitRepository;
     @Mock StoreRepository storeRepository;
-    @Mock CartSessionStorage cartSessionStorage;
+    @Mock StoreProductRepository storeProductRepository;
+    @Mock
+    CartSessionStorage cartSessionStorage;
+    @Mock CartCalculator cartCalculator;
 
     @Mock
     RedisTemplate<String, CartList> rt;
@@ -70,6 +76,7 @@ public class CartServiceTest {
     @BeforeEach
     public void setUp() {
         initMock();
+        ReflectionTestUtils.setField(cartService, "cartValidator", new CartValidator()); // real instance of CartValidator
     }
 
     @Test
@@ -144,121 +151,44 @@ public class CartServiceTest {
     }
 
     @Test
-    public void givenExistingCart_whenLoadCart_thenReturnsExpectedDto() throws Exception {
-//        String cartId = "1";
-//        CartList mockCartList = MockCartFactory.createCartList();
-//
-//        ValidatedProduct validatedProduct = ValidatedProduct
-//                .builder()
-//                .product(mockProduct)
-//                .build();
-//        List<ValidatedTrait> validatedTraits = List.of(
-//                ValidatedTrait
-//                        .builder()
-//                        .currentValue(1)
-//                        .productOptionTrait(mockProductOptionTrait)
-//                        .build()
-//        );
-//
-//        List<ValidatedOption> validatedOptions = List.of(
-//                ValidatedOption
-//                        .builder()
-//                        .isSelected(true)
-//                        .quantity(1)
-//                        .productOption(mockProductOption)
-//                        .validatedTraits(validatedTraits)
-//                        .validatedQuantity(null)
-//                        .build()
-//        );
-//        List<ValidatedCustomRule> validatedCustomRules = List.of(
-//                ValidatedCustomRule
-//                        .builder()
-//                        .customRule(mockCustomRule)
-//                        .validatedOptions(validatedOptions)
-//                        .build()
-//        );
-//
-//        List<ValidatedCartDto> validatedCartDtos = List.of(
-//                ValidatedCartDto
-//                        .builder()
-//                        .validatedProduct(validatedProduct)
-//                        .validatedCustomRules(validatedCustomRules)
-//                        .build()
-//        );
-//
-//        ProcessedCartDto processedCartDto = ProcessedCartDto
-//                .builder()
-//                .cartDtos(validatedCartDtos)
-//                .totalPrice(BigDecimal.ZERO)
-//                .build();
-//
-//
-//        ProductResponse productResponse = ProductResponse
-//                .builder()
-//                .productId(1L)
-//                .productName("Whattheburger")
-//                .productPrice(new BigDecimal("5.99"))
-//                .imageSource("")
-//                .productType(ProductType.ONLY)
-//                .build();
-//
-//        List<OptionTraitResponse> optionTraitResponses = List.of(
-//                OptionTraitResponse
-//                        .builder()
-//                        .currentValue(1)
-//                        .labelCode("TBS")
-//                        .productOptionTraitId(1L)
-//                        .optionTraitName("Toast Both Sides")
-//                        .optionTraitType(OptionTraitType.BINARY)
-//                        .build()
-//        );
-//
-//        List<OptionResponse> optionResponses = List.of(
-//                OptionResponse
-//                        .builder()
-//                        .countType(CountType.COUNTABLE)
-//                        .isSelected(true)
-//                        .measureType(MeasureType.COUNT)
-//                        .optionName("Large Bun")
-//                        .optionQuantity(1)
-//                        .optionTraitResponses(optionTraitResponses)
-//                        .productOptionId(1L)
-//                        .orderIndex(0)
-//                        .quantityDetailResponse(null)
-//                        .build()
-//        );
-//        List<CustomRuleResponse> customRuleResponses = List.of(
-//                CustomRuleResponse
-//                        .builder()
-//                        .customRuleId(1L)
-//                        .customRuleName("Bread")
-//                        .optionResponses(optionResponses)
-//                        .orderIndex(0)
-//                        .build()
-//        );
-//
-//        List<CartResponse> cartResponses = List.of(
-//                CartResponse
-//                        .builder()
-//                        .productResponse(productResponse)
-//                        .customRuleResponses(customRuleResponses)
-//                        .build()
-//        );
-//        CartResponseDto cartResponseDto = CartResponseDto
-//                .builder()
-//                .cartResponses(cartResponses)
-//                .totalPrice(BigDecimal.ZERO)
-//                .build();
-//
-//        when(rt.opsForValue()).thenReturn(valueOperations);
-//        when(valueOperations.get("cart:"+cartId)).thenReturn(mockCartList);
-//        doReturn(processedCartDto).when(cartService).processCart(anyList());
-//        when(cartDtoMapper.toCartResponseDto(processedCartDto)).thenReturn(cartResponseDto);
-//
-//        CartResponseDto resultDto = cartService.loadCart(cartId, authentication);
-//
-//        Assertions.assertNotNull(resultDto);
+    public void givenCartCreateRequest_whenItemDoesNotBelongToStore_thenThrowException() throws Exception {
+        Long storeId = 1L;
+        UUID guestId = null;
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                new UserDetailsImpl(mockUser),
+                null,
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+
+        Long foreignStoreId = 99L;
+        Long storeProductId = 42L;
+        CartCreateRequestDto request = CartCreateRequestDto.builder()
+                .storeProductId(storeProductId)
+                .quantity(1)
+                .customRuleRequests(Collections.emptyList())
+                .build();
+
+        StoreProduct storeProductForOtherStore = StoreProduct.builder()
+                .id(storeProductId)
+                .store(Store.builder().id(foreignStoreId).build())
+                .product(mockProduct)
+                .build();
+
+        when(storeRepository.findById(storeId)).thenReturn(Optional.of(Store.builder().id(storeId).build()));
+        when(cartSessionStorage.load(anyString())).thenReturn(Optional.of(new CartList(storeId, new ArrayList<>())));
+        when(storeProductRepository.findAllById(any())).thenReturn(List.of(storeProductForOtherStore));
+        when(customRuleRepository.findAllById(any())).thenReturn(Collections.emptyList());
+        when(productOptionRepository.findAllById(any())).thenReturn(Collections.emptyList());
+        when(productOptionTraitRepository.findAllById(any())).thenReturn(Collections.emptyList());
+        when(productOptionOptionQuantityRepository.findAllById(any())).thenReturn(Collections.emptyList());
+
+        assertThrows(StoreProductNotInStoreException.class,
+                () -> cartService.saveCart(storeId, guestId, authentication, request));
+
+        verify(storeRepository).findById(storeId);
+        verify(cartSessionStorage, never()).save(anyString(), any(CartList.class));
     }
+
 
     private void initMock() {
         mockUser = MockUserFactory.createUser();

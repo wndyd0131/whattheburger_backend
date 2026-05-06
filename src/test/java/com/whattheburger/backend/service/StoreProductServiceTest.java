@@ -133,6 +133,9 @@ public class StoreProductServiceTest {
         verify(storeProductModificationHandler).handle(any(OptionModificationCommand.class));
     }
 
+    // user request product
+        // does the item exist in the store?
+
     private void initMock() {
         mockCategory = MockCategoryFactory.createMockCategory();
         mockOption = MockOptionFactory.createMockOption();
