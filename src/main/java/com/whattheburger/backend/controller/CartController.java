@@ -26,17 +26,17 @@ public class CartController {
     private final CartResponseDtoMapper cartResponseDtoMapper;
 
     @PostMapping("/api/v1/store/{storeId}/cart")
-    public ResponseEntity<CartResponseDto> addToCart(
+    public ResponseEntity<ProductResponseDto> addToCart(
             @PathVariable(name = "storeId") Long storeId,
             @RequestBody CartCreateRequestDto cartRequestDto,
             @CookieValue(name = "guestId", required = false) UUID guestId,
             Authentication authentication
     ) {
         log.info("GUEST_ID: {}", guestId);
-        ProcessedCartDto processedCartDto = cartService.saveCart(storeId, guestId, authentication, cartRequestDto);
-        CartResponseDto cartResponseDto = cartResponseDtoMapper.toCartResponseDto(processedCartDto);
+        ProcessedProductDto processedProductDto = cartService.saveCart(storeId, guestId, authentication, cartRequestDto);
+        ProductResponseDto productResponseDto = cartResponseDtoMapper.toProductResponse(processedProductDto);
         return new ResponseEntity<>(
-                cartResponseDto,
+                productResponseDto,
                 HttpStatus.CREATED
         );
     }

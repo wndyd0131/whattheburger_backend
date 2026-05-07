@@ -47,7 +47,7 @@ public class CartService {
     private final CartValidator cartValidator;
     private final CartCalculator cartCalculator;
 
-    public ProcessedCartDto saveCart(Long storeId, UUID guestId, Authentication authentication, CartCreateRequestDto cartRequestDto) {
+    public ProcessedProductDto saveCart(Long storeId, UUID guestId, Authentication authentication, CartCreateRequestDto cartRequestDto) {
         storeRepository.findById(storeId)
                 .orElseThrow(() -> new StoreNotFoundException(storeId));
         String sessionKey = getSessionKey(guestId, storeId, authentication);
@@ -61,10 +61,10 @@ public class CartService {
         log.info("CartList {}", cartList);
         cartList.getCarts().add(cart);
 
-        ProcessedCartDto processedCartDto = processCart(cartList);
+        ProcessedProductDto processedProductDto = processCart(storeId, cart);
 
         cartSessionStorage.save(sessionKey, cartList);
-        return processedCartDto;
+        return processedProductDto;
     }
 
     public ProcessedCartDto processCart(CartList cartList) {
@@ -116,6 +116,34 @@ public class CartService {
         return processedCartDto;
     }
 
+    public ProcessedProductDto processCart(Long storeId, Cart cart) {
+        List<Cart> carts = List.of(cart);
+        Set<Long> storeProductIds = carts.stream()
+                .map(Cart::getStoreProductId).collect(Collectors.toSet());
+        Set<Long> customRuleIds = new HashSet<>();
+        Set<Long> productOptionIds = new HashSet<>();
+        Set<Long> productOptionTraitIds = new HashSet<>();
+        Set<Long> productOptionOptionQuantityIds = new HashSet<>();
+
+        initIdSets(carts, customRuleIds, productOptionIds, productOptionOptionQuantityIds, productOptionTraitIds);
+
+        Map<Long, StoreProduct> storeProductMap = storeProductRepository.findAllById(storeProductIds)
+                .stream().collect(Collectors.toMap(StoreProduct::getId, Function.identity()));
+        Map<Long, CustomRule> customRuleMap = customRuleRepository.findAllById(customRuleIds)
+                .stream().collect(Collectors.toMap(CustomRule::getId, Function.identity()));
+        Map<Long, ProductOption> productOptionMap = productOptionRepository.findAllById(productOptionIds)
+                .stream().collect(Collectors.toMap(ProductOption::getId, Function.identity()));
+        Map<Long, ProductOptionTrait> productOptionTraitMap = productOptionTraitRepository.findAllById(productOptionTraitIds)
+                .stream().collect(Collectors.toMap(ProductOptionTrait::getId, Function.identity()));
+        Map<Long, ProductOptionOptionQuantity> quantityMap = productOptionOptionQuantityRepository.findAllById(productOptionOptionQuantityIds)
+                .stream().collect(Collectors.toMap(ProductOptionOptionQuantity::getId, Function.identity()));
+
+        ValidatedCartDto validatedCartDto = cartValidator.validate(storeId, cart, storeProductMap, customRuleMap, productOptionMap, productOptionTraitMap, quantityMap);
+        ProductCalculationDetail productCalculationDetail = cartCalculator.calculateProductPrice(cart, storeProductMap, customRuleMap, productOptionMap, productOptionTraitMap, quantityMap);
+
+        return cartDtoMapper.toProcessedProductDto(validatedCartDto, productCalculationDetail);
+    }
+
     public ProcessedCartDto loadCart(Long storeId, UUID guestId, Authentication authentication) {
 
         String sessionKey = getSessionKey(guestId, storeId, authentication);
@@ -139,36 +167,8 @@ public class CartService {
         log.info("CartList {}", cartList);
         List<Cart> carts = cartList.getCarts();
 
-        Set<Long> storeProductIds = carts
-                .stream().map(Cart::getStoreProductId).collect(Collectors.toSet());
-        Set<Long> customRuleIds = new HashSet<>();
-        Set<Long> productOptionIds = new HashSet<>();
-        Set<Long> productOptionTraitIds = new HashSet<>();
-        Set<Long> productOptionOptionQuantityIds = new HashSet<>();
-
-        initIdSets(carts, customRuleIds, productOptionIds, productOptionOptionQuantityIds, productOptionTraitIds);
-
-        Map<Long, StoreProduct> storeProductMap = storeProductRepository.findAllById(storeProductIds)
-                .stream().collect(Collectors.toMap(StoreProduct::getId, Function.identity()));
-        Map<Long, CustomRule> customRuleMap = customRuleRepository.findAllById(customRuleIds)
-                .stream().collect(Collectors.toMap(CustomRule::getId, Function.identity()));
-        Map<Long, ProductOption> productOptionMap = productOptionRepository.findAllById(productOptionIds)
-                .stream().collect(Collectors.toMap(ProductOption::getId, Function.identity()));
-        Map<Long, ProductOptionTrait> productOptionTraitMap = productOptionTraitRepository.findAllById(productOptionTraitIds)
-                .stream().collect(Collectors.toMap(ProductOptionTrait::getId, Function.identity()));
-        Map<Long, ProductOptionOptionQuantity> quantityMap = productOptionOptionQuantityRepository.findAllById(productOptionOptionQuantityIds)
-                .stream().collect(Collectors.toMap(ProductOptionOptionQuantity::getId, Function.identity()));
-
-
         if (cartIdx >= 0 && cartIdx < carts.size()) {
-            Cart cart = carts.get(cartIdx);
-
-            ValidatedCartDto validatedCartDto = cartValidator.validate(storeId, cart, storeProductMap, customRuleMap, productOptionMap, productOptionTraitMap, quantityMap);
-            ProductCalculationDetail productCalculationDetail = cartCalculator.calculateProductPrice(cart, storeProductMap, customRuleMap, productOptionMap, productOptionTraitMap, quantityMap);
-
-            ProcessedProductDto processedProductDto = cartDtoMapper.toProcessedProductDto(validatedCartDto, productCalculationDetail);
-
-            return processedProductDto;
+            return processCart(storeId, carts.get(cartIdx));
         }
         throw new InvalidCartIndexException(cartIdx);
     }
