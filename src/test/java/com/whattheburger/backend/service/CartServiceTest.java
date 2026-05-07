@@ -176,7 +176,7 @@ public class CartServiceTest {
 
         when(storeRepository.findById(storeId)).thenReturn(Optional.of(Store.builder().id(storeId).build()));
         when(cartSessionStorage.load(anyString())).thenReturn(Optional.of(new CartList(storeId, new ArrayList<>())));
-        when(storeProductRepository.findById(storeProductId)).thenReturn(Optional.of(storeProductForOtherStore));
+        when(storeProductRepository.findAllById(any())).thenReturn(List.of(storeProductForOtherStore));
         when(customRuleRepository.findAllById(any())).thenReturn(Collections.emptyList());
         when(productOptionRepository.findAllById(any())).thenReturn(Collections.emptyList());
         when(productOptionTraitRepository.findAllById(any())).thenReturn(Collections.emptyList());
@@ -186,7 +186,7 @@ public class CartServiceTest {
                 () -> cartService.saveCart(storeId, guestId, authentication, request));
 
         verify(storeRepository).findById(storeId);
-        verify(storeProductRepository).findById(storeProductId);
+        verify(storeProductRepository).findAllById(any());
         verify(cartSessionStorage, never()).save(anyString(), any(CartList.class));
     }
 

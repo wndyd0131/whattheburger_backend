@@ -61,7 +61,7 @@ public class CartService {
         log.info("CartList {}", cartList);
         cartList.getCarts().add(cart);
 
-        ProcessedProductDto processedProductDto = processCart(storeId, cart);
+        ProcessedProductDto processedProductDto = processCart(cartList.getStoreId(), cart);
 
         cartSessionStorage.save(sessionKey, cartList);
         return processedProductDto;
