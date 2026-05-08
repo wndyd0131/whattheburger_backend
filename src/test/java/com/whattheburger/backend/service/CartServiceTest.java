@@ -6,6 +6,7 @@ import com.whattheburger.backend.domain.cart.*;
 import com.whattheburger.backend.domain.enums.*;
 import com.whattheburger.backend.dto_mapper.CartDtoMapper;
 import com.whattheburger.backend.repository.*;
+import com.whattheburger.backend.service.exception.cart.StoreProductNotActiveException;
 import com.whattheburger.backend.service.exception.cart.StoreProductNotInStoreException;
 import com.whattheburger.backend.security.UserDetailsImpl;
 import com.whattheburger.backend.service.dto.cart.*;
@@ -190,6 +191,62 @@ public class CartServiceTest {
         verify(cartSessionStorage, never()).save(anyString(), any(CartList.class));
     }
 
+    @Test
+    public void givenCartCreateRequest_whenItemNotActive_thenThrowException() throws Exception {
+        Long storeId = 1L;
+        UUID guestId = null;
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                new UserDetailsImpl(mockUser),
+                null,
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+        Long storeProductId = 42L;
+        CartCreateRequestDto request = CartCreateRequestDto.builder()
+                .storeProductId(storeProductId)
+                .quantity(1)
+                .customRuleRequests(Collections.emptyList())
+                .build();
+
+        StoreProduct inactiveStoreProduct = StoreProduct.builder()
+                .id(storeProductId)
+                .store(Store.builder().id(storeId).build())
+                .product(mockProduct)
+                .isActive(false)
+                .build();
+
+        when(storeRepository.findById(storeId)).thenReturn(Optional.of(Store.builder().id(storeId).build()));
+        when(cartSessionStorage.load(anyString())).thenReturn(Optional.of(new CartList(storeId, new ArrayList<>())));
+        when(storeProductRepository.findAllById(any())).thenReturn(List.of(inactiveStoreProduct));
+        when(customRuleRepository.findAllById(any())).thenReturn(Collections.emptyList());
+        when(productOptionRepository.findAllById(any())).thenReturn(Collections.emptyList());
+        when(productOptionTraitRepository.findAllById(any())).thenReturn(Collections.emptyList());
+        when(productOptionOptionQuantityRepository.findAllById(any())).thenReturn(Collections.emptyList());
+
+        assertThrows(StoreProductNotActiveException.class,
+                () -> cartService.saveCart(storeId, guestId, authentication, request));
+
+        verify(storeRepository).findById(storeId);
+        verify(cartSessionStorage).load(anyString());
+        verify(storeProductRepository).findAllById(any());
+        verify(cartSessionStorage, never()).save(anyString(), any(CartList.class));
+    }
+
+//    @Test
+//    public void givenCartCreateRequest_whenItemNotActive_thenThrowException() throws Exception {
+//        Long storeId = 1L;
+//        UUID guestId = null;
+//        Authentication authentication = new UsernamePasswordAuthenticationToken(
+//                new UserDetailsImpl(mockUser),
+//                null,
+//                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+//        );
+//        Long storeProductId = 42L;
+//
+//        assertThrows(StoreOptionOutOfStockException.class,
+//                () -> cartService.saveCart(storeId, guestId, authentication, request));
+//
+//
+//    }
 
     private void initMock() {
         mockUser = MockUserFactory.createUser();

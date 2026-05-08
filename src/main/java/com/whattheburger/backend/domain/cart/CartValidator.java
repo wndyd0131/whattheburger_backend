@@ -5,6 +5,7 @@ import com.whattheburger.backend.domain.*;
 import com.whattheburger.backend.service.dto.cart.*;
 import com.whattheburger.backend.service.dto.cart.ProductDetail;
 import com.whattheburger.backend.service.exception.*;
+import com.whattheburger.backend.service.exception.cart.StoreProductNotActiveException;
 import com.whattheburger.backend.service.exception.cart.StoreProductNotInStoreException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -52,6 +53,9 @@ public class CartValidator {
                 .orElseThrow(() -> new StoreProductNotFoundException(storeProductId)); // throw exception if the store product is not in db
         if (!storeProduct.getStore().getId().equals(storeId)) { // check if the store product belongs to the store
             throw new StoreProductNotInStoreException(storeProduct.getId(), storeId);
+        }
+        if (!Boolean.TRUE.equals(storeProduct.getIsActive())) {
+            throw new StoreProductNotActiveException(storeProduct.getId());
         }
 
         ValidatedProduct validatedProduct = new ValidatedProduct(
