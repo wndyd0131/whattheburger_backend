@@ -11,18 +11,21 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Getter
 @Builder
-public class StoreOption {
+@Table(uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"store_id", "ingredient_id"})
+})
+public class StoreInventory {
     @Id
-    @Column(name = "store_option_id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "store_inventory_id")
     private Long id;
-    private Integer stockQuantity;
-
-    @ManyToOne
-    @JoinColumn(name = "option_id")
-    private Option option;
+    private Integer currentStock;
 
     @ManyToOne
     @JoinColumn(name = "store_id")
     private Store store;
+
+    @ManyToOne
+    @JoinColumn(name = "ingredient_id")
+    private Ingredient ingredient;
 }

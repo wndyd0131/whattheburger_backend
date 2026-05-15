@@ -43,4 +43,7 @@ public class Store {
 
     @OneToMany(mappedBy = "store")
     private List<StoreProduct> storeProducts = new ArrayList<>();
+
+    @OneToMany(mappedBy = "store")
+    private List<StoreInventory> storeInventories = new ArrayList<>();
 }
