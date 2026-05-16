@@ -2,9 +2,13 @@ package com.whattheburger.backend.domain.cart;
 
 import com.whattheburger.backend.controller.dto.cart.*;
 import com.whattheburger.backend.domain.*;
+import com.whattheburger.backend.domain.enums.CountType;
 import com.whattheburger.backend.service.dto.cart.*;
 import com.whattheburger.backend.service.dto.cart.ProductDetail;
 import com.whattheburger.backend.service.exception.*;
+import com.whattheburger.backend.service.exception.StoreInventoryNotFoundException;
+import com.whattheburger.backend.service.exception.cart.InsufficientOptionStockException;
+import com.whattheburger.backend.service.exception.cart.InvalidOptionRequestException;
 import com.whattheburger.backend.service.exception.cart.StoreProductNotInStoreException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -23,14 +27,15 @@ public class CartValidator {
             Map<Long, CustomRule> customRuleMap,
             Map<Long, ProductOption> productOptionMap,
             Map<Long, ProductOptionTrait> productOptionTraitMap,
-            Map<Long, ProductOptionOptionQuantity> quantityMap
+            Map<Long, ProductOptionOptionQuantity> quantityMap,
+            Map<Long, StoreInventory> storeInventoryMap
     ) throws ResourceNotFoundException {
         List<Cart> carts = cartList.getCarts();
         Long storeId = cartList.getStoreId();
         List<ValidatedCartDto> validatedCartDtos = new ArrayList<>();
 
         for (Cart cart : carts) {
-            ValidatedCartDto validatedCartDto = validate(storeId, cart, storeProductMap, customRuleMap, productOptionMap, productOptionTraitMap, quantityMap);
+            ValidatedCartDto validatedCartDto = validate(storeId, cart, storeProductMap, customRuleMap, productOptionMap, productOptionTraitMap, quantityMap, storeInventoryMap);
 
             validatedCartDtos.add(validatedCartDto);
         }
@@ -44,7 +49,8 @@ public class CartValidator {
             Map<Long, CustomRule> customRuleMap,
             Map<Long, ProductOption> productOptionMap,
             Map<Long, ProductOptionTrait> productOptionTraitMap,
-            Map<Long, ProductOptionOptionQuantity> quantityMap
+            Map<Long, ProductOptionOptionQuantity> quantityMap,
+            Map<Long, StoreInventory> storeInventoryMap
     ) {
         Long storeProductId = cart.getStoreProductId();
         log.info("storeProduct Id {}", storeProductId);
@@ -91,6 +97,9 @@ public class CartValidator {
                             );
                         }).orElse(null);
 
+                if (Boolean.TRUE.equals(optionRequest.getIsSelected())) {
+                    validateOptionStock(storeId, productOption, optionRequest, validatedQuantity, storeInventoryMap);
+                }
 
                 List<OptionTraitRequest> optionTraitRequests = optionRequest.getOptionTraitRequests();
                 List<ValidatedTrait> validatedTraits = new ArrayList<>();
@@ -129,5 +138,58 @@ public class CartValidator {
                 validatedProduct,
                 validatedCustomRules
         );
+    }
+
+    private void validateOptionStock(
+            Long storeId,
+            ProductOption productOption,
+            OptionRequest optionRequest,
+            ValidatedQuantity validatedQuantity,
+            Map<Long, StoreInventory> storeInventoryMap
+    ) {
+        CountType countType = productOption.getCountType();
+        if (countType == null || countType == CountType.NONE) {
+            return;
+        }
+
+        if (countType == CountType.COUNTABLE) {
+            Integer optionQuantity = optionRequest.getOptionQuantity();
+            if (optionQuantity == null || optionQuantity <= 0) {
+                throw InvalidOptionRequestException.missingCountableQuantity(productOption.getId(), optionQuantity);
+            }
+            List<OptionIngredient> optionIngredients = productOption.getOption().getOptionIngredients();
+            for (OptionIngredient optionIngredient : optionIngredients) {
+                int needed = optionQuantity * optionIngredient.getRequiredQuantity();
+                checkStock(storeId, productOption, optionIngredient.getIngredient().getId(), needed, storeInventoryMap);
+            }
+            return;
+        }
+
+        if (countType == CountType.UNCOUNTABLE) {
+            if (validatedQuantity == null || validatedQuantity.getSelectedQuantity() == null) {
+                throw InvalidOptionRequestException.missingQuantityDetail(productOption.getId());
+            }
+            OptionQuantity selectedOptionQuantity = validatedQuantity.getSelectedQuantity().getOptionQuantity();
+            List<OptionQuantityIngredient> optionQuantityIngredients = selectedOptionQuantity.getOptionQuantityIngredients();
+            for (OptionQuantityIngredient oqi : optionQuantityIngredients) {
+                int needed = oqi.getRequiredQuantity();
+                checkStock(storeId, productOption, oqi.getIngredient().getId(), needed, storeInventoryMap);
+            }
+        }
+    }
+
+    private void checkStock(
+            Long storeId,
+            ProductOption productOption,
+            Long ingredientId,
+            int needed,
+            Map<Long, StoreInventory> storeInventoryMap
+    ) {
+        StoreInventory storeInventory = Optional.ofNullable(storeInventoryMap.get(ingredientId))
+                .orElseThrow(() -> new StoreInventoryNotFoundException(storeId, ingredientId));
+        int currentStock = storeInventory.getCurrentStock();
+        if (needed > currentStock) {
+            throw new InsufficientOptionStockException(productOption.getId(), ingredientId, needed, currentStock);
+        }
     }
 }

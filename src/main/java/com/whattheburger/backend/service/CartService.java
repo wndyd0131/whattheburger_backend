@@ -43,6 +43,7 @@ public class CartService {
     private final ProductOptionRepository productOptionRepository;
     private final ProductOptionTraitRepository productOptionTraitRepository;
     private final ProductOptionOptionQuantityRepository productOptionOptionQuantityRepository;
+    private final StoreInventoryRepository storeInventoryRepository;
     private final CartDtoMapper cartDtoMapper;
     private final CartValidator cartValidator;
     private final CartCalculator cartCalculator;
@@ -69,6 +70,7 @@ public class CartService {
 
     public ProcessedCartDto processCart(CartList cartList) {
         List<Cart> carts = cartList.getCarts();
+        Long storeId = cartList.getStoreId();
         Set<Long> storeProductIds = carts.stream()
                 .map(Cart::getStoreProductId).collect(Collectors.toSet());
         Set<Long> customRuleIds = new HashSet<>();
@@ -88,6 +90,8 @@ public class CartService {
                 .stream().collect(Collectors.toMap(ProductOptionTrait::getId, Function.identity()));
         Map<Long, ProductOptionOptionQuantity> quantityMap = productOptionOptionQuantityRepository.findAllById(productOptionOptionQuantityIds)
                 .stream().collect(Collectors.toMap(ProductOptionOptionQuantity::getId, Function.identity()));
+        Map<Long, StoreInventory> storeInventoryMap = storeInventoryRepository.findAllByStoreId(storeId)
+                .stream().collect(Collectors.toMap(si -> si.getIngredient().getId(), Function.identity()));
 
         List<ValidatedCartDto> validatedCartDtos = cartValidator.validate(
                 cartList,
@@ -95,7 +99,8 @@ public class CartService {
                 customRuleMap,
                 productOptionMap,
                 productOptionTraitMap,
-                quantityMap
+                quantityMap,
+                storeInventoryMap
         );
 
         CalculatedCartDto calculatedCartDto = cartCalculator.calculateTotalPrice(
@@ -137,8 +142,10 @@ public class CartService {
                 .stream().collect(Collectors.toMap(ProductOptionTrait::getId, Function.identity()));
         Map<Long, ProductOptionOptionQuantity> quantityMap = productOptionOptionQuantityRepository.findAllById(productOptionOptionQuantityIds)
                 .stream().collect(Collectors.toMap(ProductOptionOptionQuantity::getId, Function.identity()));
+        Map<Long, StoreInventory> storeInventoryMap = storeInventoryRepository.findAllByStoreId(storeId)
+                .stream().collect(Collectors.toMap(si -> si.getIngredient().getId(), Function.identity()));
 
-        ValidatedCartDto validatedCartDto = cartValidator.validate(storeId, cart, storeProductMap, customRuleMap, productOptionMap, productOptionTraitMap, quantityMap);
+        ValidatedCartDto validatedCartDto = cartValidator.validate(storeId, cart, storeProductMap, customRuleMap, productOptionMap, productOptionTraitMap, quantityMap, storeInventoryMap);
         ProductCalculationDetail productCalculationDetail = cartCalculator.calculateProductPrice(cart, storeProductMap, customRuleMap, productOptionMap, productOptionTraitMap, quantityMap);
 
         return cartDtoMapper.toProcessedProductDto(validatedCartDto, productCalculationDetail);
