@@ -51,9 +51,6 @@ public class ProductOption {
     @OneToMany(mappedBy = "productOption")
     private List<StoreOptionDelta> storeOptionDeltas = new ArrayList<>();
 
-    @OneToMany(mappedBy = "productOption")
-    private List<ProductOptionIngredient> productOptionIngredients = new ArrayList<>();
-
     public ProductOption(
             Product product,
             Option option,

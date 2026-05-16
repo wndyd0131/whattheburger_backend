@@ -12,29 +12,29 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"product_option_id", "ingredient_id"})
+        @UniqueConstraint(columnNames = {"option_quantity_id", "ingredient_id"})
 })
-public class ProductOptionIngredient {
+public class OptionQuantityIngredient {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "product_option_ingredient_id")
+    @Column(name = "option_quantity_ingredient_id")
     private Long id;
     private Integer requiredQuantity;
 
     @ManyToOne
-    @JoinColumn(name = "product_option_id")
-    private ProductOption productOption;
+    @JoinColumn(name = "option_quantity_id")
+    private OptionQuantity optionQuantity;
 
     @ManyToOne
     @JoinColumn(name = "ingredient_id")
     private Ingredient ingredient;
 
-    public ProductOptionIngredient(
-            ProductOption productOption,
+    public OptionQuantityIngredient(
+            OptionQuantity optionQuantity,
             Ingredient ingredient,
             Integer requiredQuantity
     ) {
-        this.productOption = productOption;
+        this.optionQuantity = optionQuantity;
         this.ingredient = ingredient;
         this.requiredQuantity = requiredQuantity;
     }

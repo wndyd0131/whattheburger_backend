@@ -25,4 +25,7 @@ public class OptionQuantity {
 
     @OneToMany(mappedBy = "optionQuantity")
     private List<ProductOptionOptionQuantity> productOptionOptionQuantities = new ArrayList<>();
+
+    @OneToMany(mappedBy = "optionQuantity")
+    private List<OptionQuantityIngredient> optionQuantityIngredients = new ArrayList<>();
 }

@@ -30,6 +30,9 @@ public class Option {
     @OneToMany(mappedBy = "option")
     private List<OptionQuantity> optionQuantities = new ArrayList<>();
 
+    @OneToMany(mappedBy = "option")
+    private List<OptionIngredient> optionIngredients = new ArrayList<>();
+
     public Option(String name, String imageSource, Double calories) {
         this.name = name;
         this.imageSource = imageSource;
