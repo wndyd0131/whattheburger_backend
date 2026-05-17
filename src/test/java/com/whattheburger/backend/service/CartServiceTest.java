@@ -3,10 +3,9 @@ package com.whattheburger.backend.service;
 import com.whattheburger.backend.controller.dto.cart.*;
 import com.whattheburger.backend.domain.*;
 import com.whattheburger.backend.domain.cart.*;
-import com.whattheburger.backend.domain.enums.*;
 import com.whattheburger.backend.dto_mapper.CartDtoMapper;
 import com.whattheburger.backend.repository.*;
-import com.whattheburger.backend.service.exception.cart.StoreProductNotInStoreException;
+import com.whattheburger.backend.service.exception.cart.InsufficientOptionStockException;
 import com.whattheburger.backend.security.UserDetailsImpl;
 import com.whattheburger.backend.service.dto.cart.*;
 import com.whattheburger.backend.utils.*;
@@ -18,14 +17,10 @@ import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.test.util.ReflectionTestUtils;
 
-import java.math.BigDecimal;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -45,8 +40,10 @@ public class CartServiceTest {
     @Mock ProductOptionTraitRepository productOptionTraitRepository;
     @Mock StoreRepository storeRepository;
     @Mock StoreProductRepository storeProductRepository;
+    @Mock StoreInventoryRepository storeInventoryRepository;
     @Mock
     CartSessionStorage cartSessionStorage;
+    @Mock CartValidator cartValidator;
     @Mock CartCalculator cartCalculator;
 
     @Mock
@@ -76,7 +73,6 @@ public class CartServiceTest {
     @BeforeEach
     public void setUp() {
         initMock();
-        ReflectionTestUtils.setField(cartService, "cartValidator", new CartValidator()); // real instance of CartValidator
     }
 
     @Test
@@ -151,45 +147,32 @@ public class CartServiceTest {
     }
 
     @Test
-    public void givenCartCreateRequest_whenItemDoesNotBelongToStore_thenThrowException() throws Exception {
+    public void givenValidatorThrows_whenSaveCart_thenPropagatesAndDoesNotSaveSession() {
         Long storeId = 1L;
-        UUID guestId = null;
+        Long storeProductId = 42L;
         Authentication authentication = new UsernamePasswordAuthenticationToken(
                 new UserDetailsImpl(mockUser),
                 null,
                 List.of(new SimpleGrantedAuthority("ROLE_USER"))
         );
 
-        Long foreignStoreId = 99L;
-        Long storeProductId = 42L;
         CartCreateRequestDto request = CartCreateRequestDto.builder()
                 .storeProductId(storeProductId)
                 .quantity(1)
                 .customRuleRequests(Collections.emptyList())
                 .build();
 
-        StoreProduct storeProductForOtherStore = StoreProduct.builder()
-                .id(storeProductId)
-                .store(Store.builder().id(foreignStoreId).build())
-                .product(mockProduct)
-                .build();
-
         when(storeRepository.findById(storeId)).thenReturn(Optional.of(Store.builder().id(storeId).build()));
         when(cartSessionStorage.load(anyString())).thenReturn(Optional.of(new CartList(storeId, new ArrayList<>())));
-        when(storeProductRepository.findById(storeProductId)).thenReturn(Optional.of(storeProductForOtherStore));
-        when(customRuleRepository.findAllById(any())).thenReturn(Collections.emptyList());
-        when(productOptionRepository.findAllById(any())).thenReturn(Collections.emptyList());
-        when(productOptionTraitRepository.findAllById(any())).thenReturn(Collections.emptyList());
-        when(productOptionOptionQuantityRepository.findAllById(any())).thenReturn(Collections.emptyList());
+        doThrow(new InsufficientOptionStockException(1L, 2L, 5, 0))
+                .when(cartValidator).validate(eq(storeId), any(Cart.class), any(), any(), any(), any(), any(), any());
 
-        assertThrows(StoreProductNotInStoreException.class,
-                () -> cartService.saveCart(storeId, guestId, authentication, request));
+        assertThrows(InsufficientOptionStockException.class,
+                () -> cartService.saveCart(storeId, /*guestId*/ null, authentication, request));
 
-        verify(storeRepository).findById(storeId);
-        verify(storeProductRepository).findById(storeProductId);
+        verify(storeInventoryRepository).findAllByStoreId(storeId);
         verify(cartSessionStorage, never()).save(anyString(), any(CartList.class));
     }
-
 
     private void initMock() {
         mockUser = MockUserFactory.createUser();

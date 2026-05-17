@@ -1,6 +1,8 @@
 package com.whattheburger.backend.domain;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -10,7 +12,9 @@ import java.util.List;
 
 @Entity
 @NoArgsConstructor
+@AllArgsConstructor
 @Getter
+@Builder
 public class ProductOptionOptionQuantity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,6 +32,7 @@ public class ProductOptionOptionQuantity {
     private OptionQuantity optionQuantity;
 
     @OneToMany(mappedBy = "productOptionOptionQuantity")
+    @Builder.Default
     private List<StoreQuantityDelta> storeQuantityDeltas = new ArrayList<>();
 
     public ProductOptionOptionQuantity(ProductOption productOption, OptionQuantity optionQuantity, BigDecimal extraPrice, Boolean isDefault) {
