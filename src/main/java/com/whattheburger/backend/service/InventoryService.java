@@ -15,6 +15,7 @@ import com.whattheburger.backend.service.exception.cart.InsufficientOptionStockE
 import com.whattheburger.backend.service.exception.cart.InvalidOptionRequestException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.function.Function;
@@ -28,6 +29,7 @@ public class InventoryService {
     private final ProductOptionRepository productOptionRepository;
     private final ProductOptionOptionQuantityRepository productOptionOptionQuantityRepository;
 
+    @Transactional
     public void deductStock(Order order) {
         if (order == null) {
             throw new IllegalArgumentException("Order must not be null");
@@ -36,23 +38,35 @@ public class InventoryService {
             throw new BadRequestException("Order payment status must be PAID to deduct stock");
         }
 
-        Long storeId = order.getStore().getId();
         Map<Long, Integer> deductionsByIngredient = collectDeductions(order);
+        if (deductionsByIngredient.isEmpty()) {
+            return;
+        }
 
-        for (Map.Entry<Long, Integer> entry : deductionsByIngredient.entrySet()) {
-            Long ingredientId = entry.getKey();
-            int amount = entry.getValue();
+        Long storeId = order.getStore().getId();
+        List<Long> ingredientIds = deductionsByIngredient.keySet().stream().sorted().toList();
 
-            storeInventoryRepository.findByStoreIdAndIngredientId(storeId, ingredientId)
-                    .orElseThrow(() -> new StoreInventoryNotFoundException(storeId, ingredientId));
+        List<StoreInventory> lockedInventories = storeInventoryRepository
+                .findAllByStoreIdAndIngredientIdInForUpdate(storeId, ingredientIds);
 
-            int updated = storeInventoryRepository.deductStockAtomic(storeId, ingredientId, amount);
-            if (updated == 0) {
-                StoreInventory storeInventory = storeInventoryRepository
-                        .findByStoreIdAndIngredientId(storeId, ingredientId)
-                        .orElseThrow(() -> new StoreInventoryNotFoundException(storeId, ingredientId));
-                throw new InsufficientOptionStockException(null, ingredientId, amount, storeInventory.getCurrentStock());
+        Map<Long, StoreInventory> inventoryByIngredientId = lockedInventories.stream()
+                .collect(Collectors.toMap(si -> si.getIngredient().getId(), Function.identity()));
+
+        for (Long ingredientId : ingredientIds) {
+            StoreInventory storeInventory = inventoryByIngredientId.get(ingredientId);
+            if (storeInventory == null) {
+                throw new StoreInventoryNotFoundException(storeId, ingredientId);
             }
+            int amount = deductionsByIngredient.get(ingredientId);
+            if (storeInventory.getCurrentStock() < amount) {
+                throw new InsufficientOptionStockException(
+                        null,
+                        ingredientId,
+                        amount,
+                        storeInventory.getCurrentStock()
+                );
+            }
+            storeInventory.deductStock(amount);
         }
     }
 

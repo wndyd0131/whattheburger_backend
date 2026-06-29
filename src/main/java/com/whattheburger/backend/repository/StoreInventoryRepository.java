@@ -1,12 +1,14 @@
 package com.whattheburger.backend.repository;
 
 import com.whattheburger.backend.domain.StoreInventory;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,17 +18,14 @@ public interface StoreInventoryRepository extends JpaRepository<StoreInventory, 
 
     Optional<StoreInventory> findByStoreIdAndIngredientId(Long storeId, Long ingredientId);
 
-    @Modifying(clearAutomatically = true)
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
-            UPDATE StoreInventory si
-            SET si.currentStock = si.currentStock - :amount
+            SELECT si FROM StoreInventory si
             WHERE si.store.id = :storeId
-              AND si.ingredient.id = :ingredientId
-              AND si.currentStock >= :amount
+              AND si.ingredient.id IN :ingredientIds
             """)
-    int deductStockAtomic(
+    List<StoreInventory> findAllByStoreIdAndIngredientIdInForUpdate(
             @Param("storeId") Long storeId,
-            @Param("ingredientId") Long ingredientId,
-            @Param("amount") int amount
+            @Param("ingredientIds") Collection<Long> ingredientIds
     );
 }
