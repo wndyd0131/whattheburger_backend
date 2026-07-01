@@ -17,7 +17,7 @@ public class MockProductFactory {
                 .builder()
                 .id(1L)
                 .name("Whattheburger")
-                .price(new BigDecimal(5.99))
+                .price(BigDecimal.valueOf(5.99))
                 .briefInfo("")
                 .imageSource("")
                 .calories(590D)

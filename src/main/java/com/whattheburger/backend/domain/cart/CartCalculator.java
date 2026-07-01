@@ -1,7 +1,6 @@
 package com.whattheburger.backend.domain.cart;
 
 import com.whattheburger.backend.domain.*;
-import com.whattheburger.backend.domain.enums.DeltaType;
 import com.whattheburger.backend.service.dto.cart.calculator.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +9,7 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -63,23 +63,13 @@ public class CartCalculator {
                             .map(optionRequest -> {
                                 ProductOption productOption = productOptionMap.get(optionRequest.getProductOptionId());
 
-                                record OptionDelta(BigDecimal price) {}
-                                // Option conditioning
-                                OptionDelta optionDelta = Optional.ofNullable(optionDeltaMap.get(productOption.getId()))
-                                        .map(storeOptionDelta -> {
-                                            if (storeOptionDelta.getDeltaType() == DeltaType.OVERRIDE) {
-                                                return new OptionDelta(
-                                                        storeOptionDelta.getOverridePrice()
-                                                );
-                                            } else {
-                                                return new OptionDelta(
-                                                        null
-                                                );
-                                            }
-                                        })
-                                        .orElse(
-                                                new OptionDelta(productOption.getExtraPrice())
-                                        );
+                                Optional<BigDecimal> extraPrice = StoreOptionDelta.resolveExtraPrice(
+                                        productOption,
+                                        optionDeltaMap.get(productOption.getId())
+                                );
+                                if (extraPrice.isEmpty()) {
+                                    return null;
+                                }
 
                                 // quantity handling
                                 QuantityCalculatorDto quantityCalculatorDto = Optional.ofNullable(optionRequest.getQuantityDetailRequest())
@@ -116,7 +106,7 @@ public class CartCalculator {
                                 return OptionCalculatorDto
                                         .builder()
                                         .productOptionId(productOption.getId())
-                                        .price(optionDelta.price)
+                                        .price(extraPrice.get())
                                         .isDefault(productOption.getIsDefault())
                                         .defaultQuantity(productOption.getDefaultQuantity())
                                         .isSelected(optionRequest.getIsSelected())
@@ -124,7 +114,9 @@ public class CartCalculator {
                                         .quantityCalculatorDto(quantityCalculatorDto)
                                         .traitCalculationResult(traitCalculationResult)
                                         .build();
-                            }).toList();
+                            })
+                            .filter(Objects::nonNull)
+                            .toList();
                     OptionCalculationResult optionCalculationResult = optionCalculator.calculateTotalPrice(optionCalculatorDtos); // calculate option per customRule
                     log.info("customRule {}", customRule.getName());
                     log.info("option trait calc result size {}", optionCalculationResult.getOptionCalculationDetails().get(0).getTraitCalculationDetails().size());

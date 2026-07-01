@@ -13,7 +13,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder
 public class StoreTraitModifyRequest {
-    private Long traitId;
+    private Long productOptionTraitId;
     private Integer defaultSelection;
     private BigDecimal extraPrice;
     private ModifyType modifyType;

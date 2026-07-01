@@ -14,7 +14,7 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class StoreOptionModifyRequest {
-    private Long optionId;
+    private Long productOptionId;
     private Boolean isDefault;
     private Integer defaultQuantity;
     private Integer maxQuantity;

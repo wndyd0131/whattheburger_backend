@@ -8,14 +8,9 @@ import com.whattheburger.backend.controller.dto.store.StoreTraitModifyRequest;
 import com.whattheburger.backend.domain.*;
 import com.whattheburger.backend.domain.enums.DeltaType;
 import com.whattheburger.backend.repository.*;
-import com.whattheburger.backend.service.dto.OptionModificationDto;
-import com.whattheburger.backend.service.dto.ProductReadByProductIdDto;
 import com.whattheburger.backend.service.dto.StoreProductReadByProductIdDto;
-import com.whattheburger.backend.service.dto.product.CustomRuleRequest;
-import com.whattheburger.backend.service.dto.product.OptionTraitRequest;
 import com.whattheburger.backend.service.dto.store.StoreProductsReadDto;
 import com.whattheburger.backend.service.exception.*;
-import com.whattheburger.backend.service.store_product.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -46,8 +41,6 @@ public class StoreProductService {
     private final StoreRepository storeRepository;
     private final StoreProductRepository storeProductRepository;
     private final CategoryStoreProductRepository categoryStoreProductRepository;
-    private final StoreProductModificationHandler storeProductModificationHandler;
-    private final ModificationStrategyResolver modificationStrategyResolver;
     private final CategoryRepository categoryRepository;
     private final S3Service s3Service;
 
@@ -104,55 +97,35 @@ public class StoreProductService {
             throw new IllegalArgumentException();
         Product product = storeProduct.getProduct();
         List<ProductOption> productOptions = productOptionRepository.findByProductId(product.getId());
-        Set<CustomRule> customRuleSet = new HashSet<>();
-        Map<Long, ProductOption> productOptionMap = new HashMap<>();
-        for (ProductOption productOption : productOptions) {
-            customRuleSet.add(productOption.getCustomRule());
-            productOptionMap.put(productOption.getId(), productOption);
-        }
-        List<ProductOptionTrait> productOptionTraits = productOptionTraitRepository.findByProductOptionProductId(product.getId());
-        Map<Long, ProductOptionTrait> productOptionTraitMap = productOptionTraits.stream()
-                .collect(Collectors.toMap(ProductOptionTrait::getId, Function.identity()));
+        Map<Long, ProductOption> productOptionMap = productOptions.stream()
+                .collect(Collectors.toMap(ProductOption::getId, Function.identity()));
 
         if (!checkProductDiff(storeProductDto, storeProduct)) {
             updateProduct(storeProductDto, storeProduct);
         }
         List<StoreCustomRuleModifyRequest> customRuleRequests = storeProductDto.getCustomRuleRequests();
         for (StoreCustomRuleModifyRequest customRuleRequest : customRuleRequests) {
-//            CustomRuleModificationCommand customRuleModificationCommand = new CustomRuleModificationCommand();
-//            storeProductModificationHandler.handle(customRuleModificationCommand);
             List<StoreOptionModifyRequest> optionRequests = customRuleRequest.getOptionRequests();
             for (StoreOptionModifyRequest optionRequest : optionRequests) {
-                Long optionId = optionRequest.getOptionId();
-                OptionModificationCommand optionModificationCommand = new OptionModificationCommand(
-                        storeProductId,
-                        optionRequest.getOptionId(),
-                        storeProduct,
-                        optionRequest.getIsDefault(),
-                        optionRequest.getDefaultQuantity(),
-                        optionRequest.getMaxQuantity(),
-                        optionRequest.getExtraPrice(),
-                        optionRequest.getOrderIndex(),
-                        optionRequest.getModifyType()
-                );
+                ProductOption productOption = Optional.ofNullable(
+                                productOptionMap.get(optionRequest.getProductOptionId()))
+                        .orElseThrow(() -> new ProductOptionNotFoundException(optionRequest.getProductOptionId()));
 
-                storeProductModificationHandler.handle(optionModificationCommand);
+                applyOptionModification(storeProduct, productOption, optionRequest);
 
                 List<StoreTraitModifyRequest> traitRequests = optionRequest.getOptionTraitRequests();
                 for (StoreTraitModifyRequest traitRequest : traitRequests) {
-                    Long traitId = traitRequest.getTraitId();
-//                    TraitModificationCommand traitModificationCommand = new TraitModificationCommand();
-//                    storeProductModificationHandler.handle(traitModificationCommand);
+                    Long productOptionTraitId = traitRequest.getProductOptionTraitId();
 //                    switch(traitRequest.getModifyType()) {
 //                        case EDIT -> {
-//                            StoreTraitDelta storeTraitDelta = Optional.ofNullable(productOptionTraitMap.get(traitId))
+//                            StoreTraitDelta storeTraitDelta = Optional.ofNullable(productOptionTraitMap.get(productOptionTraitId))
 //                                    .map(productOptionTrait -> new StoreTraitDelta(
 //                                            traitRequest.getExtraPrice(),
 //                                            DeltaType.OVERRIDE,
 //                                            productOptionTrait,
 //                                            storeProduct
 //                                    ))
-//                                    .orElseThrow(() -> new ProductOptionTraitNotFoundException(traitId));
+//                                    .orElseThrow(() -> new ProductOptionTraitNotFoundException(productOptionTraitId));
 //                            storeTraitDeltaRepository.save(storeTraitDelta); // DB INSERT happens
 //                        }
 //                    }
@@ -161,7 +134,7 @@ public class StoreProductService {
         }
         // check if there's change
         // check by iterating
-        // if then, create either deltaClass, addClass... (add optionId different, modify -> optionId same, delete optionId does not exist)
+        // if then, create either deltaClass, addClass... (add productOptionId different, modify -> productOptionId same, delete productOptionId does not exist)
         // else, throw ModificationNotDetectedException
     }
 
@@ -183,7 +156,36 @@ public class StoreProductService {
     private void updateProduct(StoreProductModifyRequestDto storeProductDto, StoreProduct storeProduct) {
         storeProduct.changePrice(storeProductDto.getProductPrice());
         storeProductRepository.save(storeProduct);
-        return;
+    }
+
+    private void applyOptionModification(
+            StoreProduct storeProduct,
+            ProductOption productOption,
+            StoreOptionModifyRequest optionRequest
+    ) {
+        switch (optionRequest.getModifyType()) {
+            case OVERRIDE -> overrideOption(storeProduct, productOption, optionRequest.getExtraPrice());
+            case HIDE -> hideOption(storeProduct, productOption);
+            case ADD, DELETE -> throw new ModificationStrategyNotSupportedException();
+        }
+    }
+
+    private void overrideOption(StoreProduct storeProduct, ProductOption productOption, BigDecimal extraPrice) {
+        StoreOptionDelta storeOptionDelta = findOrCreateOptionDelta(storeProduct, productOption);
+        storeOptionDelta.override(extraPrice, DeltaType.OVERRIDE);
+        storeOptionDeltaRepository.save(storeOptionDelta);
+    }
+
+    private void hideOption(StoreProduct storeProduct, ProductOption productOption) {
+        StoreOptionDelta storeOptionDelta = findOrCreateOptionDelta(storeProduct, productOption);
+        storeOptionDelta.override(null, DeltaType.HIDDEN);
+        storeOptionDeltaRepository.save(storeOptionDelta);
+    }
+
+    private StoreOptionDelta findOrCreateOptionDelta(StoreProduct storeProduct, ProductOption productOption) {
+        return storeOptionDeltaRepository
+                .findByStoreProductIdAndProductOptionId(storeProduct.getId(), productOption.getId())
+                .orElseGet(() -> new StoreOptionDelta(productOption, storeProduct));
     }
 
 
@@ -306,88 +308,14 @@ public class StoreProductService {
         List<StoreProductReadByProductIdDto.OptionResponse> optionResponses = new ArrayList<>();
 
         for (ProductOption productOption : productOptions) {
-            record OptionDelta(BigDecimal price) {}
-            // Option conditioning
-            OptionDelta optionDelta = Optional.ofNullable(storeOptionDeltaMap.get(productOption.getId()))
-                    .map(storeOptionDelta -> {
-                        if (storeOptionDelta.getDeltaType() == DeltaType.OVERRIDE) {
-                            return new OptionDelta(
-                                    storeOptionDelta.getOverridePrice()
-                            );
-                        } else {
-                            return new OptionDelta(
-                                    null
-                            );
-                        }
-                    })
-                    .orElse(
-                            new OptionDelta(productOption.getExtraPrice())
-                    );
-            Option option = productOption.getOption();
-            String optionImageUrl = null;
-            String optionImageSource = option.getImageSource();
-            if (optionImageSource != null) {
-                optionImageUrl = s3PublicUrl + "/" + optionImageSource;
-            }
-            List<StoreProductReadByProductIdDto.QuantityDetailResponse> quantityDetailResponses = productOption.getProductOptionOptionQuantities()
-                    .stream()
-                    .map(productOptionQuantity -> StoreProductReadByProductIdDto.QuantityDetailResponse
-                            .builder()
-                            .id(productOptionQuantity.getId())
-                            .quantityType(productOptionQuantity.getOptionQuantity().getQuantity().getQuantityType())
-                            .labelCode(productOptionQuantity.getOptionQuantity().getQuantity().getLabelCode())
-                            .extraPrice(productOptionQuantity.getExtraPrice())
-                            .extraCalories(productOptionQuantity.getOptionQuantity().getExtraCalories())
-                            .isDefault(productOptionQuantity.getIsDefault())
-                            .build()
-                    )
-                    .collect(Collectors.toList());
-
-            List<ProductOptionTrait> productOptionTraits = productOption.getProductOptionTraits();
-            List<StoreProductReadByProductIdDto.OptionTraitResponse> optionTraitResponses = new ArrayList<>();
-            CustomRule customRule = productOption.getCustomRule();
-            StoreProductReadByProductIdDto.CustomRuleResponse customRuleResponse =
-                    StoreProductReadByProductIdDto.CustomRuleResponse
-                            .builder()
-                            .customRuleId(customRule.getId())
-                            .name(customRule.getName())
-                            .customRuleType(customRule.getCustomRuleType())
-                            .orderIndex(customRule.getOrderIndex())
-                            .minSelection(customRule.getMinSelection())
-                            .maxSelection(customRule.getMaxSelection())
-                            .build();
-            for (ProductOptionTrait productOptionTrait : productOptionTraits) {
-                OptionTrait optionTrait = productOptionTrait.getOptionTrait();
-                optionTraitResponses.add(
-                        StoreProductReadByProductIdDto.OptionTraitResponse
-                                .builder()
-                                .productOptionTraitId(productOptionTrait.getId())
-                                .name(optionTrait.getName())
-                                .labelCode(optionTrait.getLabelCode())
-                                .optionTraitType(optionTrait.getOptionTraitType())
-                                .defaultSelection(productOptionTrait.getDefaultSelection())
-                                .extraPrice(productOptionTrait.getExtraPrice())
-                                .extraCalories(productOptionTrait.getExtraCalories())
-                                .build()
-                );
-            }
-            optionResponses.add(StoreProductReadByProductIdDto.OptionResponse
-                    .builder()
-                    .productOptionId(productOption.getId())
-                    .name(option.getName())
-                    .isDefault(productOption.getIsDefault())
-                    .defaultQuantity(productOption.getDefaultQuantity())
-                    .maxQuantity(productOption.getMaxQuantity())
-                    .quantityDetailResponses(quantityDetailResponses)
-                    .extraPrice(optionDelta.price)
-                    .calories(option.getCalories())
-                    .countType(productOption.getCountType())
-                    .imageSource(optionImageUrl)
-                    .orderIndex(productOption.getOrderIndex())
-                    .customRuleResponse(customRuleResponse)
-                    .optionTraitResponses(optionTraitResponses)
-                    .build()
+            Optional<BigDecimal> extraPrice = StoreOptionDelta.resolveExtraPrice(
+                    productOption,
+                    storeOptionDeltaMap.get(productOption.getId())
             );
+            if (extraPrice.isEmpty()) {
+                continue;
+            }
+            optionResponses.add(buildOptionResponse(productOption, extraPrice.get()));
         }
         return StoreProductReadByProductIdDto
                 .builder()
@@ -398,6 +326,76 @@ public class StoreProductService {
                 .imageSource(productImageUrl)
                 .briefInfo(product.getBriefInfo())
                 .optionResponses(optionResponses)
+                .build();
+    }
+
+    private StoreProductReadByProductIdDto.OptionResponse buildOptionResponse(
+            ProductOption productOption,
+            BigDecimal extraPrice
+    ) {
+        Option option = productOption.getOption();
+        String optionImageUrl = null;
+        String optionImageSource = option.getImageSource();
+        if (optionImageSource != null) {
+            optionImageUrl = s3PublicUrl + "/" + optionImageSource;
+        }
+        List<StoreProductReadByProductIdDto.QuantityDetailResponse> quantityDetailResponses = productOption.getProductOptionOptionQuantities()
+                .stream()
+                .map(productOptionQuantity -> StoreProductReadByProductIdDto.QuantityDetailResponse
+                        .builder()
+                        .id(productOptionQuantity.getId())
+                        .quantityType(productOptionQuantity.getOptionQuantity().getQuantity().getQuantityType())
+                        .labelCode(productOptionQuantity.getOptionQuantity().getQuantity().getLabelCode())
+                        .extraPrice(productOptionQuantity.getExtraPrice())
+                        .extraCalories(productOptionQuantity.getOptionQuantity().getExtraCalories())
+                        .isDefault(productOptionQuantity.getIsDefault())
+                        .build()
+                )
+                .collect(Collectors.toList());
+
+        List<ProductOptionTrait> productOptionTraits = productOption.getProductOptionTraits();
+        List<StoreProductReadByProductIdDto.OptionTraitResponse> optionTraitResponses = new ArrayList<>();
+        CustomRule customRule = productOption.getCustomRule();
+        StoreProductReadByProductIdDto.CustomRuleResponse customRuleResponse =
+                StoreProductReadByProductIdDto.CustomRuleResponse
+                        .builder()
+                        .customRuleId(customRule.getId())
+                        .name(customRule.getName())
+                        .customRuleType(customRule.getCustomRuleType())
+                        .orderIndex(customRule.getOrderIndex())
+                        .minSelection(customRule.getMinSelection())
+                        .maxSelection(customRule.getMaxSelection())
+                        .build();
+        for (ProductOptionTrait productOptionTrait : productOptionTraits) {
+            OptionTrait optionTrait = productOptionTrait.getOptionTrait();
+            optionTraitResponses.add(
+                    StoreProductReadByProductIdDto.OptionTraitResponse
+                            .builder()
+                            .productOptionTraitId(productOptionTrait.getId())
+                            .name(optionTrait.getName())
+                            .labelCode(optionTrait.getLabelCode())
+                            .optionTraitType(optionTrait.getOptionTraitType())
+                            .defaultSelection(productOptionTrait.getDefaultSelection())
+                            .extraPrice(productOptionTrait.getExtraPrice())
+                            .extraCalories(productOptionTrait.getExtraCalories())
+                            .build()
+            );
+        }
+        return StoreProductReadByProductIdDto.OptionResponse
+                .builder()
+                .productOptionId(productOption.getId())
+                .name(option.getName())
+                .isDefault(productOption.getIsDefault())
+                .defaultQuantity(productOption.getDefaultQuantity())
+                .maxQuantity(productOption.getMaxQuantity())
+                .quantityDetailResponses(quantityDetailResponses)
+                .extraPrice(extraPrice)
+                .calories(option.getCalories())
+                .countType(productOption.getCountType())
+                .imageSource(optionImageUrl)
+                .orderIndex(productOption.getOrderIndex())
+                .customRuleResponse(customRuleResponse)
+                .optionTraitResponses(optionTraitResponses)
                 .build();
     }
 

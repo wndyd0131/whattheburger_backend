@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.Optional;
 
 @Entity
 @NoArgsConstructor
@@ -39,5 +40,15 @@ public class StoreOptionDelta {
     public void override(BigDecimal price, DeltaType deltaType) {
         this.overridePrice = price;
         this.deltaType = deltaType;
+    }
+
+    public static Optional<BigDecimal> resolveExtraPrice(ProductOption productOption, StoreOptionDelta delta) {
+        if (delta == null) {
+            return Optional.of(productOption.getExtraPrice());
+        }
+        if (delta.getDeltaType() == DeltaType.OVERRIDE) {
+            return Optional.of(delta.getOverridePrice());
+        }
+        return Optional.empty();
     }
 }
