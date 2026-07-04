@@ -10,6 +10,7 @@ import com.whattheburger.backend.repository.*;
 import com.whattheburger.backend.security.enums.Role;
 import com.whattheburger.backend.service.dto.StoreProductReadByProductIdDto;
 import com.whattheburger.backend.service.exception.StoreProductNotFoundException;
+import com.whattheburger.backend.service.exception.StoreProductStoreMismatchException;
 import com.whattheburger.backend.utils.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -215,11 +216,11 @@ class StoreProductServiceTest {
         }
 
         @Test
-        void whenUrlStoreIdMismatch_throwsIllegalArgumentException() {
+        void whenUrlStoreIdMismatch_throwsStoreProductStoreMismatchException() {
             givenStoreProductExists(storeProductWithOverridePrice());
 
             assertThatThrownBy(() -> storeProductService.getProductById(999L, STORE_PRODUCT_ID))
-                    .isInstanceOf(IllegalArgumentException.class);
+                    .isInstanceOf(StoreProductStoreMismatchException.class);
         }
 
         @Test

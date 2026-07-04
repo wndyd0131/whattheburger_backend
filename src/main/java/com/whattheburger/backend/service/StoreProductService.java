@@ -292,7 +292,7 @@ public class StoreProductService {
                 .orElseThrow(() -> new StoreProductNotFoundException(storeProductId));
 
         if (!storeProduct.getStore().getId().equals(storeId))
-            throw new IllegalArgumentException();
+            throw new StoreProductStoreMismatchException(storeId, storeProductId);
         Map<Long, StoreOptionDelta> storeOptionDeltaMap = storeProduct.getStoreOptionDeltas().stream()
                 .collect(Collectors.toMap(storeOptionDelta -> storeOptionDelta.getProductOption().getId(), Function.identity()));
         String productImageUrl = null;
