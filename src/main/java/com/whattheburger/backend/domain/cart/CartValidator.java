@@ -65,6 +65,13 @@ public class CartValidator {
                 cart.getQuantity() // product quantity
         );
 
+        Map<Long, StoreOptionDelta> optionDeltaMap = storeProduct.getStoreOptionDeltas().stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        delta -> delta.getProductOption().getId(),
+                        delta -> delta,
+                        (existing, replacement) -> replacement
+                ));
+
         List<CustomRuleRequest> customRuleRequests = cart.getCustomRuleRequests();
         List<ValidatedCustomRule> validatedCustomRules = new ArrayList<>();
 
@@ -81,6 +88,14 @@ public class CartValidator {
 
                 ProductOption productOption = Optional.ofNullable(productOptionMap.get(productOptionId))
                         .orElseThrow(() -> new ProductOptionNotFoundException(productOptionId));
+
+                if (Boolean.TRUE.equals(optionRequest.getIsSelected())
+                        && StoreOptionDelta.resolveExtraPrice(
+                                productOption,
+                                optionDeltaMap.get(productOptionId)
+                        ).isEmpty()) {
+                    throw new HiddenOptionSelectedException(productOptionId);
+                }
 
                 log.info("quantityDetailRequest {}", optionRequest.getQuantityDetailRequest());
 

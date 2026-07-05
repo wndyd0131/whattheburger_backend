@@ -260,6 +260,7 @@ public class CartValidatorTest {
                 .countType(countType)
                 .option(option)
                 .product(product)
+                .extraPrice(BigDecimal.valueOf(2.99))
                 .customRule(customRule)
                 .productOptionTraits(new ArrayList<>())
                 .productOptionOptionQuantities(new ArrayList<>())
@@ -335,6 +336,7 @@ public class CartValidatorTest {
                 .option(option)
                 .product(product)
                 .customRule(customRule)
+                .extraPrice(BigDecimal.valueOf(2.99))
                 .productOptionTraits(new ArrayList<>())
                 .productOptionOptionQuantities(new ArrayList<>())
                 .build();

@@ -38,6 +38,7 @@ public class ProductOption {
     @JoinColumn(name = "option_id")
     private Option option;
 
+    @Builder.Default
     @OneToMany(mappedBy = "productOption")
     private List<ProductOptionTrait> productOptionTraits = new ArrayList<>();
 
@@ -45,9 +46,11 @@ public class ProductOption {
     @JoinColumn(name = "custom_rule_id")
     private CustomRule customRule;
 
+    @Builder.Default
     @OneToMany(mappedBy = "productOption")
     private List<ProductOptionOptionQuantity> productOptionOptionQuantities = new ArrayList<>();
 
+    @Builder.Default
     @OneToMany(mappedBy = "productOption")
     private List<StoreOptionDelta> storeOptionDeltas = new ArrayList<>();
 

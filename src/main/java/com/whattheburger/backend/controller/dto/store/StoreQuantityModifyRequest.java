@@ -13,7 +13,7 @@ import java.math.BigDecimal;
 @Data
 @Builder
 public class StoreQuantityModifyRequest {
-    private Long id;
+    private Long productOptionOptionQuantityId;
     private QuantityType quantityType;
     private Boolean isDefault;
     private BigDecimal extraPrice;

@@ -26,12 +26,13 @@ public class Product {
     @Enumerated(EnumType.STRING)
     private ProductType productType;
 
+    @Builder.Default
     @OneToMany(mappedBy = "product")
     private List<ProductOption> productOptions = new ArrayList<>();
-
+    @Builder.Default
     @OneToMany(mappedBy = "product")
     private List<CategoryProduct> categoryProducts = new ArrayList<>();
-
+    @Builder.Default
     @OneToMany(mappedBy = "product")
     private List<StoreProduct> storeProducts = new ArrayList<>();
 

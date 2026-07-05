@@ -21,18 +21,28 @@ public class MockStoreProductFactory {
             Store store,
             Product product
     ) {
-        StoreProduct storeProduct = new StoreProduct(
+        return createStoreProduct(storeProductId, overridePrice, isActive, store, product, new ArrayList<>());
+    }
+
+    public static StoreProduct createStoreProduct(
+            Long storeProductId,
+            BigDecimal overridePrice,
+            Boolean isActive,
+            Store store,
+            Product product,
+            List<StoreOptionDelta> storeOptionDeltas
+    ) {
+        return new StoreProduct(
                 storeProductId,
                 overridePrice,
                 isActive,
                 store,
                 product,
-                new ArrayList<>(),
+                storeOptionDeltas,
                 new ArrayList<>(),
                 new ArrayList<>(),
                 new ArrayList<>()
         );
-        return storeProduct;
     }
 
 
@@ -44,7 +54,7 @@ public class MockStoreProductFactory {
                 .isDefault(true)
                 .modifyType(ModifyType.OVERRIDE)
                 .maxQuantity(4)
-                .optionId(1L)
+                .productOptionId(1L)
                 .orderIndex(0)
                 .quantityRequest(null)
                 .optionTraitRequests(new ArrayList<>())
