@@ -106,7 +106,7 @@ public class OptionCalculator implements PriceCalculator<List<OptionCalculatorDt
         BigDecimal quantityPrice = optionCalculatorDto.getQuantityCalculatorDto().getPrice();
         Long requestedId = optionCalculatorDto.getQuantityCalculatorDto().getRequestedId();
         Long defaultId = optionCalculatorDto.getQuantityCalculatorDto().getDefaultId();
-        if (requestedId != defaultId) {
+        if (!requestedId.equals(defaultId)) {
             return new QuantityCalculationDetail(
                     requestedId,
                     quantityPrice
