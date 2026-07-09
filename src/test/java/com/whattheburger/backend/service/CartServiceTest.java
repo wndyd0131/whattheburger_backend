@@ -100,6 +100,7 @@ public class CartServiceTest {
         ));
 
         when(storeRepository.findById(anyLong())).thenReturn(Optional.of(new Store()));
+        when(cartValidator.canMergeItemCount(anyInt(), anyInt())).thenReturn(true);
         when(cartSessionStorage.load(anyString())).thenReturn(Optional.of(userCartList), Optional.of(guestCartList));
         doReturn(new ProcessedCartDto()).when(cartService).loadCart(anyLong(), any(), any());
 
@@ -124,6 +125,7 @@ public class CartServiceTest {
         CartList guestCartList = new CartList(storeId, new ArrayList<>());
 
         when(storeRepository.findById(anyLong())).thenReturn(Optional.of(new Store()));
+        when(cartValidator.canMergeItemCount(anyInt(), anyInt())).thenReturn(true);
         when(cartSessionStorage.load(anyString())).thenReturn(Optional.of(userCartList), Optional.of(guestCartList));
         doReturn(new ProcessedCartDto()).when(cartService).loadCart(anyLong(), any(), any());
 
@@ -132,6 +134,40 @@ public class CartServiceTest {
         verify(cartSessionStorage, times(2)).save(anyString(), any(CartList.class));
 //
         Assertions.assertThat(userCartList.getCarts().size()).isEqualTo(0);
+    }
+
+    @Test
+    public void givenMergeWouldExceedLimit_mergeCart_doesNotSaveAndReturnsLoadCart() throws Exception {
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                new UserDetailsImpl(mockUser),
+                null,
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+
+        Long storeId = 1L;
+        UUID guestId = UUID.randomUUID();
+        List<Cart> userCarts = new ArrayList<>();
+        for (int i = 0; i < 15; i++) {
+            userCarts.add(new Cart((long) i, 1, Collections.emptyList()));
+        }
+        List<Cart> guestCarts = new ArrayList<>();
+        for (int i = 0; i < 6; i++) {
+            guestCarts.add(new Cart(100L + i, 1, Collections.emptyList()));
+        }
+        CartList userCartList = new CartList(storeId, userCarts);
+        CartList guestCartList = new CartList(storeId, guestCarts);
+
+        when(storeRepository.findById(anyLong())).thenReturn(Optional.of(new Store()));
+        when(cartValidator.canMergeItemCount(15, 6)).thenReturn(false);
+        when(cartSessionStorage.load(anyString())).thenReturn(Optional.of(userCartList), Optional.of(guestCartList));
+        doReturn(new ProcessedCartDto()).when(cartService).loadCart(anyLong(), any(), any());
+
+        cartService.mergeCart(storeId, guestId, authentication);
+
+        verify(cartSessionStorage, never()).save(anyString(), any(CartList.class));
+        verify(cartService).loadCart(storeId, guestId, authentication);
+        Assertions.assertThat(userCartList.getCarts()).hasSize(15);
+        Assertions.assertThat(guestCartList.getCarts()).hasSize(6);
     }
 
     @Test

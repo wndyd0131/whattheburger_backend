@@ -1,13 +1,12 @@
 package com.whattheburger.backend.domain.cart;
 
-import com.whattheburger.backend.controller.dto.cart.CartOptionModifyRequestDto;
-import com.whattheburger.backend.controller.dto.cart.CartProductModifyRequestDto;
 import com.whattheburger.backend.controller.dto.cart.CustomRuleRequest;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Getter
 @NoArgsConstructor
@@ -28,5 +27,14 @@ public class Cart {
 
     public void updateProduct(int quantity) {
         this.quantity = quantity;
+    }
+
+    public void mergeQuantity(int additionalQuantity) {
+        this.quantity += additionalQuantity;
+    }
+
+    public boolean matches(Cart other) {
+        return Objects.equals(this.storeProductId, other.storeProductId)
+                && Objects.equals(this.customRuleRequests, other.customRuleRequests);
     }
 }

@@ -21,7 +21,8 @@ import com.whattheburger.backend.domain.enums.CountType;
 import com.whattheburger.backend.domain.enums.ProductType;
 import com.whattheburger.backend.service.dto.cart.ValidatedCartDto;
 import com.whattheburger.backend.service.exception.StoreInventoryNotFoundException;
-import com.whattheburger.backend.service.exception.StoreProductNotFoundException;
+import com.whattheburger.backend.service.exception.cart.CartItemLimitExceededException;
+import com.whattheburger.backend.service.exception.cart.CartStoreProductNotFoundException;
 import com.whattheburger.backend.service.exception.cart.InsufficientOptionStockException;
 import com.whattheburger.backend.service.exception.cart.InvalidOptionRequestException;
 import com.whattheburger.backend.service.exception.cart.StoreProductNotInStoreException;
@@ -68,12 +69,12 @@ public class CartValidatorTest {
     }
 
     @Test
-    public void givenStoreProductNotInMap_thenThrowsStoreProductNotFoundException() {
+    public void givenStoreProductNotInMap_thenThrowsCartStoreProductNotFoundException() {
         Long storeId = 1L;
         Long storeProductId = 42L;
         Cart cart = new Cart(storeProductId, 1, Collections.emptyList());
 
-        assertThrows(StoreProductNotFoundException.class, () -> validator.validate(
+        assertThrows(CartStoreProductNotFoundException.class, () -> validator.validate(
                 storeId,
                 cart,
                 Collections.emptyMap(),
@@ -83,6 +84,55 @@ public class CartValidatorTest {
                 Collections.emptyMap(),
                 Collections.emptyMap()
         ));
+    }
+
+    @Test
+    public void givenCartListExceedingMaxItems_whenValidate_thenThrowsCartItemLimitExceededException() {
+        List<Cart> carts = new ArrayList<>();
+        for (int i = 0; i < CartValidator.MAX_CART_ITEMS + 1; i++) {
+            carts.add(new Cart(1L, 1, Collections.emptyList()));
+        }
+        CartList cartList = new CartList(1L, carts);
+
+        assertThrows(CartItemLimitExceededException.class, () -> validator.validate(
+                cartList,
+                Collections.emptyMap(),
+                Collections.emptyMap(),
+                Collections.emptyMap(),
+                Collections.emptyMap(),
+                Collections.emptyMap(),
+                Collections.emptyMap()
+        ));
+    }
+
+    @Test
+    public void givenCartListAtMaxItems_whenValidate_thenDoesNotThrowCartItemLimitExceededException() {
+        List<Cart> carts = new ArrayList<>();
+        for (int i = 0; i < CartValidator.MAX_CART_ITEMS; i++) {
+            carts.add(new Cart(1L, 1, Collections.emptyList()));
+        }
+        CartList cartList = new CartList(1L, carts);
+
+        Exception exception = assertThrows(Exception.class, () -> validator.validate(
+                cartList,
+                Collections.emptyMap(),
+                Collections.emptyMap(),
+                Collections.emptyMap(),
+                Collections.emptyMap(),
+                Collections.emptyMap(),
+                Collections.emptyMap()
+        ));
+        assertThat(exception).isNotInstanceOf(CartItemLimitExceededException.class);
+    }
+
+    @Test
+    public void givenMergeCountWithinLimit_whenCanMergeItemCount_thenReturnsTrue() {
+        assertThat(validator.canMergeItemCount(10, 10)).isTrue();
+    }
+
+    @Test
+    public void givenMergeCountExceedsLimit_whenCanMergeItemCount_thenReturnsFalse() {
+        assertThat(validator.canMergeItemCount(15, 6)).isFalse();
     }
 
     @Test

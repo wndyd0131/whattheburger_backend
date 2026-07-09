@@ -75,8 +75,9 @@ public class CartController {
             @CookieValue(name = "guestId") UUID guestId,
             Authentication authentication
     ) {
-        cartService.mergeCart(storeId, guestId, authentication);
-        return null;
+        ProcessedCartDto processedCartDto = cartService.mergeCart(storeId, guestId, authentication);
+        CartResponseDto cartResponseDto = cartResponseDtoMapper.toCartResponseDto(processedCartDto);
+        return ResponseEntity.ok(cartResponseDto);
     }
 
     @PatchMapping("/api/v1/store/{storeId}/cart/{cartIdx}/option")

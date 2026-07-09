@@ -7,6 +7,8 @@ import com.whattheburger.backend.service.dto.cart.*;
 import com.whattheburger.backend.service.dto.cart.ProductDetail;
 import com.whattheburger.backend.service.exception.*;
 import com.whattheburger.backend.service.exception.StoreInventoryNotFoundException;
+import com.whattheburger.backend.service.exception.cart.CartItemLimitExceededException;
+import com.whattheburger.backend.service.exception.cart.CartStoreProductNotFoundException;
 import com.whattheburger.backend.service.exception.cart.InsufficientOptionStockException;
 import com.whattheburger.backend.service.exception.cart.InvalidOptionRequestException;
 import com.whattheburger.backend.service.exception.cart.StoreProductNotInStoreException;
@@ -21,6 +23,12 @@ import java.util.Optional;
 @Component
 @Slf4j
 public class CartValidator {
+    public static final int MAX_CART_ITEMS = 20;
+
+    public boolean canMergeItemCount(int userItemCount, int guestItemCount) {
+        return userItemCount + guestItemCount <= MAX_CART_ITEMS;
+    }
+
     public List<ValidatedCartDto> validate (
             CartList cartList,
             Map<Long, StoreProduct> storeProductMap,
@@ -30,6 +38,10 @@ public class CartValidator {
             Map<Long, ProductOptionOptionQuantity> quantityMap,
             Map<Long, StoreInventory> storeInventoryMap
     ) throws ResourceNotFoundException {
+        if (cartList.getCarts().size() > MAX_CART_ITEMS) {
+            throw new CartItemLimitExceededException(MAX_CART_ITEMS);
+        }
+
         List<Cart> carts = cartList.getCarts();
         Long storeId = cartList.getStoreId();
         List<ValidatedCartDto> validatedCartDtos = new ArrayList<>();
@@ -55,7 +67,7 @@ public class CartValidator {
         Long storeProductId = cart.getStoreProductId();
         log.info("storeProduct Id {}", storeProductId);
         StoreProduct storeProduct = Optional.ofNullable(storeProductMap.get(storeProductId))
-                .orElseThrow(() -> new StoreProductNotFoundException(storeProductId)); // throw exception if the store product is not in db
+                .orElseThrow(() -> new CartStoreProductNotFoundException(storeProductId));
         if (!storeProduct.getStore().getId().equals(storeId)) { // check if the store product belongs to the store
             throw new StoreProductNotInStoreException(storeProduct.getId(), storeId);
         }

@@ -13,6 +13,7 @@ import com.whattheburger.backend.service.dto.cart.ValidatedCartDto;
 import com.whattheburger.backend.service.dto.cart.calculator.ProductCalculationDetail;
 import com.whattheburger.backend.service.exception.StoreNotFoundException;
 import com.whattheburger.backend.service.exception.cart.CartNotFoundException;
+import com.whattheburger.backend.service.exception.cart.CartOwnerRequiredException;
 import com.whattheburger.backend.service.exception.cart.InvalidCartIndexException;
 import com.whattheburger.backend.util.SessionKey;
 import com.whattheburger.backend.util.UserType;
@@ -51,6 +52,7 @@ public class CartService {
     public ProcessedProductDto saveCart(Long storeId, UUID guestId, Authentication authentication, CartCreateRequestDto cartRequestDto) {
         storeRepository.findById(storeId)
                 .orElseThrow(() -> new StoreNotFoundException(storeId));
+        validateCartOwner(guestId, authentication);
         String sessionKey = getSessionKey(guestId, storeId, authentication);
         log.info("WRITE SESSION KEY {}", sessionKey);
 
@@ -61,8 +63,10 @@ public class CartService {
 
         log.info("CartList {}", cartList);
         cartList.getCarts().add(cart);
+        int affectedIdx = cartList.getCarts().size() - 1;
 
-        ProcessedProductDto processedProductDto = processCart(storeId, cart);
+        ProcessedCartDto processedCartDto = processCart(cartList);
+        ProcessedProductDto processedProductDto = processedCartDto.getProcessedProductDtos().get(affectedIdx);
 
         cartSessionStorage.save(sessionKey, cartList);
         return processedProductDto;
@@ -232,6 +236,11 @@ public class CartService {
                 .orElse(new CartList(storeId, new ArrayList<>()));
         CartList guestCartList = cartSessionStorage.load(guestKey)
                 .orElse(new CartList(storeId, new ArrayList<>()));
+        if (!cartValidator.canMergeItemCount(
+                userCartList.getCarts().size(),
+                guestCartList.getCarts().size())) {
+            return loadCart(storeId, guestId, authentication);
+        }
         List<Cart> carts = userCartList.getCarts();
         guestCartList.getCarts().stream()
                 .forEach(cart -> carts.add(cart));
@@ -305,6 +314,18 @@ public class CartService {
                     }
                 }
             }
+        }
+    }
+
+    private void validateCartOwner(UUID guestId, Authentication authentication) {
+        boolean isUser = authentication != null
+                && authentication.isAuthenticated()
+                && !(authentication instanceof AnonymousAuthenticationToken);
+        if (isUser) {
+            return;
+        }
+        if (guestId == null) {
+            throw new CartOwnerRequiredException();
         }
     }
 
