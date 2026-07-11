@@ -7,7 +7,6 @@ import com.stripe.model.checkout.Session;
 import com.stripe.param.PaymentIntentRetrieveParams;
 import com.stripe.param.checkout.SessionCreateParams;
 import com.whattheburger.backend.domain.enums.OrderStatus;
-import com.whattheburger.backend.domain.enums.PaymentMethod;
 import com.whattheburger.backend.domain.enums.PaymentStatus;
 import com.whattheburger.backend.domain.order.*;
 import com.whattheburger.backend.exception.ApiException;
@@ -165,27 +164,14 @@ public class CheckoutService {
         Integer randomDuration = new Random().nextInt(20, 30) * 1000;
         orderService.updateOrderSessionOrderStatus(orderSession, OrderStatus.CONFIRMING, System.currentTimeMillis(), randomDuration);
 
-        Order order = orderService.transferFromOrderSession(orderSession);
-        order.updateOrderStatus(OrderStatus.CONFIRMING);
-        order.changePaymentStatus(PaymentStatus.PAID);
+        Order savedOrder = orderService.completePaidOrder(
+                orderSession,
+                session.getId(),
+                paymentMethodObject
+        );
 
-        if (paymentMethodObject != null && paymentMethodObject.getCard() != null) {
-            order.changePaymentMethod(PaymentMethod.CREDIT_CARD);
-            String brand = paymentMethodObject.getCard().getBrand();
-            String last4 = paymentMethodObject.getCard().getLast4();
-            Long expMonth = paymentMethodObject.getCard().getExpMonth();
-            Long expYear = paymentMethodObject.getCard().getExpYear();
-            order.changeCardInfo(brand, last4, expMonth, expYear);
-            log.info("Card {} ****{} exp {}/{}", brand, last4, expMonth, expYear);
-        }
-
-        orderTrackingService.scheduleOrder(orderSession, order);
-
+        orderTrackingService.scheduleOrder(orderSession, savedOrder);
         cartService.cleanUp(UUID.fromString(cartSessionId));
-//        orderService.cleanUp(UUID.fromString(orderSessionId));
-
-        order.changeCheckoutSessionId(session.getId());
-        Order savedOrder = orderService.saveOrder(order);
         orderService.addOrderToOrderSession(savedOrder, orderSession);
 
         log.info("Order ID {}", savedOrder.getId());

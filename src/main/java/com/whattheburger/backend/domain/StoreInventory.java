@@ -28,4 +28,8 @@ public class StoreInventory {
     @ManyToOne
     @JoinColumn(name = "ingredient_id")
     private Ingredient ingredient;
+
+    public void deductStock(int amount) {
+        this.currentStock -= amount;
+    }
 }
