@@ -56,7 +56,7 @@ public class DataConfig {
     ) throws IOException {
         return args -> {
             if (userSeedingFlag) {
-                User user = userService.join(
+                User admin = userService.join(
                         UserCreateRequestDto
                                 .builder()
                                 .email("admin@gmail.com")
@@ -64,6 +64,17 @@ public class DataConfig {
                                 .lastName("Istrator")
                                 .password("1234")
                                 .phoneNum("5121234567")
+                                .zipCode("12345")
+                                .build()
+                );
+                User user = userService.join(
+                        UserCreateRequestDto
+                                .builder()
+                                .email("testuser@gmail.com")
+                                .firstName("Test")
+                                .lastName("User")
+                                .password("1234")
+                                .phoneNum("5124567123")
                                 .zipCode("12345")
                                 .build()
                 );
