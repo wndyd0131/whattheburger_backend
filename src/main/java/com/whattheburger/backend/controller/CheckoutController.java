@@ -37,11 +37,11 @@ public class CheckoutController {
     private final CheckoutService checkoutService;
     private final OrderService orderService;
 
-    @PostMapping("/api/v1/checkout")
+    @PostMapping("/api/v1/checkout/{orderSessionId}")
     public ResponseEntity<CheckoutResponseDto> createCheckoutSession(
             @RequestBody OrderFormRequestDto formRequestDto,
+            @PathVariable(name = "orderSessionId") UUID orderSessionId,
             @CookieValue(name = "guestId") UUID guestId,
-            @CookieValue(name = "orderSessionId")  UUID orderSessionId,
             Authentication authentication
     ) {
         OrderSession orderSession = orderService.updateOrderSession(formRequestDto, orderSessionId, authentication, guestId);

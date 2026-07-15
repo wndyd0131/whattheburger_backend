@@ -11,18 +11,14 @@ import com.whattheburger.backend.service.CheckoutService;
 import com.whattheburger.backend.service.OrderService;
 import com.whattheburger.backend.service.StoreService;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 
@@ -51,24 +47,11 @@ public class OrderController {
             @RequestBody OrderSessionCreateRequestDto orderSessionRequestDto,
             @PathVariable(name = "storeId") Long storeId,
             @CookieValue(name = "guestId") UUID guestId,
-            @CookieValue(name = "orderSessionId", required = false)  UUID orderSessionId,
-            Authentication authentication,
-            HttpServletResponse response
+            Authentication authentication
     ) {
         OrderType orderType = orderSessionRequestDto.getOrderType();
-        OrderSession orderSession = orderService.createOrderSession(storeId, guestId, orderSessionId, authentication, orderType);
+        OrderSession orderSession = orderService.createOrderSession(storeId, guestId, authentication, orderType);
         OrderSessionResponseDto orderSessionResponseDto = orderSessionResponseDtoMapper.toOrderSessionResponseDto(orderSession);
-        ResponseCookie cookie = ResponseCookie.from("orderSessionId", orderSession.getSessionId().toString())
-                .path("/")
-                .secure(true)
-                .httpOnly(true)
-                .sameSite("None")
-                .maxAge(Duration.ofDays(30))
-                .build();
-        response.setHeader(
-                HttpHeaders.SET_COOKIE,
-                cookie.toString()
-        );
         return new ResponseEntity<>(
                 orderSessionResponseDto,
                 HttpStatus.CREATED

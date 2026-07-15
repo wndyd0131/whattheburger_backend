@@ -103,33 +103,16 @@ public class OrderService {
                 .orElseThrow(() -> new OrderNotFoundException());
     }
 
-    public OrderSession createOrderSession(Long storeId, UUID guestId, UUID orderSessionId, Authentication authentication, OrderType orderType) {
+    public OrderSession createOrderSession(Long storeId, UUID guestId, Authentication authentication, OrderType orderType) {
         ProcessedCartDto processedCartDto = cartService.loadCart(storeId, guestId, authentication);
 
-        // add security
-        OrderSession orderSession = orderSessionStorage.load(orderSessionId)
-                .map(existingSession -> {
-                    orderSessionFactory.overwriteFromCartDto(
-                            processedCartDto,
-                            orderType,
-                            storeId,
-                            existingSession
-                    );
-                    log.info("session exists");
-                    return existingSession;
-                })
-                .orElseGet(() -> {
-                    log.info("session does not exist");
-                    Long userId = null;
-                    log.info("Authenticated {}", authentication.isAuthenticated());
-                    if (authentication.isAuthenticated()) {
-                        UserDetailsImpl principal = (UserDetailsImpl) authentication.getPrincipal();
-                        userId = principal.getUserId();
-                    }
-                    log.info("order session user id: {}", userId);
-                    return orderSessionFactory.createFromCartDto(processedCartDto, userId, orderType, storeId);
-                });
-        log.info("current session key {}", orderSession.getSessionId());
+        Long userId = null;
+        if (authentication.isAuthenticated()) {
+            UserDetailsImpl principal = (UserDetailsImpl) authentication.getPrincipal();
+            userId = principal.getUserId();
+        }
+
+        OrderSession orderSession = orderSessionFactory.createFromCartDto(processedCartDto, userId, orderType, storeId);
         orderSessionStorage.save(orderSession);
         return orderSession;
     }
