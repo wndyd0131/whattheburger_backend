@@ -7,7 +7,6 @@ import com.whattheburger.backend.domain.order.*;
 import com.whattheburger.backend.repository.ProductOptionOptionQuantityRepository;
 import com.whattheburger.backend.repository.ProductOptionRepository;
 import com.whattheburger.backend.repository.StoreInventoryRepository;
-import com.whattheburger.backend.service.exception.BadRequestException;
 import com.whattheburger.backend.service.exception.cart.InsufficientOptionStockException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -60,10 +59,10 @@ class InventoryServiceTest {
     }
 
     @Test
-    void givenUnpaidOrder_whenDeductStock_thenThrowsBadRequestException() {
+    void givenUnpaidOrder_whenDeductStock_thenThrowsIllegalArgumentException() {
         Order order = buildUnpaidOrder(List.of());
 
-        assertThrows(BadRequestException.class, () -> inventoryService.deductStock(order));
+        assertThrows(IllegalArgumentException.class, () -> inventoryService.deductStock(order));
 
         verifyNoInteractions(storeInventoryRepository, productOptionRepository, productOptionOptionQuantityRepository);
     }

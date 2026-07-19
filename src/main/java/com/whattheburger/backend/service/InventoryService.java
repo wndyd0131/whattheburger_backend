@@ -7,7 +7,6 @@ import com.whattheburger.backend.domain.order.*;
 import com.whattheburger.backend.repository.ProductOptionOptionQuantityRepository;
 import com.whattheburger.backend.repository.ProductOptionRepository;
 import com.whattheburger.backend.repository.StoreInventoryRepository;
-import com.whattheburger.backend.service.exception.BadRequestException;
 import com.whattheburger.backend.service.exception.POOQuantityNotFoundException;
 import com.whattheburger.backend.service.exception.ProductOptionNotFoundException;
 import com.whattheburger.backend.service.exception.StoreInventoryNotFoundException;
@@ -35,7 +34,7 @@ public class InventoryService {
             throw new IllegalArgumentException("Order must not be null");
         }
         if (order.getPaymentStatus() != PaymentStatus.PAID) {
-            throw new BadRequestException("Order payment status must be PAID to deduct stock");
+            throw new IllegalArgumentException("Order payment status must be PAID to deduct stock");
         }
 
         Map<Long, Integer> deductionsByIngredient = collectDeductions(order);
