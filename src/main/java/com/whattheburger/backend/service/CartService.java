@@ -52,7 +52,6 @@ public class CartService {
     public ProcessedProductDto saveCart(Long storeId, UUID guestId, Authentication authentication, CartCreateRequestDto cartRequestDto) {
         storeRepository.findById(storeId)
                 .orElseThrow(() -> new StoreNotFoundException(storeId));
-        validateCartOwner(guestId, authentication);
         String sessionKey = getSessionKey(guestId, storeId, authentication);
         log.info("WRITE SESSION KEY {}", sessionKey);
 
@@ -330,6 +329,7 @@ public class CartService {
     }
 
     private String getSessionKey(UUID guestId, Long storeId, Authentication authentication) {
+        validateCartOwner(guestId, authentication);
         boolean isUser = authentication != null && authentication.isAuthenticated() && !(authentication instanceof AnonymousAuthenticationToken);
         log.info("isUser {}", isUser);
         if (isUser) {

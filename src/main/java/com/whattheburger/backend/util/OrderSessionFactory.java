@@ -22,6 +22,9 @@ import java.util.UUID;
 @Component
 public class OrderSessionFactory {
     public OrderSession createFromCartDto(ProcessedCartDto cartDto, Long userId, OrderType orderType, Long storeId) {
+        if (cartDto == null) {
+            throw new IllegalArgumentException("ProcessedCartDto must not be null");
+        }
         OrderSession orderSession = OrderSession
                 .builder()
                 .sessionId(UUID.randomUUID())

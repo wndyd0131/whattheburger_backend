@@ -6,6 +6,7 @@ import com.whattheburger.backend.domain.cart.*;
 import com.whattheburger.backend.dto_mapper.CartDtoMapper;
 import com.whattheburger.backend.repository.*;
 import com.whattheburger.backend.service.exception.cart.InsufficientOptionStockException;
+import com.whattheburger.backend.service.exception.cart.CartOwnerRequiredException;
 import com.whattheburger.backend.security.UserDetailsImpl;
 import com.whattheburger.backend.service.dto.cart.*;
 import com.whattheburger.backend.utils.*;
@@ -168,6 +169,17 @@ public class CartServiceTest {
         verify(cartService).loadCart(storeId, guestId, authentication);
         Assertions.assertThat(userCartList.getCarts()).hasSize(15);
         Assertions.assertThat(guestCartList.getCarts()).hasSize(6);
+    }
+
+    @Test
+    public void givenNoGuestAndNoAuth_whenLoadCart_thenThrowsCartOwnerRequiredException() {
+        Authentication unauthenticated = mock(Authentication.class);
+        when(unauthenticated.isAuthenticated()).thenReturn(false);
+
+        assertThrows(CartOwnerRequiredException.class,
+                () -> cartService.loadCart(1L, null, unauthenticated));
+
+        verifyNoInteractions(cartSessionStorage);
     }
 
     @Test
