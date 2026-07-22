@@ -16,11 +16,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -78,13 +77,15 @@ class InventoryServiceTest {
 
         when(productOptionRepository.findAllWithOptionIngredientsByIdIn(anyCollection()))
                 .thenReturn(List.of(productOption));
-        when(storeInventoryRepository.findAllByStoreIdAndIngredientIdInForUpdate(STORE_ID, List.of(INGREDIENT_ID)))
-                .thenReturn(List.of(storeInventory));
+        when(storeInventoryRepository.findByStoreIdAndIngredientId(STORE_ID, INGREDIENT_ID))
+                .thenReturn(Optional.of(storeInventory));
+        when(storeInventoryRepository.deductStockAtomic(STORE_ID, INGREDIENT_ID, amount))
+                .thenReturn(0);
 
         assertThrows(InsufficientOptionStockException.class, () -> inventoryService.deductStock(order));
 
         verify(storeInventoryRepository, times(1))
-                .findAllByStoreIdAndIngredientIdInForUpdate(STORE_ID, List.of(INGREDIENT_ID));
+                .deductStockAtomic(STORE_ID, INGREDIENT_ID, amount);
     }
 
     @Test
@@ -100,14 +101,15 @@ class InventoryServiceTest {
 
         when(productOptionRepository.findAllWithOptionIngredientsByIdIn(anyCollection()))
                 .thenReturn(List.of(productOption1, productOption2));
-        when(storeInventoryRepository.findAllByStoreIdAndIngredientIdInForUpdate(STORE_ID, List.of(INGREDIENT_ID)))
-                .thenReturn(List.of(storeInventory));
+        when(storeInventoryRepository.findByStoreIdAndIngredientId(STORE_ID, INGREDIENT_ID))
+                .thenReturn(Optional.of(storeInventory));
+        when(storeInventoryRepository.deductStockAtomic(STORE_ID, INGREDIENT_ID, summedAmount))
+                .thenReturn(1);
 
         assertDoesNotThrow(() -> inventoryService.deductStock(order));
 
         verify(storeInventoryRepository, times(1))
-                .findAllByStoreIdAndIngredientIdInForUpdate(STORE_ID, List.of(INGREDIENT_ID));
-        assertEquals(100 - summedAmount, storeInventory.getCurrentStock());
+                .deductStockAtomic(STORE_ID, INGREDIENT_ID, summedAmount);
     }
 
     @Test
@@ -125,17 +127,21 @@ class InventoryServiceTest {
 
         when(productOptionRepository.findAllWithOptionIngredientsByIdIn(anyCollection()))
                 .thenReturn(List.of(productOption1, productOption2));
-        when(storeInventoryRepository.findAllByStoreIdAndIngredientIdInForUpdate(
-                STORE_ID,
-                List.of(INGREDIENT_ID, INGREDIENT_ID_2)
-        )).thenReturn(List.of(storeInventory1, storeInventory2));
+        when(storeInventoryRepository.findByStoreIdAndIngredientId(STORE_ID, INGREDIENT_ID))
+                .thenReturn(Optional.of(storeInventory1));
+        when(storeInventoryRepository.findByStoreIdAndIngredientId(STORE_ID, INGREDIENT_ID_2))
+                .thenReturn(Optional.of(storeInventory2));
+        when(storeInventoryRepository.deductStockAtomic(STORE_ID, INGREDIENT_ID, amount1))
+                .thenReturn(1);
+        when(storeInventoryRepository.deductStockAtomic(STORE_ID, INGREDIENT_ID_2, amount2))
+                .thenReturn(1);
 
         assertDoesNotThrow(() -> inventoryService.deductStock(order));
 
         verify(storeInventoryRepository, times(1))
-                .findAllByStoreIdAndIngredientIdInForUpdate(STORE_ID, List.of(INGREDIENT_ID, INGREDIENT_ID_2));
-        assertEquals(100 - amount1, storeInventory1.getCurrentStock());
-        assertEquals(100 - amount2, storeInventory2.getCurrentStock());
+                .deductStockAtomic(STORE_ID, INGREDIENT_ID, amount1);
+        verify(storeInventoryRepository, times(1))
+                .deductStockAtomic(STORE_ID, INGREDIENT_ID_2, amount2);
     }
 
     private Order buildPaidOrder(List<OrderProduct> orderProducts) {

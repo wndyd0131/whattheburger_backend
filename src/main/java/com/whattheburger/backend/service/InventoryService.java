@@ -37,35 +37,23 @@ public class InventoryService {
             throw new IllegalArgumentException("Order payment status must be PAID to deduct stock");
         }
 
-        Map<Long, Integer> deductionsByIngredient = collectDeductions(order);
-        if (deductionsByIngredient.isEmpty()) {
-            return;
-        }
-
         Long storeId = order.getStore().getId();
-        List<Long> ingredientIds = deductionsByIngredient.keySet().stream().sorted().toList();
+        Map<Long, Integer> deductionsByIngredient = collectDeductions(order);
 
-        List<StoreInventory> lockedInventories = storeInventoryRepository
-                .findAllByStoreIdAndIngredientIdInForUpdate(storeId, ingredientIds);
+        for (Map.Entry<Long, Integer> entry : deductionsByIngredient.entrySet()) {
+            Long ingredientId = entry.getKey();
+            int amount = entry.getValue();
 
-        Map<Long, StoreInventory> inventoryByIngredientId = lockedInventories.stream()
-                .collect(Collectors.toMap(si -> si.getIngredient().getId(), Function.identity()));
+            storeInventoryRepository.findByStoreIdAndIngredientId(storeId, ingredientId)
+                    .orElseThrow(() -> new StoreInventoryNotFoundException(storeId, ingredientId));
 
-        for (Long ingredientId : ingredientIds) {
-            StoreInventory storeInventory = inventoryByIngredientId.get(ingredientId);
-            if (storeInventory == null) {
-                throw new StoreInventoryNotFoundException(storeId, ingredientId);
+            int updated = storeInventoryRepository.deductStockAtomic(storeId, ingredientId, amount);
+            if (updated == 0) {
+                StoreInventory storeInventory = storeInventoryRepository
+                        .findByStoreIdAndIngredientId(storeId, ingredientId)
+                        .orElseThrow(() -> new StoreInventoryNotFoundException(storeId, ingredientId));
+                throw new InsufficientOptionStockException(null, ingredientId, amount, storeInventory.getCurrentStock());
             }
-            int amount = deductionsByIngredient.get(ingredientId);
-            if (storeInventory.getCurrentStock() < amount) {
-                throw new InsufficientOptionStockException(
-                        null,
-                        ingredientId,
-                        amount,
-                        storeInventory.getCurrentStock()
-                );
-            }
-            storeInventory.deductStock(amount);
         }
     }
 
