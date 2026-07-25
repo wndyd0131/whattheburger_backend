@@ -3,6 +3,7 @@ package com.whattheburger.backend.service;
 import com.whattheburger.backend.domain.*;
 import com.whattheburger.backend.domain.enums.CountType;
 import com.whattheburger.backend.domain.enums.PaymentStatus;
+import com.whattheburger.backend.domain.inventory.InventoryRequirementCalculator;
 import com.whattheburger.backend.domain.order.*;
 import com.whattheburger.backend.repository.ProductOptionOptionQuantityRepository;
 import com.whattheburger.backend.repository.ProductOptionRepository;
@@ -11,7 +12,6 @@ import com.whattheburger.backend.service.exception.cart.InsufficientOptionStockE
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -41,7 +41,6 @@ class InventoryServiceTest {
     @Mock
     private ProductOptionOptionQuantityRepository productOptionOptionQuantityRepository;
 
-    @InjectMocks
     private InventoryService inventoryService;
 
     private Store store;
@@ -49,6 +48,12 @@ class InventoryServiceTest {
     @BeforeEach
     void setUp() {
         store = Store.builder().id(STORE_ID).build();
+        inventoryService = new InventoryService(
+                storeInventoryRepository,
+                productOptionRepository,
+                productOptionOptionQuantityRepository,
+                new InventoryRequirementCalculator()
+        );
     }
 
     @Test

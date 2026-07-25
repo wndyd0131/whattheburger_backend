@@ -32,7 +32,7 @@ public class CartValidatorTest {
     Map<Long, ProductOptionTrait> productOptionTraitMap = new HashMap<>();
     Map<Long, ProductOptionOptionQuantity> quantityMap = new HashMap<>();
 
-    CartValidator cartValidator = new CartValidator();
+//    CartValidator cartValidator = new CartValidator();
 
     @BeforeEach
     void setUp() {

@@ -3,6 +3,7 @@ package com.whattheburger.backend.service;
 import com.whattheburger.backend.controller.dto.cart.*;
 import com.whattheburger.backend.domain.*;
 import com.whattheburger.backend.domain.cart.*;
+import com.whattheburger.backend.domain.inventory.CartStockRequirementLineMapper;
 import com.whattheburger.backend.dto_mapper.CartDtoMapper;
 import com.whattheburger.backend.repository.*;
 import com.whattheburger.backend.security.UserDetailsImpl;
@@ -74,45 +75,25 @@ public class CartService {
     public ProcessedCartDto processCart(CartList cartList) {
         List<Cart> carts = cartList.getCarts();
         Long storeId = cartList.getStoreId();
-        Set<Long> storeProductIds = carts.stream()
-                .map(Cart::getStoreProductId).collect(Collectors.toSet());
-        Set<Long> customRuleIds = new HashSet<>();
-        Set<Long> productOptionIds = new HashSet<>();
-        Set<Long> productOptionTraitIds = new HashSet<>();
-        Set<Long> productOptionOptionQuantityIds = new HashSet<>();
-
-        initIdSets(carts, customRuleIds, productOptionIds, productOptionOptionQuantityIds, productOptionTraitIds);
-
-        Map<Long, StoreProduct> storeProductMap = storeProductRepository.findAllById(storeProductIds)
-                .stream().collect(Collectors.toMap(StoreProduct::getId, Function.identity()));
-        Map<Long, CustomRule> customRuleMap = customRuleRepository.findAllById(customRuleIds)
-                .stream().collect(Collectors.toMap(CustomRule::getId, Function.identity()));
-        Map<Long, ProductOption> productOptionMap = productOptionRepository.findAllById(productOptionIds)
-                .stream().collect(Collectors.toMap(ProductOption::getId, Function.identity()));
-        Map<Long, ProductOptionTrait> productOptionTraitMap = productOptionTraitRepository.findAllById(productOptionTraitIds)
-                .stream().collect(Collectors.toMap(ProductOptionTrait::getId, Function.identity()));
-        Map<Long, ProductOptionOptionQuantity> quantityMap = productOptionOptionQuantityRepository.findAllById(productOptionOptionQuantityIds)
-                .stream().collect(Collectors.toMap(ProductOptionOptionQuantity::getId, Function.identity()));
-        Map<Long, StoreInventory> storeInventoryMap = storeInventoryRepository.findAllByStoreId(storeId)
-                .stream().collect(Collectors.toMap(si -> si.getIngredient().getId(), Function.identity()));
+        CartValidationMaps validationMaps = loadCartValidationMaps(storeId, cartList);
 
         List<ValidatedCartDto> validatedCartDtos = cartValidator.validate(
                 cartList,
-                storeProductMap,
-                customRuleMap,
-                productOptionMap,
-                productOptionTraitMap,
-                quantityMap,
-                storeInventoryMap
+                validationMaps.storeProductMap(),
+                validationMaps.customRuleMap(),
+                validationMaps.productOptionMap(),
+                validationMaps.productOptionTraitMap(),
+                validationMaps.quantityMap(),
+                validationMaps.storeInventoryMap()
         );
 
         CalculatedCartDto calculatedCartDto = cartCalculator.calculateTotalPrice(
                 carts,
-                storeProductMap,
-                customRuleMap,
-                productOptionMap,
-                productOptionTraitMap,
-                quantityMap
+                validationMaps.storeProductMap(),
+                validationMaps.customRuleMap(),
+                validationMaps.productOptionMap(),
+                validationMaps.productOptionTraitMap(),
+                validationMaps.quantityMap()
         );
 
         log.info("Cart Total {}", calculatedCartDto.getCartCalculationResult().getCartTotalPrice());
@@ -125,31 +106,27 @@ public class CartService {
     }
 
     public ProcessedProductDto processCart(Long storeId, Cart cart) {
-        List<Cart> carts = List.of(cart);
-        Set<Long> storeProductIds = carts.stream()
-                .map(Cart::getStoreProductId).collect(Collectors.toSet());
-        Set<Long> customRuleIds = new HashSet<>();
-        Set<Long> productOptionIds = new HashSet<>();
-        Set<Long> productOptionTraitIds = new HashSet<>();
-        Set<Long> productOptionOptionQuantityIds = new HashSet<>();
+        CartList cartList = new CartList(storeId, new ArrayList<>(List.of(cart)));
+        CartValidationMaps validationMaps = loadCartValidationMaps(storeId, cartList);
 
-        initIdSets(carts, customRuleIds, productOptionIds, productOptionOptionQuantityIds, productOptionTraitIds);
-
-        Map<Long, StoreProduct> storeProductMap = storeProductRepository.findAllById(storeProductIds)
-                .stream().collect(Collectors.toMap(StoreProduct::getId, Function.identity()));
-        Map<Long, CustomRule> customRuleMap = customRuleRepository.findAllById(customRuleIds)
-                .stream().collect(Collectors.toMap(CustomRule::getId, Function.identity()));
-        Map<Long, ProductOption> productOptionMap = productOptionRepository.findAllById(productOptionIds)
-                .stream().collect(Collectors.toMap(ProductOption::getId, Function.identity()));
-        Map<Long, ProductOptionTrait> productOptionTraitMap = productOptionTraitRepository.findAllById(productOptionTraitIds)
-                .stream().collect(Collectors.toMap(ProductOptionTrait::getId, Function.identity()));
-        Map<Long, ProductOptionOptionQuantity> quantityMap = productOptionOptionQuantityRepository.findAllById(productOptionOptionQuantityIds)
-                .stream().collect(Collectors.toMap(ProductOptionOptionQuantity::getId, Function.identity()));
-        Map<Long, StoreInventory> storeInventoryMap = storeInventoryRepository.findAllByStoreId(storeId)
-                .stream().collect(Collectors.toMap(si -> si.getIngredient().getId(), Function.identity()));
-
-        ValidatedCartDto validatedCartDto = cartValidator.validate(storeId, cart, storeProductMap, customRuleMap, productOptionMap, productOptionTraitMap, quantityMap, storeInventoryMap);
-        ProductCalculationDetail productCalculationDetail = cartCalculator.calculateProductPrice(cart, storeProductMap, customRuleMap, productOptionMap, productOptionTraitMap, quantityMap);
+        ValidatedCartDto validatedCartDto = cartValidator.validate(
+                storeId,
+                cart,
+                validationMaps.storeProductMap(),
+                validationMaps.customRuleMap(),
+                validationMaps.productOptionMap(),
+                validationMaps.productOptionTraitMap(),
+                validationMaps.quantityMap(),
+                validationMaps.storeInventoryMap()
+        );
+        ProductCalculationDetail productCalculationDetail = cartCalculator.calculateProductPrice(
+                cart,
+                validationMaps.storeProductMap(),
+                validationMaps.customRuleMap(),
+                validationMaps.productOptionMap(),
+                validationMaps.productOptionTraitMap(),
+                validationMaps.quantityMap()
+        );
 
         return cartDtoMapper.toProcessedProductDto(validatedCartDto, productCalculationDetail);
     }
@@ -353,6 +330,66 @@ public class CartService {
 
     private String getGuestKey(Long storeId, UUID guestId) {
         return "cart:store:" + storeId + ":" + guestId;
+    }
+
+    private record CartValidationMaps(
+            Map<Long, StoreProduct> storeProductMap,
+            Map<Long, CustomRule> customRuleMap,
+            Map<Long, ProductOption> productOptionMap,
+            Map<Long, ProductOptionTrait> productOptionTraitMap,
+            Map<Long, ProductOptionOptionQuantity> quantityMap,
+            Map<Long, StoreInventory> storeInventoryMap
+    ) {
+    }
+
+    private CartValidationMaps loadCartValidationMaps(Long storeId, CartList cartList) {
+        List<Cart> carts = cartList.getCarts();
+        Set<Long> storeProductIds = carts.stream()
+                .map(Cart::getStoreProductId)
+                .collect(Collectors.toSet());
+        Set<Long> customRuleIds = new HashSet<>();
+        Set<Long> productOptionIds = new HashSet<>();
+        Set<Long> productOptionTraitIds = new HashSet<>();
+        Set<Long> productOptionOptionQuantityIds = new HashSet<>();
+
+        initIdSets(carts, customRuleIds, productOptionIds, productOptionOptionQuantityIds, productOptionTraitIds);
+
+        Map<Long, StoreProduct> storeProductMap = storeProductRepository.findAllById(storeProductIds)
+                .stream().collect(Collectors.toMap(StoreProduct::getId, Function.identity()));
+        Map<Long, CustomRule> customRuleMap = customRuleRepository.findAllById(customRuleIds)
+                .stream().collect(Collectors.toMap(CustomRule::getId, Function.identity()));
+        Map<Long, ProductOption> productOptionMap = productOptionRepository.findAllById(productOptionIds)
+                .stream().collect(Collectors.toMap(ProductOption::getId, Function.identity()));
+        Map<Long, ProductOptionTrait> productOptionTraitMap = productOptionTraitRepository.findAllById(productOptionTraitIds)
+                .stream().collect(Collectors.toMap(ProductOptionTrait::getId, Function.identity()));
+        Map<Long, StoreInventory> storeInventoryMap = storeInventoryRepository.findAllByStoreId(storeId)
+                .stream().collect(Collectors.toMap(si -> si.getIngredient().getId(), Function.identity()));
+
+        Set<Long> countableProductOptionIds = CartStockRequirementLineMapper.collectCountableProductOptionIds(
+                cartList,
+                productOptionMap
+        );
+        Set<Long> uncountablePooqIds = CartStockRequirementLineMapper.collectUncountablePooqIds(
+                cartList,
+                productOptionMap
+        );
+
+        productOptionRepository.findAllWithOptionIngredientsByIdIn(countableProductOptionIds) // update productOptionMap after fetch join
+                .forEach(productOption -> productOptionMap.put(productOption.getId(), productOption));
+
+        Map<Long, ProductOptionOptionQuantity> quantityMap = productOptionOptionQuantityRepository
+                .findAllWithOptionQuantityIngredientsByIdIn(uncountablePooqIds)
+                .stream()
+                .collect(Collectors.toMap(ProductOptionOptionQuantity::getId, Function.identity()));
+
+        return new CartValidationMaps(
+                storeProductMap,
+                customRuleMap,
+                productOptionMap,
+                productOptionTraitMap,
+                quantityMap,
+                storeInventoryMap
+        );
     }
 
     private Map<Class<?>, Map<Long, ?>> fetchAllRelatedEntitiesToMap(List<Cart> carts) {

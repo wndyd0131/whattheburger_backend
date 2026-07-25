@@ -1,6 +1,5 @@
 package com.whattheburger.backend.domain.cart;
 
-import com.whattheburger.backend.controller.dto.cart.CartCreateRequestDto;
 import com.whattheburger.backend.controller.dto.cart.CustomRuleRequest;
 import com.whattheburger.backend.controller.dto.cart.OptionRequest;
 import com.whattheburger.backend.controller.dto.cart.QuantityDetailRequest;
@@ -19,6 +18,7 @@ import com.whattheburger.backend.domain.StoreInventory;
 import com.whattheburger.backend.domain.StoreProduct;
 import com.whattheburger.backend.domain.enums.CountType;
 import com.whattheburger.backend.domain.enums.ProductType;
+import com.whattheburger.backend.domain.inventory.InventoryRequirementCalculator;
 import com.whattheburger.backend.service.dto.cart.ValidatedCartDto;
 import com.whattheburger.backend.service.exception.StoreInventoryNotFoundException;
 import com.whattheburger.backend.service.exception.cart.CartItemLimitExceededException;
@@ -26,6 +26,8 @@ import com.whattheburger.backend.service.exception.cart.CartStoreProductNotFound
 import com.whattheburger.backend.service.exception.cart.InsufficientOptionStockException;
 import com.whattheburger.backend.service.exception.cart.InvalidOptionRequestException;
 import com.whattheburger.backend.service.exception.cart.StoreProductNotInStoreException;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -40,206 +42,264 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class CartValidatorTest {
 
-    private final CartValidator validator = new CartValidator();
+    private CartValidator validator;
 
-    @Test
-    public void givenCartListWithStoreProductFromAnotherStore_whenValidate_thenThrowsStoreProductNotInStoreException() {
-        Long storeId = 1L;
-        Long foreignStoreId = 99L;
-        Long storeProductId = 42L;
-
-        StoreProduct storeProduct = StoreProduct.builder()
-                .id(storeProductId)
-                .store(Store.builder().id(foreignStoreId).build())
-                .product(buildMockProduct())
-                .build();
-
-        Cart cart = new Cart(storeProductId, 1, Collections.emptyList());
-        CartList cartList = new CartList(storeId, new ArrayList<>(List.of(cart)));
-
-        assertThrows(StoreProductNotInStoreException.class, () -> validator.validate(
-                cartList,
-                Map.of(storeProductId, storeProduct),
-                Collections.emptyMap(),
-                Collections.emptyMap(),
-                Collections.emptyMap(),
-                Collections.emptyMap(),
-                Collections.emptyMap()
-        ));
+    @BeforeEach
+    void setUp() {
+        validator = new CartValidator(new InventoryRequirementCalculator());
     }
 
-    @Test
-    public void givenStoreProductNotInMap_thenThrowsCartStoreProductNotFoundException() {
-        Long storeId = 1L;
-        Long storeProductId = 42L;
-        Cart cart = new Cart(storeProductId, 1, Collections.emptyList());
+    @Nested
+    class CanMergeItemCount {
 
-        assertThrows(CartStoreProductNotFoundException.class, () -> validator.validate(
-                storeId,
-                cart,
-                Collections.emptyMap(),
-                Collections.emptyMap(),
-                Collections.emptyMap(),
-                Collections.emptyMap(),
-                Collections.emptyMap(),
-                Collections.emptyMap()
-        ));
-    }
-
-    @Test
-    public void givenCartListExceedingMaxItems_whenValidate_thenThrowsCartItemLimitExceededException() {
-        List<Cart> carts = new ArrayList<>();
-        for (int i = 0; i < CartValidator.MAX_CART_ITEMS + 1; i++) {
-            carts.add(new Cart(1L, 1, Collections.emptyList()));
+        @Test
+        public void givenMergeCountWithinLimit_whenCanMergeItemCount_thenReturnsTrue() {
+            assertThat(validator.canMergeItemCount(10, 10)).isTrue();
         }
-        CartList cartList = new CartList(1L, carts);
 
-        assertThrows(CartItemLimitExceededException.class, () -> validator.validate(
-                cartList,
-                Collections.emptyMap(),
-                Collections.emptyMap(),
-                Collections.emptyMap(),
-                Collections.emptyMap(),
-                Collections.emptyMap(),
-                Collections.emptyMap()
-        ));
-    }
-
-    @Test
-    public void givenCartListAtMaxItems_whenValidate_thenDoesNotThrowCartItemLimitExceededException() {
-        List<Cart> carts = new ArrayList<>();
-        for (int i = 0; i < CartValidator.MAX_CART_ITEMS; i++) {
-            carts.add(new Cart(1L, 1, Collections.emptyList()));
+        @Test
+        public void givenMergeCountExceedsLimit_whenCanMergeItemCount_thenReturnsFalse() {
+            assertThat(validator.canMergeItemCount(15, 6)).isFalse();
         }
-        CartList cartList = new CartList(1L, carts);
-
-        Exception exception = assertThrows(Exception.class, () -> validator.validate(
-                cartList,
-                Collections.emptyMap(),
-                Collections.emptyMap(),
-                Collections.emptyMap(),
-                Collections.emptyMap(),
-                Collections.emptyMap(),
-                Collections.emptyMap()
-        ));
-        assertThat(exception).isNotInstanceOf(CartItemLimitExceededException.class);
     }
 
-    @Test
-    public void givenMergeCountWithinLimit_whenCanMergeItemCount_thenReturnsTrue() {
-        assertThat(validator.canMergeItemCount(10, 10)).isTrue();
+    @Nested
+    class ValidateCartList {
+
+        @Test
+        public void givenCartListExceedingMaxItems_whenValidate_thenThrowsCartItemLimitExceededException() {
+            List<Cart> carts = new ArrayList<>();
+            for (int i = 0; i < CartValidator.MAX_CART_ITEMS + 1; i++) {
+                carts.add(new Cart(1L, 1, Collections.emptyList()));
+            }
+            CartList cartList = new CartList(1L, carts);
+
+            assertThrows(CartItemLimitExceededException.class, () -> validator.validate(
+                    cartList,
+                    Collections.emptyMap(),
+                    Collections.emptyMap(),
+                    Collections.emptyMap(),
+                    Collections.emptyMap(),
+                    Collections.emptyMap(),
+                    Collections.emptyMap()
+            ));
+        }
+
+        @Test
+        public void givenCartListAtMaxItems_whenValidate_thenDoesNotThrowCartItemLimitExceededException() {
+            List<Cart> carts = new ArrayList<>();
+            for (int i = 0; i < CartValidator.MAX_CART_ITEMS; i++) {
+                carts.add(new Cart(1L, 1, Collections.emptyList()));
+            }
+            CartList cartList = new CartList(1L, carts);
+
+            Exception exception = assertThrows(Exception.class, () -> validator.validate(
+                    cartList,
+                    Collections.emptyMap(),
+                    Collections.emptyMap(),
+                    Collections.emptyMap(),
+                    Collections.emptyMap(),
+                    Collections.emptyMap(),
+                    Collections.emptyMap()
+            ));
+            assertThat(exception).isNotInstanceOf(CartItemLimitExceededException.class);
+        }
+
+        @Test
+        public void givenCartListWithStoreProductFromAnotherStore_whenValidate_thenThrowsStoreProductNotInStoreException() {
+            Long storeId = 1L;
+            Long foreignStoreId = 99L;
+            Long storeProductId = 42L;
+
+            StoreProduct storeProduct = StoreProduct.builder()
+                    .id(storeProductId)
+                    .store(Store.builder().id(foreignStoreId).build())
+                    .product(buildMockProduct())
+                    .build();
+
+            Cart cart = new Cart(storeProductId, 1, Collections.emptyList());
+            CartList cartList = new CartList(storeId, new ArrayList<>(List.of(cart)));
+
+            assertThrows(StoreProductNotInStoreException.class, () -> validator.validate(
+                    cartList,
+                    Map.of(storeProductId, storeProduct),
+                    Collections.emptyMap(),
+                    Collections.emptyMap(),
+                    Collections.emptyMap(),
+                    Collections.emptyMap(),
+                    Collections.emptyMap()
+            ));
+        }
+
+        @Test
+        public void givenCartList_whenValidate_thenReturnsValidatedCartDtoPerCart() {
+            StockFixture fixture = stockFixture(CountType.COUNTABLE, true, /*optionQuantity*/ 2, /*currentStock*/ 100, /*requiredQuantity*/ 1);
+            CartList cartList = new CartList(fixture.storeId, new ArrayList<>(List.of(fixture.cart, fixture.cart)));
+
+            List<ValidatedCartDto> dtos = validator.validate(
+                    cartList,
+                    fixture.storeProductMap,
+                    fixture.customRuleMap,
+                    fixture.productOptionMap,
+                    fixture.productOptionTraitMap,
+                    fixture.quantityMap,
+                    fixture.storeInventoryMap
+            );
+
+            assertThat(dtos).hasSize(2);
+        }
+
+        @Test
+        public void givenCartListWithCombinedIngredientUsage_whenValidate_thenAggregatesStockAcrossItems() {
+            StockFixture fixture = stockFixture(
+                    CountType.COUNTABLE,
+                    true,
+                    1,
+                    2,
+                    10,
+                    3
+            );
+            CartList cartList = new CartList(fixture.storeId, new ArrayList<>(List.of(fixture.cart, fixture.cart)));
+
+            assertThrows(InsufficientOptionStockException.class, () -> validator.validate(
+                    cartList,
+                    fixture.storeProductMap,
+                    fixture.customRuleMap,
+                    fixture.productOptionMap,
+                    fixture.productOptionTraitMap,
+                    fixture.quantityMap,
+                    fixture.storeInventoryMap
+            ));
+        }
     }
 
-    @Test
-    public void givenMergeCountExceedsLimit_whenCanMergeItemCount_thenReturnsFalse() {
-        assertThat(validator.canMergeItemCount(15, 6)).isFalse();
+    @Nested
+    class ValidateSingleCartStore {
+
+        @Test
+        public void givenStoreProductNotInMap_thenThrowsCartStoreProductNotFoundException() {
+            Long storeId = 1L;
+            Long storeProductId = 42L;
+            Cart cart = new Cart(storeProductId, 1, Collections.emptyList());
+
+            assertThrows(CartStoreProductNotFoundException.class, () -> validator.validate(
+                    storeId,
+                    cart,
+                    Collections.emptyMap(),
+                    Collections.emptyMap(),
+                    Collections.emptyMap(),
+                    Collections.emptyMap(),
+                    Collections.emptyMap(),
+                    Collections.emptyMap()
+            ));
+        }
+
+        @Test
+        public void givenStoreProductFromAnotherStore_thenThrowsStoreProductNotInStoreException() {
+            Long storeId = 1L;
+            Long foreignStoreId = 99L;
+            Long storeProductId = 42L;
+
+            StoreProduct storeProduct = StoreProduct.builder()
+                    .id(storeProductId)
+                    .store(Store.builder().id(foreignStoreId).build())
+                    .product(buildMockProduct())
+                    .build();
+
+            Cart cart = new Cart(storeProductId, 1, Collections.emptyList());
+
+            assertThrows(StoreProductNotInStoreException.class, () -> validator.validate(
+                    storeId,
+                    cart,
+                    Map.of(storeProductId, storeProduct),
+                    Collections.emptyMap(),
+                    Collections.emptyMap(),
+                    Collections.emptyMap(),
+                    Collections.emptyMap(),
+                    Collections.emptyMap()
+            ));
+        }
     }
 
-    @Test
-    public void givenStoreProductFromAnotherStore_thenThrowsStoreProductNotInStoreException() {
-        Long storeId = 1L;
-        Long foreignStoreId = 99L;
-        Long storeProductId = 42L;
+    @Nested
+    class ValidateSingleCartStock {
 
-        StoreProduct storeProduct = StoreProduct.builder()
-                .id(storeProductId)
-                .store(Store.builder().id(foreignStoreId).build())
-                .product(buildMockProduct())
-                .build();
+        @Test
+        public void givenCountableOptionExceedingStock_thenThrowsInsufficientOptionStockException() {
+            StockFixture fixture = stockFixture(CountType.COUNTABLE, /*isSelected*/ true, /*optionQuantity*/ 5, /*currentStock*/ 5, /*requiredQuantity*/ 2);
 
-        Cart cart = new Cart(storeProductId, 1, Collections.emptyList());
+            assertThrows(InsufficientOptionStockException.class, () -> validate(fixture));
+        }
 
-        assertThrows(StoreProductNotInStoreException.class, () -> validator.validate(
-                storeId,
-                cart,
-                Map.of(storeProductId, storeProduct),
-                Collections.emptyMap(),
-                Collections.emptyMap(),
-                Collections.emptyMap(),
-                Collections.emptyMap(),
-                Collections.emptyMap()
-        ));
-    }
+        @Test
+        public void givenCountableOptionWithEnoughStock_thenReturnsValidatedCartDto() {
+            StockFixture fixture = stockFixture(CountType.COUNTABLE, true, /*optionQuantity*/ 3, /*currentStock*/ 50, /*requiredQuantity*/ 2);
 
-    @Test
-    public void givenCountableOptionExceedingStock_thenThrowsInsufficientOptionStockException() {
-        StockFixture fixture = stockFixture(CountType.COUNTABLE, /*isSelected*/ true, /*optionQuantity*/ 5, /*currentStock*/ 5, /*requiredQuantity*/ 2);
+            ValidatedCartDto dto = assertDoesNotThrow(() -> validate(fixture));
 
-        assertThrows(InsufficientOptionStockException.class, () -> validate(fixture));
-    }
+            assertThat(dto).isNotNull();
+            assertThat(dto.getValidatedProduct().getStoreProduct().getId()).isEqualTo(fixture.storeProductId);
+            assertThat(dto.getValidatedCustomRules()).hasSize(1);
+        }
 
-    @Test
-    public void givenCountableOptionWithEnoughStock_thenReturnsValidatedCartDto() {
-        StockFixture fixture = stockFixture(CountType.COUNTABLE, true, /*optionQuantity*/ 3, /*currentStock*/ 50, /*requiredQuantity*/ 2);
+        @Test
+        public void givenCountableOptionWithMissingInventory_thenThrowsStoreInventoryNotFoundException() {
+            StockFixture fixture = stockFixture(CountType.COUNTABLE, true, /*optionQuantity*/ 1, /*currentStock*/ 100, /*requiredQuantity*/ 1);
+            fixture.storeInventoryMap = Collections.emptyMap();
 
-        ValidatedCartDto dto = assertDoesNotThrow(() -> validate(fixture));
+            assertThrows(StoreInventoryNotFoundException.class, () -> validate(fixture));
+        }
 
-        assertThat(dto).isNotNull();
-        assertThat(dto.getValidatedProduct().getStoreProduct().getId()).isEqualTo(fixture.storeProductId);
-        assertThat(dto.getValidatedCustomRules()).hasSize(1);
-    }
+        @Test
+        public void givenUncountableOptionExceedingStock_thenThrowsInsufficientOptionStockException() {
+            StockFixture fixture = uncountableStockFixture(/*currentStock*/ 1, /*requiredQuantity*/ 4);
 
-    @Test
-    public void givenCountableOptionWithMissingInventory_thenThrowsStoreInventoryNotFoundException() {
-        StockFixture fixture = stockFixture(CountType.COUNTABLE, true, /*optionQuantity*/ 1, /*currentStock*/ 100, /*requiredQuantity*/ 1);
-        fixture.storeInventoryMap = Collections.emptyMap();
+            assertThrows(InsufficientOptionStockException.class, () -> validate(fixture));
+        }
 
-        assertThrows(StoreInventoryNotFoundException.class, () -> validate(fixture));
-    }
+        @Test
+        public void givenSelectedCountableOptionWithZeroQuantity_thenThrowsInvalidOptionRequestException() {
+            StockFixture fixture = stockFixture(CountType.COUNTABLE, true, /*optionQuantity*/ 0, /*currentStock*/ 100, /*requiredQuantity*/ 1);
 
-    @Test
-    public void givenUncountableOptionExceedingStock_thenThrowsInsufficientOptionStockException() {
-        StockFixture fixture = uncountableStockFixture(/*currentStock*/ 1, /*requiredQuantity*/ 4);
+            assertThrows(InvalidOptionRequestException.class, () -> validate(fixture));
+        }
 
-        assertThrows(InsufficientOptionStockException.class, () -> validate(fixture));
-    }
+        @Test
+        public void givenSelectedUncountableOptionWithoutQuantityDetail_thenThrowsInvalidOptionRequestException() {
+            StockFixture fixture = stockFixture(CountType.UNCOUNTABLE, true, /*optionQuantity (ignored)*/ 1, /*currentStock*/ 100, /*requiredQuantity*/ 1);
 
-    @Test
-    public void givenSelectedCountableOptionWithZeroQuantity_thenThrowsInvalidOptionRequestException() {
-        StockFixture fixture = stockFixture(CountType.COUNTABLE, true, /*optionQuantity*/ 0, /*currentStock*/ 100, /*requiredQuantity*/ 1);
+            assertThrows(InvalidOptionRequestException.class, () -> validate(fixture));
+        }
 
-        assertThrows(InvalidOptionRequestException.class, () -> validate(fixture));
-    }
+        @Test
+        public void givenNoneCountTypeOption_thenSkipsStockCheck() {
+            StockFixture fixture = stockFixture(CountType.NONE, true, /*optionQuantity*/ 9999, /*currentStock*/ 0, /*requiredQuantity*/ 99);
+            fixture.storeInventoryMap = Collections.emptyMap();
 
-    @Test
-    public void givenSelectedUncountableOptionWithoutQuantityDetail_thenThrowsInvalidOptionRequestException() {
-        StockFixture fixture = stockFixture(CountType.UNCOUNTABLE, true, /*optionQuantity (ignored)*/ 1, /*currentStock*/ 100, /*requiredQuantity*/ 1);
+            assertDoesNotThrow(() -> validate(fixture));
+        }
 
-        assertThrows(InvalidOptionRequestException.class, () -> validate(fixture));
-    }
+        @Test
+        public void givenUnselectedOption_thenSkipsStockCheck() {
+            StockFixture fixture = stockFixture(CountType.COUNTABLE, /*isSelected*/ false, 9999, /*currentStock*/ 0, /*requiredQuantity*/ 99);
+            fixture.storeInventoryMap = Collections.emptyMap();
 
-    @Test
-    public void givenNoneCountTypeOption_thenSkipsStockCheck() {
-        StockFixture fixture = stockFixture(CountType.NONE, true, /*optionQuantity*/ 9999, /*currentStock*/ 0, /*requiredQuantity*/ 99);
-        fixture.storeInventoryMap = Collections.emptyMap();
+            assertDoesNotThrow(() -> validate(fixture));
+        }
 
-        assertDoesNotThrow(() -> validate(fixture));
-    }
+        @Test
+        public void givenProductQuantityGreaterThanOne_whenValidate_thenUsesProductQuantityInStockCheck() {
+            StockFixture fixture = stockFixture(
+                    CountType.COUNTABLE,
+                    true,
+                    3,
+                    2,
+                    10,
+                    2
+            );
 
-    @Test
-    public void givenUnselectedOption_thenSkipsStockCheck() {
-        StockFixture fixture = stockFixture(CountType.COUNTABLE, /*isSelected*/ false, 9999, /*currentStock*/ 0, /*requiredQuantity*/ 99);
-        fixture.storeInventoryMap = Collections.emptyMap();
-
-        assertDoesNotThrow(() -> validate(fixture));
-    }
-
-    @Test
-    public void givenCartList_whenValidate_thenReturnsValidatedCartDtoPerCart() {
-        StockFixture fixture = stockFixture(CountType.COUNTABLE, true, /*optionQuantity*/ 2, /*currentStock*/ 100, /*requiredQuantity*/ 1);
-        CartList cartList = new CartList(fixture.storeId, new ArrayList<>(List.of(fixture.cart, fixture.cart)));
-
-        List<ValidatedCartDto> dtos = validator.validate(
-                cartList,
-                fixture.storeProductMap,
-                fixture.customRuleMap,
-                fixture.productOptionMap,
-                fixture.productOptionTraitMap,
-                fixture.quantityMap,
-                fixture.storeInventoryMap
-        );
-
-        assertThat(dtos).hasSize(2);
+            assertThrows(InsufficientOptionStockException.class, () -> validate(fixture));
+        }
     }
 
     private ValidatedCartDto validate(StockFixture fixture) {
@@ -273,7 +333,17 @@ public class CartValidatorTest {
     }
 
     private StockFixture stockFixture(CountType countType, boolean isSelected, int optionQuantity, int currentStock, int requiredQuantity) {
-        // CountType.COUNTABLE, /*isSelected*/ true, /*optionQuantity*/ 5, /*currentStock*/ 5, /*requiredQuantity*/ 2
+        return stockFixture(countType, isSelected, 1, optionQuantity, currentStock, requiredQuantity);
+    }
+
+    private StockFixture stockFixture(
+            CountType countType,
+            boolean isSelected,
+            int productQuantity,
+            int optionQuantity,
+            int currentStock,
+            int requiredQuantity
+    ) {
         StockFixture f = new StockFixture();
 
         Product product = buildMockProduct();
@@ -334,7 +404,7 @@ public class CartValidatorTest {
                 .optionRequests(List.of(optionRequest))
                 .build();
 
-        f.cart = new Cart(f.storeProductId, 1, List.of(customRuleRequest));
+        f.cart = new Cart(f.storeProductId, productQuantity, List.of(customRuleRequest));
         f.storeProductMap = Map.of(f.storeProductId, storeProduct);
         f.customRuleMap = Map.of(f.customRuleId, customRule);
         f.productOptionMap = Map.of(f.productOptionId, productOption);
