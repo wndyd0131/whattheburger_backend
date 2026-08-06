@@ -80,7 +80,7 @@ dependencies {
 	implementation "com.mapbox.mapboxsdk:mapbox-sdk-services:5.8.0"
 
 	/* PERFORMANCE */
-	implementation "com.springframework.boot:spring-boot-starter-actuator"
+	implementation "org.springframework.boot:spring-boot-starter-actuator"
 
 	testImplementation 'com.h2database:h2'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
