@@ -13,6 +13,7 @@ import com.whattheburger.backend.service.exception.StoreInventoryNotFoundExcepti
 import com.whattheburger.backend.service.exception.cart.InsufficientOptionStockException;
 import com.whattheburger.backend.service.exception.cart.InvalidOptionRequestException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class InventoryService {
 
     private final StoreInventoryRepository storeInventoryRepository;
@@ -30,6 +32,8 @@ public class InventoryService {
 
     @Transactional
     public void deductStock(Order order) {
+        String requestId = UUID.randomUUID().toString();
+
         if (order == null) {
             throw new IllegalArgumentException("Order must not be null");
         }
@@ -47,7 +51,24 @@ public class InventoryService {
             storeInventoryRepository.findByStoreIdAndIngredientId(storeId, ingredientId)
                     .orElseThrow(() -> new StoreInventoryNotFoundException(storeId, ingredientId));
 
+            long start = System.nanoTime();
+
             int updated = storeInventoryRepository.deductStockAtomic(storeId, ingredientId, amount);
+            long elapsedNanos = System.nanoTime() - start;
+            long elapsedMs = elapsedNanos / 1_000_000;
+            long elapsedMicros = elapsedNanos / 1_000;
+
+            log.info(
+                    "stock_update requestId={} storeId={} ingredientId={} amount={} elapsedMs={} elapsedMicros={} updated={}",
+                    requestId,
+                    storeId,
+                    ingredientId,
+                    amount,
+                    elapsedMs,
+                    elapsedMicros,
+                    updated
+            );
+
             if (updated == 0) {
                 StoreInventory storeInventory = storeInventoryRepository
                         .findByStoreIdAndIngredientId(storeId, ingredientId)
