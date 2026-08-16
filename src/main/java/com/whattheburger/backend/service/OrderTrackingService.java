@@ -1,5 +1,6 @@
 package com.whattheburger.backend.service;
 
+import com.whattheburger.backend.domain.checkout.IdempotencyStorage;
 import com.whattheburger.backend.domain.enums.OrderStatus;
 import com.whattheburger.backend.domain.enums.OrderType;
 import com.whattheburger.backend.domain.order.Order;
@@ -29,6 +30,7 @@ public class OrderTrackingService {
     private final OrderTrackingWebSocketHandler orderTrackingWebSocketHandler;
     private final OrderService orderService;
     private final ApplicationEventPublisher eventPublisher;
+    private final IdempotencyStorage idempotencyStorage;
 
     public void sendReadyFlag(String orderNumber) {
         Executors.newSingleThreadScheduledExecutor().schedule(() -> {
@@ -42,6 +44,10 @@ public class OrderTrackingService {
     }
 
     public void scheduleOrder(OrderSession orderSession, Order order) {
+        String key = "order:schedule:" + order.getId();
+        if(!idempotencyStorage.tryAcquire(key))
+            return;
+
         OrderType orderType = order.getOrderType();
         List<OrderStatus> orderStatusList = createOrderStatusList(orderType); // order process based on order type
         Map<OrderStatus, OrderStatusDetail> randomTimeframe = createRandomTimeframe(orderStatusList);// timeframe based on order process

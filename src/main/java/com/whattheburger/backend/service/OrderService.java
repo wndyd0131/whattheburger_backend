@@ -103,6 +103,10 @@ public class OrderService {
                 .orElseThrow(() -> new OrderNotFoundException());
     }
 
+    public Optional<Order> loadOrderByCheckoutSessionId(String checkoutSessionId) {
+        return orderStorage.loadByCheckoutSessionId(checkoutSessionId);
+    }
+
     public OrderSession createOrderSession(Long storeId, UUID guestId, Authentication authentication, OrderType orderType) {
         ProcessedCartDto processedCartDto = cartService.loadCart(storeId, guestId, authentication);
 
