@@ -4,15 +4,20 @@
   <b><a href="#korean">🇰🇷 한국어 (KOR)</a></b> | <b><a href="#english">🇺🇸 English (ENG)</a></b>
 </p> -->
 
+## 목차
+- [프로젝트 소개](#1-프로젝트-소개)
+- [핵심 설계](#2-핵심-설계-의사결정)
+- [상세 문서](#3-상세-문서)
+
 # 1. 프로젝트 소개
 
 ### 패스트푸드 주문 시스템: Whattheburger (왓더버거)
-
-실제 패스트푸드 주문 서비스를 모델링한 풀스택 프로젝트입니다. ERD와
-시퀀스 다이어그램을 기반으로 시스템을 설계하고 Spring Boot와 React
-환경에서 구현했습니다. 해당 시스템을 개발하면서 재고 차감 흐름, 장바구니
-저장소, 프랜차이즈 매장 데이터 관리 구조 등 서비스 특성에 따른 설계
-의사결정을 통해 성능, 데이터 정합성, 확장성을 함께 고려했습니다.
+#### 역할
+- 풀스택 개발자
+#### 규모
+- 개인 프로젝트
+#### 설명
+실제 패스트푸드 주문 서비스를 모델로 한 풀스택 프로젝트입니다. 사용자와 비즈니스 관점에서 바라보며 요구사항을 정의하고 시스템을 설계했으며, Spring Boot와 React 환경에서 구현했습니다. 재고 차감 설계, 결제 장애 대응, 프랜차이즈 데이터 구조 설계, 프론트엔드/백엔드 계산 책임 분리 등 서비스 특성에 따른 설계 의사결정을 통해 시스템 품질 요소를 고려한 시스템을 구축하였습니다.
 
 ### Repository
 
@@ -27,9 +32,10 @@
 - 프랜차이즈 매장 검색 및 선택
 - 상품 커스터마이징 (옵션, 수량 등)
 - Redis 기반 장바구니
-- Stripe Checkout 결제
+- 주문 스냅샷 생성
+- Stripe 결제
 - Webhook 기반 주문 생성
-- WebSocket 실시간 주문 상태 조회
+- WebSocket 기반 실시간 주문 상태 조회
 - 주문 내역 조회
 
 ### **기술 스택**
@@ -83,564 +89,14 @@
 
 ---
 
-# 2. 시스템 아키텍처
-
-## 시스템 아키텍처
-
-![System Architecture.drawio.png](docs/System_Architecture.drawio.png)
-
-## 서비스 구조
-```mermaid
-flowchart LR
-    USER[사용자]
-
-    subgraph CLIENT[Client]
-        WEB[React Web]
-    end
-
-    subgraph AWS[AWS]
-        NGINX[Nginx<br/>Reverse Proxy]
-
-        subgraph BACKEND[Spring Boot Backend]
-            API[REST API]
-            AUTH[Authentication<br/>JWT / Guest]
-            PRODUCT[Product]
-            ORDER[Order & Payment]
-            INVENTORY[Inventory]
-            STORE[Store]
-            WEBSOCKET[WebSocket]
-            ORDER_TRACKING[Order Tracking]
-            CART[Cart]
-        end
-
-        MYSQL[(MySQL)]
-        REDIS[(Redis)]
-        S3[(AWS S3)]
-    end
-
-    STRIPE[Stripe]
-    MAPBOX[Mapbox API]
-
-    USER --> WEB
-    WEB -->|HTTPS / REST| NGINX
-    WEB <-->|WebSocket| NGINX
-
-    NGINX --> API
-    NGINX --> WEBSOCKET
-
-    API --> AUTH
-    API --> ORDER
-    API --> PRODUCT
-    API --> INVENTORY
-    API --> STORE
-    API --> CART
-
-    WEBSOCKET --> ORDER_TRACKING
-
-    AUTH --> MYSQL
-    PRODUCT --> MYSQL
-    ORDER --> MYSQL
-    STORE --> MYSQL
-    INVENTORY --> MYSQL
-
-    API --> REDIS
-    ORDER --> REDIS
-    CART --> REDIS
-
-    API --> S3
-    API --> MAPBOX
-
-    ORDER -->|Checkout 생성| STRIPE
-    STRIPE -->|Webhook| NGINX
-```
-
-## 서비스 저장소
-```mermaid
-flowchart TB
-    APP[Spring Boot]
-
-    MYSQL[(MySQL<br/>회원 · 매장 · 상품 · 주문 · 재고)]
-    REDIS[(Redis<br/>장바구니 · 주문 세션 · 결제 세션)]
-    S3[(S3<br/>상품 이미지)]
-
-    APP --> MYSQL
-    APP --> REDIS
-    APP --> S3
-```
-
-
-# 시퀀스 다이어그램
-
-## 매장 불러오기
-```mermaid
-sequenceDiagram
-    autonumber
-
-    actor User
-    participant React
-    participant StoreProductService
-    participant StoreService
-    participant MapBoxAPI
-
-    User->>React: Click "Menu"
-
-    alt Store cookie exists
-        React->>StoreProductService: GET /store/{storeId}/category/product
-        StoreProductService-->>React: Product list
-        React-->>User: Display menu page
-
-    else Store cookie does not exist
-        React-->>User: Display store selection page
-
-        User->>React: Input location
-
-        React->>StoreService: GET /store/nearby
-        StoreService-->>React: Nearby stores
-
-        React->>MapBoxAPI: Request map (latitude, longitude)
-        MapBoxAPI-->>React: Map component
-
-        React-->>User: Display nearby stores
-
-        User->>React: Click "Select"
-
-        React->>StoreProductService: GET /store/{storeId}/category/product
-        StoreProductService-->>React: Product list
-
-        React-->>User: Display menu page
-    end
-```
-## 장바구니 담기
-```mermaid
-sequenceDiagram
-
-    actor User
-    participant React
-    participant StoreProductService
-    participant CartService
-    participant CartSessionStorage
-    participant CartValidator
-    participant CartCalculator
-    autonumber
-
-    User->>React: Select category
-    React->>StoreProductService: GET /store/{storeId}/category/product
-    StoreProductService-->>React: StoreProduct list
-    React-->>User: Display menu by category
-
-    User->>React: Select item
-    React->>StoreProductService: GET /store/{storeId}/product/{storeProductId}
-    StoreProductService-->>React: StoreProduct
-    React-->>User: Display product details
-
-    opt Modify menu
-        User->>React: Modify options
-        React->>React: dispatchRoot()
-
-        User->>React: Modify option traits
-        React->>React: dispatchRoot()
-    end
-
-    User->>React: Click "Add to Bag"
-
-    React->>CartService: POST /store/{storeId}/cart
-
-    CartService->>CartSessionStorage: load()
-    CartSessionStorage-->>CartService: Cart
-
-
-
-
-    CartService->>CartValidator: validate()
-    CartValidator-->>CartService: ValidatedCart
-
-    CartService->>CartCalculator: calculateTotalPrice()
-    CartCalculator-->>CartService: CalculatedCart
-
-    CartService->>CartSessionStorage: save()
-    CartService-->>React: Cart
-    React-->>User: Product added to bag
-```
-
-## 주문 생성 및 결제 요청
-```mermaid
-sequenceDiagram
-
-    actor User
-    participant React
-    participant OrderService
-    participant CartService
-    participant CheckoutService
-    participant Redis
-    participant Stripe
-    autonumber
-
-    User->>React: Click "Checkout"
-
-
-    React->>OrderService: POST /order-session/store/{storeId}
-    OrderService->>CartService: Load cart
-    CartService-->>OrderService: Cart
-    OrderService->>OrderService: Build order session
-    OrderService->>Redis: Save order session
-    Redis-->>OrderService: Saved
-    OrderService-->>React: Order session created
-
-    User->>React: Enter delivery information<br/>Confirm checkout
-    React->>CheckoutService: POST /checkout/{orderSessionId}
-
-    CheckoutService->>Redis: Load order session
-    Redis-->>CheckoutService: Order Session
-
-    CheckoutService->>Redis: Save Order Session
-    Redis-->>CheckoutService: Saved
-    CheckoutService->>Stripe: Create checkout session
-    Stripe-->>CheckoutService: Checkout URL
-
-    CheckoutService->>Redis: Save checkout session
-    Redis-->>CheckoutService: Saved
-
-    CheckoutService-->>React: Stripe redirect url
-
-    React->>Stripe: Redirect to checkout page
-    User->>Stripe: Complete payment
-
-    Stripe-->>React: Success URL
-    React-->>User: Loading Page
-    Stripe->>CheckoutService: Webhook (checkout.session.completed)
-```
-
-## 결제 처리
-```mermaid
-sequenceDiagram
-
-    actor Stripe
-    participant CheckoutService
-    participant Redis
-    participant StockValidator
-    participant OrderService
-    participant InventoryService
-    participant OrderTrackingService
-    participant CartService
-    participant OrderSessionStorage
-    autonumber
-
-    Stripe->>CheckoutService: Webhook (checkout.session.completed)
-
-    CheckoutService->>Redis: Load Checkout Session
-    Redis-->>CheckoutService: Checkout Session
-
-    CheckoutService->>Redis: Load Order Session
-    Redis-->>CheckoutService: Order Session
-    CheckoutService->>Redis: Update Order Session Status
-    CheckoutService->>OrderService: Build Order
-    OrderService->>InventoryService: Deduct Stock
-    InventoryService-->>OrderService: Stock Deducted
-    OrderService-->>CheckoutService: Order
-
-    CheckoutService->>OrderTrackingService: Schedule Order Status Updates
-    CheckoutService->>CartService: Clean up Cart
-    CheckoutService->>OrderService: Add Order to Order Session
-    OrderService->>OrderSessionStorage: Update order id
-```
-## 실시간 주문 상태 조회
-```mermaid
-sequenceDiagram
-    autonumber
-
-    participant CheckoutService
-    actor User
-    participant React
-    participant OrderTrackingWebSocketHandler
-    participant OrderTrackingService
-    participant OrderService
-    participant ApplicationEventPublisher
-    participant WebSocketListener
-
-    CheckoutService->>OrderTrackingService: Schedule Order Status Updates
-
-    User->>React: Open order tracking page
-    React->>OrderTrackingWebSocketHandler: Connect (/ws/track)
-
-    loop Until order is completed
-        OrderTrackingService->>OrderService: Update Order Status
-        OrderService->>ApplicationEventPublisher: Publish Order Status Changed Event
-        ApplicationEventPublisher->>WebSocketListener: Deliver Event
-        WebSocketListener->>OrderTrackingWebSocketHandler: Send Status Update
-        OrderTrackingWebSocketHandler-->>React: Order Status Update
-        React->>React: Update UI
-    end
-```
----
-
-# 3. 도메인 설계
-
-# 카탈로그
-
-## ERD
-
-```mermaid
-erDiagram
-    category ||--o{ category : ""
-    category ||--o{ category_product : ""
-    product ||--o{ category_product : ""
-
-    product ||--o{ product_option : ""
-    options ||--o{ product_option : ""
-    custom_rule ||--o{ product_option : ""
-
-    product_option ||--o{ product_option_trait : ""
-    option_trait ||--o{ product_option_trait : ""
-
-    product_option ||--o{ product_option_option_quantity : ""
-    options ||--o{ option_quantity : ""
-    quantity ||--o{ option_quantity : ""
-    option_quantity ||--o{ product_option_option_quantity : ""
-
-    category {
-        bigint category_id PK
-        bigint PARENT_ID FK
-        varchar name
-        int order_index
-    }
-    category_product {
-        bigint category_product_id PK
-        bigint category_id FK
-        bigint product_id FK
-    }
-    product {
-        bigint product_id PK
-        varchar name
-        decimal price
-        varchar brief_info
-        varchar product_type
-        double calories
-    }
-    options {
-        bigint option_id PK
-        varchar name
-        varchar image_source
-        double calories
-    }
-    custom_rule {
-        bigint custom_rule_id PK
-        varchar name
-        varchar custom_rule_type
-        int order_index
-        int min_selection
-        int max_selection
-    }
-    option_trait {
-        bigint option_trait_id PK
-        varchar name
-        varchar label_code
-        varchar option_trait_type
-    }
-    quantity {
-        bigint quantity_id PK
-        varchar quantity_type
-        varchar label_code
-    }
-    option_quantity {
-        bigint option_quantity_id PK
-        bigint option_id FK
-        bigint quantity_id FK
-        double extra_calories
-    }
-    product_option {
-        bigint product_option_id PK
-        bigint product_id FK
-        bigint option_id FK
-        bigint custom_rule_id FK
-        tinyint is_default
-        varchar count_type
-        int default_quantity
-        int max_quantity
-        decimal extra_price
-        int order_index
-    }
-    product_option_trait {
-        bigint product_option_trait_id PK
-        bigint product_option_id FK
-        bigint option_trait_id FK
-        int default_selection
-        decimal extra_price
-        double extra_calories
-    }
-    product_option_option_quantity {
-        bigint product_option_option_quantity_id PK
-        bigint product_option_id FK
-        bigint option_quantity_id FK
-        decimal extra_price
-        tinyint is_default
-    }
-
-```
-
-### 주요 엔티티
-
-| 엔티티 | 역할 |
-| --- | --- |
-| `product` | 치즈버거, 불고기버거와 같은  상품 |
-| `option` | 치즈, 양상추, 피클과 같은 선택 가능한 재료 |
-| `trait` | 토스팅, 맵기 정도 등과 같은 상세 선택 |
-| `quantity` | 정수가 아닌 수량 (Small, Medium, Large) |
-| `customRule` | 최소/최대 선택 개수 등 선택 규칙 |
-
-#### 1. 상품별 옵션 구성
-
-하나의 상품은 특정 옵션과 상세 옵션만 선택할 수 있어야 합니다.
-
-e.g. 빅맥에는 치즈와 피클 옵션이 존재하지만 아메리카노에는 존재하지
-않습니다.
-
-이를 위해 `product`, `option`, `trait`, `quantity`를 분리하고 조인
-엔티티를 통해 상품별로 허용된 옵션을 정의했습니다. 이러한 구조를 통해
-상품마다 다른 옵션 구성을 가질 수 있으며, 잘못된 옵션 선택을 방지할 수
-있습니다.
-
-#### 2. 옵션 선택 규칙
-
-옵션에 대해서는 선택 방식에 대한 제약이 필요합니다.
-
-e.g. 버거 주문 시 "빵" 분류에서는 일반 빵, 브리오슈 빵, 없음 중 하나만
-선택할 수 있지만, "토핑" 분류에서는 여러 옵션을 동시에 선택할 수
-있습니다.
-
-이를 위해 `customRule` 엔티티를 도입하여 아래와 같은 사항을 관리하도록
-설계하여 규칙을 데이터를 통해 관리할 수 있도록 설계했습니다.
-
-- 옵션 그룹 분류
-- 최소 선택 개수
-- 최대 선택 개수
-- 화면 표시 순서
-
-# 상품 인벤토리
-
-## ERD
-
-```mermaid
-erDiagram
-    store ||--o{ store_inventory : ""
-    ingredient ||--o{ store_inventory : ""
-
-    options ||--o{ option_ingredient : ""
-    ingredient ||--o{ option_ingredient : ""
-
-    option_quantity ||--o{ option_quantity_ingredient : ""
-    ingredient ||--o{ option_quantity_ingredient : ""
-
-    options ||--o{ option_quantity : ""
-    quantity ||--o{ option_quantity : ""
-
-    store {
-        bigint store_id PK
-        varchar branch
-        varchar city
-        varchar zipcode
-    }
-    ingredient {
-        bigint ingredient_id PK
-        varchar name
-        varchar unit
-    }
-    store_inventory {
-        bigint store_inventory_id PK
-        bigint store_id FK
-        bigint ingredient_id FK
-        int current_stock
-    }
-    options {
-        bigint option_id PK
-        varchar name
-        double calories
-    }
-    option_ingredient {
-        bigint option_ingredient_id PK
-        bigint option_id FK
-        bigint ingredient_id FK
-        int required_quantity
-    }
-    quantity {
-        bigint quantity_id PK
-        varchar quantity_type
-        varchar label_code
-    }
-    option_quantity {
-        bigint option_quantity_id PK
-        bigint option_id FK
-        bigint quantity_id FK
-        double extra_calories
-    }
-    option_quantity_ingredient {
-        bigint option_quantity_ingredient_id PK
-        bigint option_quantity_id FK
-        bigint ingredient_id FK
-        int required_quantity
-    }
-
-```
-
-### 주요 엔티티
-
-| 엔티티 | 역할 |
-| --- | --- |
-| `store_inventory` | 매장별 재료 재고 |
-| `ingredient` | 치즈, 패티, 빵 등 실제 차감 대상 재료 |
-| `option` | 사용자가 선택하는 옵션 |
-| `quantity` | 셀 수 없는 옵션에 대한 수량 선택 옵션 |
-| `option_ingredient` | 셀 수 있는 옵션에 대한 재료량 |
-| `option_quantity_ingredient` | 셀 수 없는 옵션에 대한 재료량 |
-
-#### 재고 차감
-
-패스트푸드는 상품의 재고를 옵션 단위로 관리합니다. 즉, 하나의 옵션이
-여러 재료를 사용하는 관계입니다.
-
-e.g. 치즈버거의 치즈 옵션은 "치즈"를 재고로 사용합니다.
-
-따라서 재고는 `store_inventory`에서 매장별 `ingredient` 단위로 관리하고,
-옵션 선택 시 셀 수 있는 수량에 대한 소모량은 `option_ingredient`, 셀 수
-없는 수량에 대한 소모량은 `option_quantity_ingredient`로 분리하였습니다.
-
-이를 통해 주문 시 선택된 옵션 조합을 기반으로 실제 차감해야 할 재료
-재고를 계산할 수 있도록 설계하였습니다.
-
-# 주문
-
-### 주요 엔티티
-
-| 엔티티 | 역할 |
-| --- | --- |
-| `orders` | 주문 기본 정보, 결제 상태, 주문 상태 |
-| `order_product` | 주문한 상품의 스냅샷 |
-| `order_custom_rule` | 주문 당시 옵션 그룹/선택 규칙 스냅샷 |
-| `order_product_option` | 주문 당시 선택한 옵션 스냅샷 |
-| `order_product_option_trait` | 주문 당시 선택한 상세 옵션 스냅샷 |
-
-#### 주문 스냅샷
-
-주문은 결제와 정산의 기준이 되므로, 상품 카탈로그 변경의 영향을 받으면
-안 됩니다.
-
-따라서 `orders`에 `store_product_id` 같은 참조값만 저장하지 않고, 조인
-엔티티를 활용하여 주문 당시의 상품명, 가격, 옵션명, 선택값을 함께
-저장하였습니다. 이를 통해 상품 정보가 변경되거나 숨김 처리되더라도 과거
-주문 내역은 결제 당시 기준으로 안정적으로 조회할 수 있습니다.
-
-## ERD
-
-![image.png](docs/image%202.png)
-
-![image.png](docs/image%203.png)
-
----
-
-# 4. 핵심 설계 의사결정 - 재고 차감
-
+# 2. 핵심 설계 의사결정
+## 1. 재고 차감
 ### **문제**
 
 사용자가 주문을 확정하면, 주문한 상품과 선택한 옵션에 필요한 재료 재고가 주문 수량만큼 차감됩니다. 서비스의 특성에 따라 "차감 흐름"과 "동시성 로직 제어"에 대해 의사결정을 내렸습니다.
+
+<details>
+<summary>상세</summary>
 
 ### **재고 차감 시점**
 
@@ -689,11 +145,21 @@ e.g. 치즈버거의 치즈 옵션은 "치즈"를 재고로 사용합니다.
 
 [https://app.notion.com/p/06dc0bf300058383969b815cc8f257b3?source=copy_link](https://app.notion.com/p/06dc0bf300058383969b815cc8f257b3?pvs=21)
 
+</details>
+
 ---
 
-# **5. 핵심 설계 의사결정 - 결제 Webhook 멱등성 처리**
+## 2. 결제 Webhook 멱등성 처리
 
 ### **문제**
+Stripe Webhook 요청 처리 중 서버에 장애가 발생하더라도 안전하게 결제를 처리할 수 있도록 설계했습니다.
+
+<details>
+<summary>상세</summary>
+
+![stripe_docs_1.png](docs/stripe_docs_1.png)
+![stripe_docs_2.png](docs/stripe_docs_2.png)
+*그림. Stripe Webhook 중복 처리 문서*
 
 Stripe Webhook은 서버로부터 정상적인 응답을 받지 못하면 동일한 이벤트를 재전송할 수 있습니다. 따라서 동일한 결제 완료 이벤트가 여러 번 전달되더라도 **주문 생성 및 재고 차감이 중복으로 수행되지 않도록 멱등성을 보장**해야 합니다.
 
@@ -701,11 +167,11 @@ Stripe Webhook은 서버로부터 정상적인 응답을 받지 못하면 동일
 
 특히 다음과 같은 실패 상황을 고려했습니다.
 
-| **실패 시점** | **상태** | **재요청 시 필요한 처리** |
-| --- | --- | --- |
-| 주문 생성 전 장애 | 주문 데이터 없음 | 결제 처리 전체 재실행 |
-| 주문 생성 후 장애 | 주문 데이터 존재, 후처리 미완료 가능 | 주문 생성 제외 후처리 재실행 |
-| 모든 처리 완료 후 응답 실패 | 모든 작업 완료 | 중복 작업 방지 후 정상 응답 |
+| **실패 시점** | **상태**                  | **재요청 시 필요한 처리** |
+| --- |-------------------------|------------------|
+| 주문 생성 전 장애 | 주문 데이터 없음               | 결제 처리 전체 로직 재실행  |
+| 주문 생성 후 장애 | 주문 데이터는 존재, 후처리 작업은 미완료 | 주문 생성 외 로직만 재실행  |
+| 모든 처리 완료 후 응답 실패 | 모든 작업 완료                | 중복 작업 방지 후 정상 응답 |
 
 ### **멱등성 보장**
 
@@ -733,7 +199,10 @@ Stripe Webhook은 서버로부터 정상적인 응답을 받지 못하면 동일
 
 #### **처리 흐름**
 
-```mermaid
+<details>
+  <summary>멱등성 처리 플로우 차트</summary>
+
+  ```mermaid
 flowchart TD
     start([Stripe webhook POST]) --> receive["CheckoutController<br/>webhook 수신"]
     receive --> verifySig{Signature 검증}
@@ -770,6 +239,8 @@ flowchart TD
         rollback
     end
 ```
+</details>
+
 
 1. **주문이 존재하지 않는 경우**
     - 주문 생성 및 재고 차감 수행
@@ -797,13 +268,18 @@ Webhook의 중복 요청을 단순 차단하는 방식에서 벗어나 **서버 
 - 주문 생성 후 장애 발생 시 누락된 후처리 복구
 - DB Unique 제약 조건을 통한 최종 데이터 정합성 보장
 
+</details>
+
 ---
 
-# 6. **핵심 설계 의사결정 - 프랜차이즈 상품 데이터 구조**
+## 3. 프랜차이즈 상품 데이터 구조
 
 ### 문제
 
 프랜차이즈 매장의 공통 상품 정보는 재사용하면서 매장별 다른 구성을 지원하도록 설계했습니다.
+
+<details>
+<summary>상세</summary>
 
 ### 후보 비교
 
@@ -839,6 +315,8 @@ StoreAdd, 상품의 변경사항은 StoreDelta에 분리하여 저장했습니�
 중복 저장을 피하면서 매장별 운영 정책을 유연하게 반영할 수 있습니다.
 
 # ERD
+<details>
+<summary>프랜차이즈 스키마 ERD</summary>
 
 ```mermaid
 erDiagram
@@ -936,9 +414,17 @@ erDiagram
         int max_selection
     }
 ```
+</details>
 
 # 🔗 링크
 
 [https://app.notion.com/p/386c0bf3000580ccabb5f5ac81440da8?source=copy_link](https://app.notion.com/p/386c0bf3000580ccabb5f5ac81440da8?pvs=21)
 
+</details>
+
 ---
+
+# 3. 상세 문서
+- [시스템 아키텍처](docs/architecture.md)
+- [도메인 설계](docs/domain_design.md)
+- [요청 흐름](docs/sequence_diagrams.md)
