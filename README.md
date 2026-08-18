@@ -209,7 +209,7 @@ public Order completePaidOrder(
 ```java
 Order order;
 if (idempotencyKeyExists == false) {
-    order = orderService.completePaidOrder(
+    order = orderService.completePaidOrder( // Unique 제약조건 예외가 발생하면 에러와 함께 재요청 처리
             orderSession,
             session.getId(),
             paymentMethodObject
@@ -225,6 +225,9 @@ if (idempotencyKeyExists == false) {
             );
 }
 
+/**
+ 후처리 작업 또한 멱등성 처리됨
+*/
 orderTrackingService.scheduleOrder(orderSession, order);
 cartService.cleanUp(UUID.fromString(cartSessionId));
 orderService.addOrderToOrderSession(order, orderSession);
