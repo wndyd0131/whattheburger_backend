@@ -136,6 +136,48 @@
 
 여러 재고를 동시에 차감해야 하는 환경에서 RPS를 기반으로 실험한 결과, 비관적 락이 2배 많은 요청량에서 2배 빠른 응답속도를 보이는 것을 확인했습니다.
 
+- K6 코드
+  <details>
+  <summary>상세</summary>
+  
+  ```javascript
+  export const options = {
+    scenarios: {
+      inventory_test: {
+        executor: 'ramping-arrival-rate',
+        startRate: 10,
+        timeUnit: '1s',
+  
+        preAllocatedVUs: 100,
+        maxVUs: 2000,
+  
+        stages: [
+          { duration: '1m', target: 10 },
+          { duration: '2m', target: 10 },
+  
+          { duration: '1m', target: 50 },
+          { duration: '2m', target: 50 },
+  
+          { duration: '1m', target: 100 },
+          { duration: '2m', target: 100 },
+  
+          { duration: '1m', target: 200 },
+          { duration: '2m', target: 200 },
+        ],
+      },
+    },
+  };
+  
+  export default function() {
+  //	http.post(`http://${URL}:${PORT}/api/v1/perf/inventory/deduct/single`);
+  	http.post(`http://${URL}:${PORT}/api/v1/perf/inventory/deduct/multi`);
+  }
+  ```
+    
+  </details>
+
+
+
 1. **원자적 업데이트 - 주문 당 재고 10**
    ![image.png](docs/atomic_update_multistock_perf.png)
 2. **비관적 락 - 주문 당 재고 10**
@@ -209,7 +251,7 @@ public Order completePaidOrder(
 ```java
 Order order;
 if (idempotencyKeyExists == false) {
-    order = orderService.completePaidOrder(
+    order = orderService.completePaidOrder( // Unique 제약조건 예외가 발생하면 에러와 함께 재요청 처리
             orderSession,
             session.getId(),
             paymentMethodObject
@@ -225,6 +267,9 @@ if (idempotencyKeyExists == false) {
             );
 }
 
+/**
+ 후처리 작업 또한 멱등성 처리됨
+*/
 orderTrackingService.scheduleOrder(orderSession, order);
 cartService.cleanUp(UUID.fromString(cartSessionId));
 orderService.addOrderToOrderSession(order, orderSession);
