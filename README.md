@@ -190,6 +190,45 @@ Stripe Webhook은 서버로부터 정상적인 응답을 받지 못하면 동일
 따라서 별도의 멱등성 상태를 관리하기보다 DB의 Unique 제약 조건을 최종 방어선으로 사용했습니다.
 
 ### **부분 실패에 대한 재처리**
+```java
+@Transactional
+public Order completePaidOrder(
+        OrderSession orderSession,
+        String checkoutSessionId,
+        PaymentMethod paymentMethodObject
+) {
+    Order order = buildOrderFromSession(orderSession);
+    order.updateOrderStatus(OrderStatus.CONFIRMING);
+    order.changePaymentStatus(PaymentStatus.PAID);
+    applyCardInfo(order, paymentMethodObject);
+    order.changeCheckoutSessionId(checkoutSessionId);
+    inventoryService.deductStock(order);
+    return saveOrder(order);
+}
+```
+```java
+Order order;
+if (idempotencyKeyExists == false) {
+    order = orderService.completePaidOrder(
+            orderSession,
+            session.getId(),
+            paymentMethodObject
+    );
+} else {
+    order = orderService.loadOrderByCheckoutSessionId(session.getId())
+            .orElseGet(() ->
+                    orderService.completePaidOrder(
+                            orderSession,
+                            session.getId(),
+                            paymentMethodObject
+                    )
+            );
+}
+
+orderTrackingService.scheduleOrder(orderSession, order);
+cartService.cleanUp(UUID.fromString(cartSessionId));
+orderService.addOrderToOrderSession(order, orderSession);
+```
 
 주문 생성과 재고 차감은 `completePaidOrder()`의 하나의 트랜잭션으로 처리하지만, 주문 상태 스케줄링, 장바구니 정리, 주문 세션 업데이트 등의 후처리는 트랜잭션 외부에서 수행합니다.
 
