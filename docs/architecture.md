@@ -1,6 +1,6 @@
 # 시스템 아키텍처
 ## 시스템 아키텍처
-![System Architecture.drawio.png](docs/System_Architecture.drawio.png)
+![System Architecture.drawio.png](System_Architecture.drawio.png)
 
 ## 서비스 구조
 ```mermaid

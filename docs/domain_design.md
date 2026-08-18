@@ -254,8 +254,8 @@ e.g. 치즈버거의 치즈 옵션은 "치즈"를 재고로 사용합니다.
 
 ## ERD
 
-![image.png](docs/image%202.png)
+![image.png](image%202.png)
 
-![image.png](docs/image%203.png)
+![image.png](image%203.png)
 
 ---
