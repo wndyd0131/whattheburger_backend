@@ -185,7 +185,9 @@
 
 # 🔗 링크
 
-[https://app.notion.com/p/06dc0bf300058383969b815cc8f257b3?source=copy_link](https://app.notion.com/p/06dc0bf300058383969b815cc8f257b3?pvs=21)
+설계 문서: [https://app.notion.com/p/06dc0bf300058383969b815cc8f257b3?source=copy_link](https://app.notion.com/p/06dc0bf300058383969b815cc8f257b3?pvs=21)
+
+부하 테스트: [https://app.notion.com/p/vs-3a9c0bf3000580229ba8f2a5e5539310](https://app.notion.com/p/vs-3a9c0bf3000580229ba8f2a5e5539310)
 
 </details>
 
