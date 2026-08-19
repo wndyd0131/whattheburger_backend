@@ -402,7 +402,7 @@ StoreAdd, 상품의 변경사항은 StoreDelta에 분리하여 저장했습니�
 
 # ERD
 <details>
-<summary>프랜차이즈 스키마 ERD</summary>
+<summary>카탈로그 스키마 ERD</summary>
 
 ```mermaid
 erDiagram
@@ -501,6 +501,65 @@ erDiagram
     }
 ```
 </details>
+
+# 상품 불러오기
+## 플로우차트
+<details>
+<summary>Delta 플로우 차트</summary>
+  
+```mermaid
+flowchart TD
+    A[StoreProduct load] --> B[storeId 검증]
+    B --> C[storeOptionDeltas → Map by productOptionId]
+    C --> D[product.getProductOptions 순회]
+    D --> E{StoreOptionDelta 있음?}
+    E -->|OVERRIDE| F[extraPrice = overridePrice]
+    E -->|HIDDEN| G[extraPrice = null]
+    E -->|없음| H[extraPrice = productOption.extraPrice]
+    F --> I[ProductOption 필드로 OptionResponse 생성]
+    G --> I
+    H --> I
+    I --> J[optionResponses에 항상 add]
+  
+```
+
+</details>
+
+## 구현
+<details>
+<summary>상품 불러오기 코드</summary>
+
+```java
+public static Optional<BigDecimal> resolveExtraPrice(ProductOption productOption, StoreOptionDelta delta) {
+    if (delta == null) {
+        return Optional.of(productOption.getExtraPrice());
+    }
+    if (delta.getDeltaType() == DeltaType.OVERRIDE) {
+        return Optional.of(delta.getOverridePrice());
+    }
+    return Optional.empty();
+}
+```
+
+```java
+for (ProductOption productOption : productOptions) {
+    Optional<BigDecimal> extraPrice = StoreOptionDelta.resolveExtraPrice(
+        productOption,
+        storeOptionDeltaMap.get(productOption.getId()));
+    if (extraPrice.isEmpty()) {
+        continue;
+    }
+    optionResponses.add(buildOptionResponse(productOption, extraPrice.get()));
+}
+```
+
+</details>
+상품의 구체적인 옵션을 계산할 때, 옵션의 Delta 존재 여부를 먼저 확인하여 변경 여부에 따라 진행합니다.
+
+# 결과
+- 매장별 상품 데이터 중복 감소
+  - 매장 수 증가에 따른 확장성 문제 해결
+  - 공통 데이터 수정 비용 감소
 
 # 🔗 링크
 
