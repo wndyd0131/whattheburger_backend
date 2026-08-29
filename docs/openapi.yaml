@@ -1,0 +1,4476 @@
+# OpenAPI 3.1 specification for the Whattheburger backend.
+#
+# Reverse-engineered from the Spring Boot source in src/main/java. Where the code
+# and the intended contract appear to disagree, the discrepancy is called out in the
+# operation description rather than silently "fixed" here.
+openapi: 3.1.0
+
+info:
+  title: Whattheburger API
+  version: 1.0.0
+  summary: Ordering API for the Whattheburger storefront (menu, cart, order session, Stripe checkout).
+  description: |
+    REST API backing the Whattheburger client. The API is stateless: authentication is
+    carried by a JWT bearer token, and unauthenticated ("guest") traffic is correlated by
+    a `guestId` cookie.
+
+    ## Authentication
+
+    `POST /api/v1/login` returns an `accessToken` and a `refreshToken` in the JSON response
+    body. The client stores them itself and sends the access token on subsequent requests as
+    `Authorization: Bearer <accessToken>`.
+
+    Token facts, taken from `JwtTokenUtil`:
+
+    - Algorithm `HS256`. The signing key is generated at application startup, so **all
+      previously issued tokens become invalid whenever the server restarts**.
+    - Access token lifetime: 30 minutes. Refresh token lifetime: 7 days.
+    - The only claims are `sub` (the user's email), `iat` and `exp`. No user id and no roles
+      are embedded in the token.
+    - There is **no refresh endpoint**. The refresh token is issued but cannot be redeemed.
+
+    ## Guest identity
+
+    `GuestFilter` runs on every request. If no `guestId` cookie is present it issues one
+    (`HttpOnly`, `Secure`, `SameSite=None`, `Max-Age=30d`, `Path=/`). Cart, order-session and
+    checkout endpoints read that cookie to scope the guest's data in Redis.
+
+    Because the filter only *sets* the cookie on the response, the **first** request a fresh
+    client makes to an endpoint that declares `guestId` as required will still fail with 400
+    (`Required cookie 'guestId' ... is not present`). Clients must make one warm-up request
+    first.
+
+    ## Authorization
+
+    Authorization is configured centrally in `SecurityConfig` and is currently very sparse:
+
+    | Rule | Effect |
+    | --- | --- |
+    | `GET /api/v1/users` | authenticated |
+    | `GET /api/v1/products` | role `ADMIN` |
+    | `GET /api/v1/order/**` | authenticated |
+    | everything else | `permitAll()` |
+
+    Every operation below documents its *effective* protection under `security`. Note that
+    write endpoints that look administrative (`POST /api/v1/products`,
+    `POST /api/v1/store/product`, `POST /api/v1/store/{storeId}/product/{storeProductId}`)
+    are in fact publicly reachable.
+
+    ## Errors
+
+    `GlobalExceptionHandler` renders every handled exception as an `ErrorResponse`
+    (`message`, `status`, `timestamp`). 401s raised inside the security filter chain are
+    rendered by `CustomAuthenticationEntryPoint` using the same shape, but with a generic
+    `"Authentication failed"` message.
+
+    Any exception without a dedicated handler falls through to a catch-all that returns
+    **500** with the raw exception message. Several conditions that ought to be 4xx
+    currently surface as 500 this way; they are flagged per operation.
+  contact:
+    name: Whattheburger backend
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Local development (profile `dev`, no servlet context path)
+  - url: '{scheme}://{host}'
+    description: Deployed environment
+    variables:
+      scheme:
+        default: https
+        enum: [http, https]
+      host:
+        default: localhost:8080
+
+tags:
+  - name: Auth
+    description: Login and token issuance.
+  - name: User
+    description: Sign-up and reading the authenticated user's profile.
+  - name: Catalog
+    description: Global (store-independent) menu catalog — categories, products, options, option traits.
+  - name: Store
+    description: Store lookup, including geospatial "near me" search.
+  - name: StoreProduct
+    description: Per-store menu — availability, pricing overrides and option overrides.
+  - name: Cart
+    description: Redis-backed, store-scoped cart for both guests and authenticated users.
+  - name: OrderSession
+    description: Short-lived snapshot of a cart that is being taken through checkout.
+  - name: Order
+    description: Persisted orders and order history.
+  - name: Checkout
+    description: Stripe Checkout session creation and webhook ingestion.
+  - name: Internal
+    description: Endpoints that are unfinished, unused, or not intended for clients.
+
+security: []
+
+paths:
+  # ---------------------------------------------------------------------------
+  # Auth
+  # ---------------------------------------------------------------------------
+  /api/v1/login:
+    post:
+      operationId: login
+      tags: [Auth]
+      summary: Log in and obtain JWT tokens
+      description: |
+        Authenticates an email/password pair through Spring Security's
+        `AuthenticationManager` (BCrypt-hashed passwords) and returns a freshly minted
+        access token and refresh token in the response body.
+
+        No cookie or response header is set — the client is responsible for storing the
+        tokens and attaching `Authorization: Bearer <accessToken>` to later requests.
+
+        The refresh token is returned for forward compatibility only; there is currently no
+        endpoint that accepts it.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              default:
+                summary: Standard login
+                value:
+                  email: burger.lover@example.com
+                  password: 'Str0ngPassw0rd!'
+      responses:
+        '200':
+          description: Authentication succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+              examples:
+                default:
+                  value:
+                    accessToken: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJidXJnZXIubG92ZXJAZXhhbXBsZS5jb20iLCJpYXQiOjE3NTU5MDAwMDAsImV4cCI6MTc1NTkwMTgwMH0.tIB2Q1kqQ0FQ8m1n2mYs5Kx8VYhO4pC0uZLd0R6mQ9c
+                    refreshToken: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJidXJnZXIubG92ZXJAZXhhbXBsZS5jb20iLCJpYXQiOjE3NTU5MDAwMDAsImV4cCI6MTc1NjUwNDgwMH0.qN7pXo4v1t9wZ5xGm3bF0hRk2dJcYuA8sLpE6nV1wTk
+        '401':
+          description: |
+            Wrong password (`BadCredentialsException`). Handled by `GlobalExceptionHandler`,
+            so the raw Spring Security message is echoed back.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                badCredentials:
+                  value:
+                    message: Bad credentials
+                    status: 401
+                    timestamp: '2026-08-23T13:05:12.482'
+        '500':
+          description: |
+            **Contract smell.** An unknown email raises
+            `UsernameNotFoundException("No such user")`, which has no dedicated handler and
+            therefore falls through to the catch-all as 500. Semantically this should be 401.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                unknownEmail:
+                  value:
+                    message: No such user
+                    status: 500
+                    timestamp: '2026-08-23T13:05:12.482'
+
+  # ---------------------------------------------------------------------------
+  # User
+  # ---------------------------------------------------------------------------
+  /api/v1/signup:
+    post:
+      operationId: signUp
+      tags: [User]
+      summary: Register a new user
+      description: |
+        Creates a user with the fixed role `USER` and a BCrypt-hashed password, and returns
+        the generated id.
+
+        No tokens are issued — the client must call `POST /api/v1/login` afterwards.
+
+        `SecurityConfig` explicitly permits `POST /api/v1/register`, not `/api/v1/signup`.
+        This endpoint is only reachable because of the blanket `anyRequest().permitAll()`
+        fallback.
+
+        No field on `UserCreateRequest` carries a Bean Validation constraint and the handler
+        does not use `@Valid`, so blank or malformed values are accepted and persisted.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+            examples:
+              default:
+                value:
+                  firstName: Casey
+                  lastName: Nguyen
+                  phoneNum: '+15125550137'
+                  zipCode: '78701'
+                  email: casey.nguyen@example.com
+                  password: 'Str0ngPassw0rd!'
+      responses:
+        '201':
+          description: User created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserCreateResponse'
+              examples:
+                default:
+                  value:
+                    userId: 42
+        '400':
+          description: |
+            Malformed JSON body. Note that field-level problems are *not* rejected here —
+            an empty `email` or `password` is accepted because nothing is validated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: |
+            **Contract smell.** A duplicate email raises
+            `IllegalArgumentException("The user already exists")`, which has no dedicated
+            handler and is reported as 500. This should be 409 (or 400).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                duplicateEmail:
+                  value:
+                    message: The user already exists
+                    status: 500
+                    timestamp: '2026-08-23T13:07:44.011'
+
+  /api/v1/users:
+    get:
+      operationId: getCurrentUser
+      tags: [User]
+      summary: Get the authenticated user's profile
+      description: |
+        Returns the profile of the caller identified by the bearer token. There is no
+        endpoint for fetching an arbitrary user by id.
+
+        Authorization is enforced by `SecurityConfig`
+        (`GET /api/v1/users` → `authenticated()`), so an anonymous caller is rejected by the
+        filter chain before the handler runs.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Profile of the caller.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserReadResponse'
+              examples:
+                default:
+                  value:
+                    userId: 42
+                    firstName: Casey
+                    lastName: Nguyen
+                    phoneNum: '+15125550137'
+                    email: casey.nguyen@example.com
+                    zipcode: '78701'
+                    role: USER
+        '401':
+          $ref: '#/components/responses/FilterChainUnauthorized'
+
+  # ---------------------------------------------------------------------------
+  # Catalog
+  # ---------------------------------------------------------------------------
+  /api/v1/category:
+    get:
+      operationId: listCategories
+      tags: [Catalog]
+      summary: List all menu categories
+      description: |
+        Returns every category together with the number of products assigned to it.
+        Publicly accessible. The array is returned as-is with no pagination or envelope.
+      security: []
+      responses:
+        '200':
+          description: All categories.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CategoryReadResponse'
+              examples:
+                default:
+                  value:
+                    - categoryId: 1
+                      name: Burgers
+                      productCount: 12
+                    - categoryId: 2
+                      name: Chicken & More
+                      productCount: 8
+                    - categoryId: 3
+                      name: Drinks
+                      productCount: 15
+
+  /api/v1/options:
+    get:
+      operationId: listOptions
+      tags: [Catalog]
+      summary: List all global options (ingredients / add-ons)
+      description: |
+        Returns the catalog of options that products can reference — bacon, cheese, drink
+        sizes, and so on — along with the quantity variants defined for each.
+
+        `imageSource` is returned as a fully qualified URL built from `aws.s3.public-url`,
+        or `null` when the option has no image. This differs from other endpoints in the API
+        that return a bare S3 object key.
+      security: []
+      responses:
+        '200':
+          description: All options.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OptionReadResponse'
+              examples:
+                default:
+                  value:
+                    - optionId: 7
+                      optionName: Bacon
+                      imageSource: https://cdn.example.com/whataburger/options/bacon.png
+                      optionCalories: 80.0
+                      quantityDetails:
+                        - id: 21
+                          quantityType: Regular
+                        - id: 22
+                          quantityType: Extra
+                    - optionId: 9
+                      optionName: Fries
+                      imageSource: null
+                      optionCalories: 320.0
+                      quantityDetails:
+                        - id: 31
+                          quantityType: Small
+                        - id: 32
+                          quantityType: Medium
+                        - id: 33
+                          quantityType: Large
+
+  /api/v1/optionTraits:
+    get:
+      operationId: listOptionTraits
+      tags: [Catalog]
+      summary: List all option traits
+      description: |
+        Returns the catalog of option traits — boolean-style modifiers layered on top of an
+        option, such as "grilled" or "on the side". Only `BINARY` traits exist today.
+
+        Note the camelCase path segment `optionTraits`, which is inconsistent with the
+        lowercase, singular style used elsewhere (`/api/v1/category`, `/api/v1/store`).
+      security: []
+      responses:
+        '200':
+          description: All option traits.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OptionTraitReadResponse'
+              examples:
+                default:
+                  value:
+                    - optionTraitId: 3
+                      name: Grilled
+                      labelCode: GRILLED
+                      optionTraitType: BINARY
+                    - optionTraitId: 4
+                      name: On the side
+                      labelCode: ON_THE_SIDE
+                      optionTraitType: BINARY
+
+  /api/v1/products:
+    get:
+      operationId: listProducts
+      tags: [Catalog]
+      summary: List all products in the global catalog
+      description: |
+        Returns the flat, store-independent product catalog.
+
+        **This is the only read endpoint restricted to `ADMIN`**
+        (`SecurityConfig`: `GET /api/v1/products` → `hasRole("ADMIN")`). Storefront clients
+        should use the per-store endpoints
+        (`GET /api/v1/store/{storeId}/product`, `GET /api/v1/store/{storeId}/category/product`)
+        instead.
+
+        `imageSource` is the raw S3 object key here, not a URL.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: All products.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductReadResponse'
+              examples:
+                default:
+                  value:
+                    - productId: 101
+                      name: Whataburger
+                      price: 5.99
+                      calories: 590.0
+                      briefInfo: The original, made to order.
+                      imageSource: products/whataburger.png
+                      productType: ONLY
+                    - productId: 102
+                      name: Whataburger Meal
+                      price: 9.49
+                      calories: 1180.0
+                      briefInfo: Burger, fries and a drink.
+                      imageSource: products/whataburger-meal.png
+                      productType: MEAL
+        '401':
+          $ref: '#/components/responses/FilterChainUnauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      operationId: createProduct
+      tags: [Catalog]
+      summary: Create a product with its options and custom rules
+      description: |
+        Creates a global catalog product in a single multipart request: the JSON definition
+        in the `productBlob` part and the image in the `productImage` part. The image is
+        uploaded to S3 and the returned key is stored on the product.
+
+        Both parts are mandatory. A missing part yields 400 from Spring's argument
+        resolution rather than a domain error.
+
+        **This endpoint is unauthenticated.** `SecurityConfig` has no rule for
+        `POST /api/v1/products`, so it is covered by `anyRequest().permitAll()` — anyone can
+        write to the catalog. The `ADMIN` restriction is applied to the `GET` on the same
+        path but not the `POST`.
+
+        The response body is a bare `text/plain` string, not JSON, and does not include the
+        id of the created product. A `ProductCreateResponseDTO` exists in the codebase but is
+        never returned.
+      security: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [productBlob, productImage]
+              properties:
+                productBlob:
+                  $ref: '#/components/schemas/ProductCreateRequest'
+                productImage:
+                  type: string
+                  format: binary
+                  description: Product image. Uploaded to S3; the resulting object key is stored as `imageSource`.
+            encoding:
+              productBlob:
+                contentType: application/json
+              productImage:
+                contentType: image/png, image/jpeg
+            examples:
+              default:
+                summary: A burger with one custom rule
+                value:
+                  productImage: '<binary PNG content of the productImage part>'
+                  productBlob:
+                    productName: Whataburger
+                    productPrice: 5.99
+                    productCalories: 590.0
+                    productType: ONLY
+                    briefInfo: The original, made to order.
+                    categoryIds: [1]
+                    customRuleRequests:
+                      - customRuleName: Add Extras
+                        customRuleType: FREE
+                        orderIndex: 0
+                        minSelection: 0
+                        maxSelection: 5
+                        optionRequests:
+                          - optionId: 7
+                            isDefault: false
+                            countType: COUNTABLE
+                            defaultQuantity: 0
+                            maxQuantity: 3
+                            extraPrice: 1.25
+                            orderIndex: 0
+                            quantityDetails:
+                              - id: 21
+                                quantityType: Regular
+                                isDefault: true
+                                extraPrice: 0.00
+                            optionTraitRequests:
+                              - optionTraitId: 3
+                                defaultSelection: 0
+                                extraPrice: 0.00
+                                extraCalories: 0.0
+      responses:
+        '201':
+          description: Product created. Plain-text confirmation, no identifier.
+          content:
+            text/plain:
+              schema:
+                type: string
+              examples:
+                default:
+                  value: Product successfully created
+        '400':
+          description: A required multipart part is missing or `productBlob` is not valid JSON.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: |
+            A referenced `categoryId`, `optionId` or `optionTraitId` does not exist
+            (`CategoryNotFoundException`, `OptionNotFoundException`,
+            `OptionTraitNotFoundException`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                unknownOption:
+                  value:
+                    message: Option with ID[7] not found
+                    status: 404
+                    timestamp: '2026-08-23T13:12:03.771'
+        '500':
+          description: S3 upload failure or any other unhandled error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/products/{productId}:
+    get:
+      operationId: getProductById
+      tags: [Catalog]
+      summary: Get one catalog product with its full option tree
+      description: |
+        Returns a product plus every selectable option, flattened into `optionResponses`.
+        Each entry carries its parent custom rule inline as `customRuleResponse`, so clients
+        must group by `customRuleResponse.customRuleId` themselves to render the
+        rule-by-rule configurator.
+
+        This is the store-independent view; prices and availability come from the global
+        catalog. For what a specific store actually sells, use
+        `GET /api/v1/store/{storeId}/product/{storeProductId}`.
+
+        Note that the `ProductReadByProductIdDto.toDto` mapper never populates
+        `productCalories`, so this field is always `null` even when the product has a
+        calorie value.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      responses:
+        '200':
+          description: The product and its options.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductReadByProductId'
+              examples:
+                default:
+                  value:
+                    productId: 101
+                    productName: Whataburger
+                    productPrice: 5.99
+                    productCalories: null
+                    imageSource: https://cdn.example.com/whataburger/products/whataburger.png
+                    briefInfo: The original, made to order.
+                    optionResponses:
+                      - productOptionId: 5001
+                        name: Bacon
+                        isDefault: false
+                        defaultQuantity: 0
+                        maxQuantity: 3
+                        extraPrice: 1.25
+                        calories: 80.0
+                        countType: COUNTABLE
+                        imageSource: options/bacon.png
+                        orderIndex: 0
+                        customRuleResponse:
+                          customRuleId: 900
+                          name: Add Extras
+                          customRuleType: FREE
+                          orderIndex: 0
+                          minSelection: 0
+                          maxSelection: 5
+                        quantityDetailResponses:
+                          - id: 21
+                            quantityType: Regular
+                            labelCode: REGULAR
+                            extraPrice: 0.00
+                            extraCalories: 0.0
+                            isDefault: true
+                        optionTraitResponses:
+                          - productOptionTraitId: 7001
+                            name: Grilled
+                            labelCode: GRILLED
+                            optionTraitType: BINARY
+                            defaultSelection: 0
+                            extraPrice: 0.00
+                            extraCalories: 0.0
+        '400':
+          $ref: '#/components/responses/PathVariableTypeMismatch'
+        '404':
+          description: No product with that id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    message: Product with ID[999] not found
+                    status: 404
+                    timestamp: '2026-08-23T13:14:20.004'
+
+  /api/v1/products/category/{categoryId}:
+    get:
+      operationId: listProductsByCategory
+      tags: [Catalog]
+      summary: List catalog products in a category
+      description: |
+        Returns a summary view of the products assigned to a category.
+
+        The item shape here differs from `GET /api/v1/products`: the identifier field is
+        named `id` rather than `productId`, and `productType` is absent. Clients cannot reuse
+        one model for both endpoints.
+
+        An unknown `categoryId` yields `200` with an empty array rather than `404`.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/CategoryId'
+      responses:
+        '200':
+          description: Products in the category. Empty array if the category is unknown or empty.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductReadByCategoryIdResponse'
+              examples:
+                default:
+                  value:
+                    - id: 101
+                      name: Whataburger
+                      price: 5.99
+                      calories: 590.0
+                      imageSource: products/whataburger.png
+                      briefInfo: The original, made to order.
+                empty:
+                  summary: Unknown or empty category
+                  value: []
+        '400':
+          $ref: '#/components/responses/PathVariableTypeMismatch'
+
+  /:
+    get:
+      operationId: getProductByIdsStub
+      tags: [Internal]
+      summary: Unimplemented bulk product lookup
+      deprecated: true
+      description: |
+        `ProductController.getProductByIds` is a bare `@GetMapping` with no path, so it is
+        mapped to the servlet root. The method body only reads `productIds` off the bound
+        request object and returns `void`, producing an empty `200`.
+
+        It is not wired to any service and should not be called. Documented only because it
+        is a live, reachable route that also occupies `GET /`.
+      security: []
+      parameters:
+        - name: productIds
+          in: query
+          required: false
+          description: Bound via POJO query-parameter binding. Ignored by the handler.
+          schema:
+            type: array
+            items:
+              type: integer
+              format: int64
+          style: form
+          explode: true
+      responses:
+        '200':
+          description: Empty body.
+
+  # ---------------------------------------------------------------------------
+  # Store
+  # ---------------------------------------------------------------------------
+  /api/v1/store:
+    get:
+      operationId: listStores
+      tags: [Store]
+      summary: List all stores
+      description: |
+        Returns every store.
+
+        **Only `storeId`, `overpassId` and `houseNumber` are populated.** `StoreController`
+        builds `StoreResponseDto` with just those three fields, so `openTime`, `closeTime`,
+        `branch`, `address`, `coordinate`, `phoneNum` and `website` are always `null` even
+        though the schema declares them and the underlying entity holds values. Use
+        `GET /api/v1/store/nearby` for a populated store record.
+      security: []
+      responses:
+        '200':
+          description: All stores, sparsely populated.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StoreResponse'
+              examples:
+                default:
+                  value:
+                    - storeId: 1
+                      overpassId: 358294712
+                      houseNumber: 1200
+                      openTime: null
+                      closeTime: null
+                      branch: null
+                      address: null
+                      coordinate: null
+                      phoneNum: null
+                      website: null
+
+  /api/v1/store/nearby:
+    get:
+      operationId: listNearbyStores
+      tags: [Store]
+      summary: Find stores within a radius of a coordinate
+      description: |
+        Geospatial search for stores within `radiusMeter` of the given longitude/latitude,
+        enriched with driving `distance` and `duration` from a routing provider (Mapbox).
+
+        All three query parameters are mandatory; omitting any of them produces 400. There is
+        no cap on `radiusMeter`, and no pagination — a large radius returns every match and
+        triggers a routing call per store.
+
+        As with `GET /api/v1/store`, `openTime`, `closeTime` and `website` are not populated
+        by the mapper and are always `null`.
+      security: []
+      parameters:
+        - name: lon
+          in: query
+          required: true
+          description: Longitude of the search origin, in decimal degrees (WGS 84).
+          schema:
+            type: number
+            format: double
+          example: -97.7431
+        - name: lat
+          in: query
+          required: true
+          description: Latitude of the search origin, in decimal degrees (WGS 84).
+          schema:
+            type: number
+            format: double
+          example: 30.2672
+        - name: radiusMeter
+          in: query
+          required: true
+          description: Search radius in meters. Not validated or capped.
+          schema:
+            type: number
+            format: double
+          example: 5000
+      responses:
+        '200':
+          description: Matching stores ordered by the repository's geospatial result order.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NearByStoreReadResponse'
+              examples:
+                default:
+                  value:
+                    - storeId: 1
+                      overpassId: null
+                      houseNumber: 1200
+                      openTime: null
+                      closeTime: null
+                      branch: Downtown Austin
+                      address:
+                        city: Austin
+                        street: Congress Ave
+                        state: TX
+                        zipcode: '78701'
+                      coordinate:
+                        longitude: -97.7431
+                        latitude: 30.2672
+                      phoneNum: '+15125550100'
+                      website: null
+                      distance: 812.4
+                      duration: 168.0
+                empty:
+                  summary: Nothing within the radius
+                  value: []
+        '400':
+          description: A required parameter is missing or is not a valid number.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: The upstream routing provider failed or returned an unexpected payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ---------------------------------------------------------------------------
+  # StoreProduct
+  # ---------------------------------------------------------------------------
+  /api/v1/store/product:
+    post:
+      operationId: registerProductToStores
+      tags: [StoreProduct]
+      summary: Register one catalog product to several stores
+      description: |
+        Creates a `StoreProduct` link for each store id, making the catalog product
+        orderable at those stores with the catalog's default price and options.
+
+        The operation is not atomic per store: the first store that already carries the
+        product aborts the request with 400, and whether earlier links survive depends on
+        transaction boundaries in `StoreProductService`.
+
+        **This endpoint is unauthenticated** despite the `// Admin` comment in the handler —
+        it falls under `anyRequest().permitAll()`.
+
+        Like `POST /api/v1/products`, the response is a `text/plain` string with no
+        identifiers. `StoreProductCreateResponseDto` exists but is never used.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoreProductCreateRequest'
+            examples:
+              default:
+                value:
+                  storeIds: [1, 2, 5]
+                  productId: 101
+      responses:
+        '201':
+          description: Links created.
+          content:
+            text/plain:
+              schema:
+                type: string
+              examples:
+                default:
+                  value: StoreProducts successfully created
+        '400':
+          description: The product is already registered to one of the stores.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                alreadyExists:
+                  value:
+                    message: Store with ids [1] already has Product with id [101]
+                    status: 400
+                    timestamp: '2026-08-23T13:20:41.229'
+        '404':
+          description: The product or one of the stores does not exist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                storeNotFound:
+                  value:
+                    message: Store with ID[5] not found
+                    status: 404
+                    timestamp: '2026-08-23T13:20:41.229'
+
+  /api/v1/store/{storeId}/category/product:
+    get:
+      operationId: listCategorizedStoreProducts
+      tags: [StoreProduct]
+      summary: List a store's menu grouped by category
+      description: |
+        The primary storefront menu endpoint: returns the store's products already grouped
+        into categories and ordered by `orderIndex`, with store-specific prices applied.
+
+        Only products actually available at the store are included, so a category with no
+        available products is omitted entirely.
+
+        Note that products here are keyed by `storeProductId`, not the catalog `productId`.
+        That id is what the cart and the product-detail endpoint expect.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/StoreId'
+      responses:
+        '200':
+          description: The store's categorized menu.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CategorizedStoreProductsRead'
+              examples:
+                default:
+                  value:
+                    - categoryId: 1
+                      categoryName: Burgers
+                      orderIndex: 0
+                      products:
+                        - storeProductId: 3001
+                          name: Whataburger
+                          price: 6.29
+                          calories: 590.0
+                          briefInfo: The original, made to order.
+                          imageSource: products/whataburger.png
+                          productType: ONLY
+                    - categoryId: 3
+                      categoryName: Drinks
+                      orderIndex: 2
+                      products:
+                        - storeProductId: 3055
+                          name: Sweet Tea
+                          price: 2.19
+                          calories: 180.0
+                          briefInfo: Brewed fresh daily.
+                          imageSource: products/sweet-tea.png
+                          productType: ONLY
+        '400':
+          $ref: '#/components/responses/PathVariableTypeMismatch'
+        '404':
+          $ref: '#/components/responses/StoreNotFound'
+
+  /api/v1/store/{storeId}/product:
+    get:
+      operationId: listStoreProducts
+      tags: [StoreProduct]
+      summary: List a store's menu as a flat array
+      description: |
+        Returns the same menu as `GET /api/v1/store/{storeId}/category/product` but flat,
+        with each product carrying the categories it belongs to (and its ordering within
+        each). Useful for clients that build their own grouping or need a product to appear
+        under multiple categories.
+
+        Unlike the categorized variant, the identifier field here is named `productId` even
+        though `StoreProductService` populates it with the **store product** id. The naming
+        is misleading; the value is the same one `.../product/{storeProductId}` expects.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/StoreId'
+      responses:
+        '200':
+          description: The store's menu, flat.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StoreProductsRead'
+              examples:
+                default:
+                  value:
+                    - productId: 3001
+                      name: Whataburger
+                      price: 6.29
+                      calories: 590.0
+                      briefInfo: The original, made to order.
+                      imageSource: products/whataburger.png
+                      productType: ONLY
+                      categories:
+                        - categoryId: 1
+                          orderIndex: 0
+        '400':
+          $ref: '#/components/responses/PathVariableTypeMismatch'
+        '404':
+          $ref: '#/components/responses/StoreNotFound'
+
+  /api/v1/store/{storeId}/product/{storeProductId}:
+    get:
+      operationId: getStoreProduct
+      tags: [StoreProduct]
+      summary: Get a store product with its full option tree
+      description: |
+        The store-specific counterpart of `GET /api/v1/products/{productId}`: same option
+        tree, but with the store's price overrides, option overrides and hidden options
+        applied. This is what the product configurator should read before posting to the
+        cart.
+
+        `storeProductId` must belong to `storeId`; a mismatch is rejected with 400
+        (`StoreProductStoreMismatchException`) rather than 404.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/StoreId'
+        - $ref: '#/components/parameters/StoreProductId'
+      responses:
+        '200':
+          description: The store product and its options.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoreProductReadByProductId'
+              examples:
+                default:
+                  value:
+                    storeProductId: 3001
+                    productName: Whataburger
+                    productPrice: 6.29
+                    productCalories: 590.0
+                    imageSource: https://cdn.example.com/whataburger/products/whataburger.png
+                    briefInfo: The original, made to order.
+                    optionResponses:
+                      - productOptionId: 5001
+                        name: Bacon
+                        isDefault: false
+                        defaultQuantity: 0
+                        maxQuantity: 2
+                        extraPrice: 1.49
+                        calories: 80.0
+                        countType: COUNTABLE
+                        imageSource: options/bacon.png
+                        orderIndex: 0
+                        customRuleResponse:
+                          customRuleId: 900
+                          name: Add Extras
+                          customRuleType: FREE
+                          orderIndex: 0
+                          minSelection: 0
+                          maxSelection: 5
+                        quantityDetailResponses:
+                          - id: 21
+                            quantityType: Regular
+                            labelCode: REGULAR
+                            extraPrice: 0.00
+                            extraCalories: 0.0
+                            isDefault: true
+                        optionTraitResponses:
+                          - productOptionTraitId: 7001
+                            name: Grilled
+                            labelCode: GRILLED
+                            optionTraitType: BINARY
+                            defaultSelection: 0
+                            extraPrice: 0.00
+                            extraCalories: 0.0
+        '400':
+          description: |
+            `storeProductId` does not belong to `storeId`
+            (`StoreProductStoreMismatchException`), or a path variable is not a valid integer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                mismatch:
+                  value:
+                    message: StoreProduct with ID[3001] does not belong to store with ID[2]
+                    status: 400
+                    timestamp: '2026-08-23T13:26:09.512'
+        '404':
+          description: The store or the store product does not exist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    message: StoreProduct with ID[9999] not found
+                    status: 404
+                    timestamp: '2026-08-23T13:26:09.512'
+    post:
+      operationId: modifyStoreProduct
+      tags: [StoreProduct]
+      summary: Apply store-specific overrides to a store product
+      description: |
+        Applies a delta to a store product: a new price, and per-custom-rule / per-option /
+        per-trait / per-quantity changes selected by `modifyType`
+        (`ADD`, `DELETE`, `OVERRIDE`, `HIDE`).
+
+        Two contract problems worth noting:
+
+        - **`POST` is used for a partial update.** `PATCH` (or `PUT`) would match the
+          semantics; a client cannot distinguish this from a create.
+        - **The handler returns `void`**, so a success is an empty `200` with no body. The
+          client has no way to read back the applied state and must re-`GET` the product.
+          `StoreProductModifyResponseDto` exists in the codebase but has no fields and is
+          never returned.
+
+        Like the other write endpoints in this tag, it is unauthenticated. `omitted` fields
+        are not distinguishable from explicit `null`, because the request DTO has no
+        JSON-null handling.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/StoreId'
+        - $ref: '#/components/parameters/StoreProductId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoreProductModifyRequest'
+            examples:
+              priceAndOptionOverride:
+                summary: Raise the price and override one option
+                value:
+                  productPrice: 6.79
+                  customRuleRequests:
+                    - customRuleId: 900
+                      modifyType: OVERRIDE
+                      optionRequests:
+                        - productOptionId: 5001
+                          isDefault: false
+                          defaultQuantity: 0
+                          maxQuantity: 1
+                          extraPrice: 1.99
+                          orderIndex: 0
+                          modifyType: OVERRIDE
+                          quantityRequest:
+                            - productOptionOptionQuantityId: 21
+                              quantityType: Regular
+                              isDefault: true
+                              extraPrice: 0.00
+                          optionTraitRequests:
+                            - productOptionTraitId: 7001
+                              defaultSelection: 0
+                              extraPrice: 0.25
+                              modifyType: OVERRIDE
+              hideOption:
+                summary: Hide an option at this store
+                value:
+                  productPrice: 6.29
+                  customRuleRequests:
+                    - customRuleId: 900
+                      modifyType: OVERRIDE
+                      optionRequests:
+                        - productOptionId: 5001
+                          modifyType: HIDE
+      responses:
+        '200':
+          description: Overrides applied. **Empty body.**
+        '400':
+          description: |
+            The store product does not belong to the store, or a `modifyType` is not
+            supported for the target
+            (`ModificationStrategyNotSupportedException` surfaces as 500, see below).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: |
+            The store, store product, custom rule, product option, product option trait or
+            quantity referenced in the body does not exist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                customRuleNotFound:
+                  value:
+                    message: CustomRule with ID 900 not found
+                    status: 404
+                    timestamp: '2026-08-23T13:29:55.318'
+        '500':
+          description: |
+            **Contract smell.** `ModificationStrategyNotSupportedException` and
+            `TraitCalcStrategyNotSupportedException` are declared with status 500, so an
+            invalid `modifyType`/trait combination in the *request* is reported as a server
+            error instead of 400.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                unsupportedStrategy:
+                  value:
+                    message: ModificationStrategy is not supported for requested modify type
+                    status: 500
+                    timestamp: '2026-08-23T13:29:55.318'
+
+  # ---------------------------------------------------------------------------
+  # Cart
+  # ---------------------------------------------------------------------------
+  /api/v1/store/{storeId}/cart:
+    post:
+      operationId: addToCart
+      tags: [Cart]
+      summary: Add a configured product to the cart
+      description: |
+        Validates the requested option selections against the store product's custom rules
+        and stock, prices the line item, and appends it to the store-scoped cart in Redis.
+
+        The cart is keyed by owner and store: `cart:store:{storeId}:{email}` for an
+        authenticated caller, `cart:store:{storeId}:{guestId}` otherwise. A user therefore
+        has an independent cart per store, and a guest cart and a user cart never
+        automatically converge — see `PATCH /api/v1/store/{storeId}/cart` (merge).
+
+        This is the only cart operation where `guestId` is optional. It is still required in
+        practice for guests: without a token *and* without the cookie the request fails with
+        `CartOwnerRequiredException` (400).
+
+        **The response is the single created line item, not the cart.** Every other cart
+        operation returns the whole `CartResponse`. Clients that keep local cart state must
+        special-case this.
+      security:
+        - {}
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/StoreId'
+        - $ref: '#/components/parameters/GuestIdCookieOptional'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartCreateRequest'
+            examples:
+              default:
+                summary: One burger with bacon
+                value:
+                  storeProductId: 3001
+                  quantity: 2
+                  customRuleRequests:
+                    - customRuleId: 900
+                      optionRequests:
+                        - productOptionId: 5001
+                          optionQuantity: 1
+                          isSelected: true
+                          quantityDetailRequest:
+                            id: 21
+                          optionTraitRequests:
+                            - productOptionTraitId: 7001
+                              currentValue: 1
+      responses:
+        '201':
+          description: The created line item, priced.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartProductResponse'
+              examples:
+                default:
+                  value:
+                    storeProductId: 3001
+                    productName: Whataburger
+                    productType: ONLY
+                    basePrice: 6.29
+                    imageSource: products/whataburger.png
+                    briefInfo: The original, made to order.
+                    calories: 670.0
+                    quantity: 2
+                    productExtraPrice: 1.49
+                    productTotalPrice: 15.56
+                    customRuleResponses:
+                      - customRuleId: 900
+                        customRuleName: Add Extras
+                        customRuleType: FREE
+                        orderIndex: 0
+                        minSelection: 0
+                        maxSelection: 5
+                        customRuleTotalPrice: 1.49
+                        optionResponses:
+                          - productOptionId: 5001
+                            optionName: Bacon
+                            isDefault: false
+                            defaultQuantity: 0
+                            optionQuantity: 1
+                            maxQuantity: 2
+                            basePrice: 1.49
+                            baseCalories: 80.0
+                            imageSource: options/bacon.png
+                            isSelected: true
+                            countType: COUNTABLE
+                            orderIndex: 0
+                            optionTotalPrice: 1.49
+                            quantityDetailResponse:
+                              selectedId: 21
+                              quantityDetails:
+                                - quantityId: 21
+                                  labelCode: REGULAR
+                                  extraPrice: 0.00
+                                  extraCalories: 0.0
+                                  isDefault: true
+                                  quantityType: Regular
+                            optionTraitResponses:
+                              - productOptionTraitId: 7001
+                                currentValue: 1
+                                labelCode: GRILLED
+                                optionTraitName: Grilled
+                                optionTraitType: BINARY
+                                defaultSelection: 0
+                                basePrice: 0.00
+                                baseCalories: 0.0
+                                traitTotalPrice: 0.00
+        '400':
+          description: |
+            Domain validation failed. Common causes:
+
+            - `CartOwnerRequiredException` — neither a bearer token nor a `guestId` cookie.
+            - `CartItemLimitExceededException` — the cart is already at its item cap.
+            - `InvalidOptionRequestException` — quantity/selection invalid for the option's
+              `countType`.
+            - `HiddenOptionSelectedException` — the option is hidden at this store.
+            - `InsufficientOptionStockException` — the store lacks ingredient stock.
+            - `StoreProductNotInStoreException` / `StoreProductStoreMismatchException`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                ownerRequired:
+                  value:
+                    message: Guest ID or authenticated user is required
+                    status: 400
+                    timestamp: '2026-08-23T13:35:02.660'
+                insufficientStock:
+                  value:
+                    message: 'Insufficient stock for productOption [5001] ingredient [77]: needed 2, available 0'
+                    status: 400
+                    timestamp: '2026-08-23T13:35:02.660'
+        '404':
+          description: The store, store product, custom rule, product option or quantity does not exist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      operationId: getCart
+      tags: [Cart]
+      summary: Get the current cart for a store
+      description: |
+        Returns every line item in the caller's cart for this store plus the cart total.
+
+        An empty or never-created cart returns `200` with `productResponses: []` and a
+        `cartTotalPrice` of `0`, not `404`.
+
+        Prices are recomputed on read against current store data, so the total can change
+        between calls if the store's pricing changed.
+
+        Unlike the `POST`, the `guestId` cookie is **required** here — including for
+        authenticated callers, who do not otherwise need it. Omitting it is a 400 even with a
+        valid token.
+      security:
+        - {}
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/StoreId'
+        - $ref: '#/components/parameters/GuestIdCookieRequired'
+      responses:
+        '200':
+          description: The cart.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartResponse'
+              examples:
+                empty:
+                  summary: Empty cart
+                  value:
+                    productResponses: []
+                    cartTotalPrice: 0
+        '400':
+          $ref: '#/components/responses/MissingGuestIdCookie'
+        '404':
+          $ref: '#/components/responses/StoreNotFound'
+    patch:
+      operationId: mergeCart
+      tags: [Cart]
+      summary: Merge the guest cart into the authenticated user's cart
+      description: |
+        Intended for the moment a guest logs in: moves the items accumulated under
+        `cart:store:{storeId}:{guestId}` into `cart:store:{storeId}:{email}` and returns the
+        merged cart.
+
+        **This operation is effectively unprotected.** `CartService.mergeCart` is annotated
+        `@PreAuthorize("hasRole('USER')")`, but the application never enables method
+        security (`@EnableMethodSecurity` is absent), so the annotation is inert and
+        `SecurityConfig` has no matching rule. An anonymous caller reaches the service and
+        fails deeper, at `getUserKey`, with a bare `IllegalStateException` reported as **500**
+        rather than 401.
+
+        The endpoint has no request body — the source cart is identified purely by the
+        `guestId` cookie and the target by the token.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/StoreId'
+        - $ref: '#/components/parameters/GuestIdCookieRequired'
+      responses:
+        '200':
+          description: The merged cart.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartResponse'
+        '400':
+          $ref: '#/components/responses/MissingGuestIdCookie'
+        '404':
+          $ref: '#/components/responses/StoreNotFound'
+        '500':
+          description: |
+            **Contract smell.** Called without authentication: `getUserKey` throws
+            `IllegalStateException` with no message, which the catch-all renders as 500 with
+            a `null` message. Should be 401.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                anonymousCaller:
+                  value:
+                    message: null
+                    status: 500
+                    timestamp: '2026-08-23T13:40:18.902'
+    delete:
+      operationId: clearCart
+      tags: [Cart]
+      summary: Remove every item from the cart
+      description: |
+        Empties the caller's cart for this store and returns the resulting (empty) cart.
+        Idempotent — clearing an already-empty cart succeeds.
+      security:
+        - {}
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/StoreId'
+        - $ref: '#/components/parameters/GuestIdCookieRequired'
+      responses:
+        '200':
+          description: The now-empty cart.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartResponse'
+              examples:
+                default:
+                  value:
+                    productResponses: []
+                    cartTotalPrice: 0
+        '400':
+          $ref: '#/components/responses/MissingGuestIdCookie'
+        '404':
+          $ref: '#/components/responses/StoreNotFound'
+
+  /api/v1/store/{storeId}/cart/{cartIdx}:
+    get:
+      operationId: getCartItem
+      tags: [Cart]
+      summary: Get one cart line item by position
+      description: |
+        Returns a single line item, addressed by its **zero-based position** in the cart.
+
+        Positional addressing is fragile: `cartIdx` is not a stable identifier. Any
+        concurrent add or delete shifts the indices of later items, so a client that caches
+        an index can read or mutate the wrong line. There is no per-item id in the cart
+        contract.
+      security:
+        - {}
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/StoreId'
+        - $ref: '#/components/parameters/CartIdx'
+        - $ref: '#/components/parameters/GuestIdCookieRequired'
+      responses:
+        '200':
+          description: The line item.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartProductResponse'
+        '400':
+          description: |
+            No item at that index (`InvalidCartIndexException`), the `guestId` cookie is
+            missing, or the cart owner could not be resolved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidIndex:
+                  value:
+                    message: No item at index 4
+                    status: 400
+                    timestamp: '2026-08-23T13:42:31.104'
+        '404':
+          description: The store does not exist, or the cart key holds nothing (`CartNotFoundException`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      operationId: deleteCartItem
+      tags: [Cart]
+      summary: Remove one cart line item by position
+      description: |
+        Deletes the line item at `cartIdx` and returns the full remaining cart.
+
+        **Not idempotent in the useful sense:** removing index 2 shifts every later item down
+        by one, so repeating the same call deletes a *different* item. Clients should re-read
+        indices from the returned cart after each mutation.
+      security:
+        - {}
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/StoreId'
+        - $ref: '#/components/parameters/CartIdx'
+        - $ref: '#/components/parameters/GuestIdCookieRequired'
+      responses:
+        '200':
+          description: The cart after removal.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartResponse'
+        '400':
+          description: No item at that index, or the `guestId` cookie is missing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/StoreNotFound'
+
+  /api/v1/store/{storeId}/cart/{cartIdx}/option:
+    patch:
+      operationId: modifyCartItemOptions
+      tags: [Cart]
+      summary: Replace the option selections on a cart line item
+      description: |
+        Re-configures the options of an existing line item and re-prices the cart.
+
+        `customRuleRequests` is a **full replacement**, not a delta: any custom rule or
+        option omitted from the body is treated as deselected. Clients should send back the
+        complete selection they want, typically by editing the structure they read from the
+        cart.
+
+        The `quantity` of the line item is not touched here — use
+        `PATCH /api/v1/store/{storeId}/cart/{cartIdx}/product`.
+      security:
+        - {}
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/StoreId'
+        - $ref: '#/components/parameters/CartIdx'
+        - $ref: '#/components/parameters/GuestIdCookieRequired'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartOptionModifyRequest'
+            examples:
+              deselectBacon:
+                summary: Deselect the bacon that was previously added
+                value:
+                  customRuleRequests:
+                    - customRuleId: 900
+                      optionRequests:
+                        - productOptionId: 5001
+                          optionQuantity: 0
+                          isSelected: false
+                          optionTraitRequests: []
+      responses:
+        '200':
+          description: The cart after re-configuration.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartResponse'
+        '400':
+          description: |
+            Invalid index, missing `guestId` cookie, or the new selection violates the
+            product's rules — `InvalidOptionRequestException`,
+            `HiddenOptionSelectedException`, `InsufficientOptionStockException`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: The store, custom rule, product option or quantity does not exist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/store/{storeId}/cart/{cartIdx}/product:
+    patch:
+      operationId: modifyCartItemQuantity
+      tags: [Cart]
+      summary: Change the quantity of a cart line item
+      description: |
+        Sets the line item's quantity (absolute, not a delta) and re-prices the cart.
+
+        Only `quantity` is read from the body. The DTO also declares `storeId`, which the
+        handler ignores in favour of the path variable — sending a conflicting value has no
+        effect and is not rejected.
+
+        `quantity` is an unvalidated primitive `int`: `0` and negative values are accepted by
+        the binding layer, and how they are handled depends on the calculator rather than an
+        explicit rule. There is no "remove when quantity reaches 0" behaviour; use `DELETE`.
+      security:
+        - {}
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/StoreId'
+        - $ref: '#/components/parameters/CartIdx'
+        - $ref: '#/components/parameters/GuestIdCookieRequired'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartProductModifyRequest'
+            examples:
+              default:
+                value:
+                  storeId: 1
+                  quantity: 3
+      responses:
+        '200':
+          description: The cart after the quantity change.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartResponse'
+        '400':
+          description: No item at that index, missing `guestId` cookie, or stock is insufficient for the new quantity.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/StoreNotFound'
+
+  # ---------------------------------------------------------------------------
+  # Order session
+  # ---------------------------------------------------------------------------
+  /api/v1/order-session/store/{storeId}:
+    post:
+      operationId: createOrderSession
+      tags: [OrderSession]
+      summary: Snapshot the cart into an order session
+      description: |
+        Freezes the caller's current cart for this store into an `OrderSession` stored in
+        Redis, and returns it with a generated `sessionId`. The session is the input to
+        `POST /api/v1/checkout/{orderSessionId}`.
+
+        The cart is **not** cleared by this call, and nothing prevents creating several
+        sessions from the same cart.
+
+        Sessions expire. Once expired, reads fail with `ExpiredOrderSessionException`, which
+        is declared with status **404** rather than 410/409.
+
+        **Known defect for guests.** `OrderService.createOrderSession` does
+        `if (authentication.isAuthenticated())` and then casts the principal to
+        `UserDetailsImpl`. Anonymous authentication is enabled, so for an unauthenticated
+        caller `isAuthenticated()` is `true` while the principal is the string
+        `"anonymousUser"` — the cast throws `ClassCastException` and the request fails with
+        **500**. Despite being `permitAll()`, this endpoint currently only works for
+        authenticated callers.
+      security:
+        - bearerAuth: []
+        - {}
+      parameters:
+        - $ref: '#/components/parameters/StoreId'
+        - $ref: '#/components/parameters/GuestIdCookieRequired'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderSessionCreateRequest'
+            examples:
+              pickup:
+                value:
+                  orderType: PICK_UP
+              delivery:
+                value:
+                  orderType: DELIVERY
+      responses:
+        '201':
+          description: The created order session.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderSessionResponse'
+              examples:
+                default:
+                  value:
+                    sessionId: 4f1a9c2e-8b3d-4a77-9c11-2e6f7d8a9b01
+                    storeId: 1
+                    totalPrice: 15.56
+                    orderStatus: PENDING
+                    orderType: PICK_UP
+                    paymentStatus: PENDING
+                    paymentMethod: null
+                    orderNote: null
+                    discountType: null
+                    taxAmount: 1.28
+                    guestInfo:
+                      guestId: 9d5b1f30-6c4a-4f2e-8b77-0a1c2d3e4f50
+                    productResponses:
+                      - id: 1
+                        storeProductId: 3001
+                        quantity: 2
+                        name: Whataburger
+                        basePrice: 6.29
+                        extraPrice: 1.49
+                        totalPrice: 15.56
+                        imageSource: products/whataburger.png
+                        calculatedCalories: 670.0
+                        productType: ONLY
+                        customRuleResponses:
+                          - id: 1
+                            customRuleId: 900
+                            name: Add Extras
+                            calculatedPrice: 1.49
+                            optionResponses:
+                              - id: 1
+                                productOptionId: 5001
+                                name: Bacon
+                                countType: COUNTABLE
+                                basePrice: 1.49
+                                calculatedPrice: 1.49
+                                calculatedCalories: 80.0
+                                quantity: 1
+                                quantityDetail:
+                                  productOptionOptionQuantityId: 21
+                                  quantityType: Regular
+                                  extraPrice: 0.00
+                                  extraCalories: 0.0
+                                traitResponses:
+                                  - id: 1
+                                    productOptionTraitId: 7001
+                                    name: Grilled
+                                    labelCode: GRILLED
+                                    basePrice: 0.00
+                                    calculatedPrice: 0.00
+                                    calculatedCalories: 0.0
+                                    optionTraitType: BINARY
+                                    selectedValue: 1
+        '400':
+          description: Missing `guestId` cookie, unresolvable cart owner, or an invalid `orderType`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: The store does not exist, or there is no cart to snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: |
+            **Known defect.** `ClassCastException` for unauthenticated callers, as described
+            above. Also covers an empty cart, which is not guarded by an explicit check
+            (`EmptyCartException` exists in the codebase but is an empty stub that does not
+            extend `Exception` and is never thrown).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                anonymousCaller:
+                  value:
+                    message: class java.lang.String cannot be cast to class com.whattheburger.backend.security.UserDetailsImpl
+                    status: 500
+                    timestamp: '2026-08-23T13:50:07.443'
+
+  /api/v1/order-session/{sessionId}/store/{storeId}:
+    get:
+      operationId: getOrderSession
+      tags: [OrderSession]
+      summary: Get an order session by id
+      description: |
+        Loads an order session and verifies it belongs to `storeId`.
+
+        **No ownership check.** The handler accepts `guestId` and `Authentication` but
+        `OrderService.loadOrderSession` ignores both — the session-key check is commented
+        out. Any caller who knows a `sessionId` (a UUID) can read the full session, including
+        the guest's contact details once checkout has populated them. This is an IDOR.
+      security:
+        - {}
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderSessionIdPath'
+        - $ref: '#/components/parameters/StoreId'
+        - $ref: '#/components/parameters/GuestIdCookieRequired'
+      responses:
+        '200':
+          description: The order session.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderSessionResponse'
+        '400':
+          description: Missing `guestId` cookie, or `sessionId` is not a valid UUID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: |
+            The session does not exist, has expired, or belongs to a different store — all
+            three collapse into `OrderSessionNotFoundException` / `ExpiredOrderSessionException`
+            with status 404, so a client cannot tell them apart.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    message: Order session with UUID[4f1a9c2e-8b3d-4a77-9c11-2e6f7d8a9b01] not found
+                    status: 404
+                    timestamp: '2026-08-23T13:52:44.190'
+                expired:
+                  value:
+                    message: Order session has been expired
+                    status: 404
+                    timestamp: '2026-08-23T13:52:44.190'
+
+  /api/v1/order-session/checkout-session/{sessionId}:
+    get:
+      operationId: getOrderSessionByCheckoutSessionId
+      tags: [OrderSession]
+      summary: Get an order session by Stripe Checkout session id
+      description: |
+        Resolves a Stripe Checkout session id (`cs_...`) to the order session behind it.
+        Intended for the page Stripe redirects to, which knows the Stripe id but not the
+        internal `sessionId`.
+
+        No authentication, no `guestId`, and no ownership check of any kind — knowledge of
+        the Stripe session id is the only credential. Note the closely named sibling
+        `GET /api/v1/order/checkout-session/{sessionId}`, which returns the *persisted order*
+        instead and does require authentication.
+      security: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: Stripe Checkout Session id.
+          schema:
+            type: string
+          example: cs_test_a1B2c3D4e5F6g7H8i9J0kLmNoPqRsTuVwXyZ
+      responses:
+        '200':
+          description: The order session.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderSessionResponse'
+        '404':
+          description: |
+            No mapping for that Stripe session id, or the order session has expired.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: |
+            **Contract smell.** `CheckoutService.getOrderSessionId` can return a value that
+            is not a UUID, in which case `UUID.fromString` throws
+            `IllegalArgumentException` and the catch-all reports 500.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ---------------------------------------------------------------------------
+  # Order
+  # ---------------------------------------------------------------------------
+  /api/v1/order/list:
+    get:
+      operationId: listOrders
+      tags: [Order]
+      summary: List the authenticated user's orders
+      description: |
+        Returns a page of the caller's order history plus a total count.
+
+        Authentication is enforced by `SecurityConfig` (`GET /api/v1/order/**` →
+        `authenticated()`), so there is no guest order history.
+
+        `pageNumber` is zero-based. Neither `pageNumber` nor `pageSize` is validated: a
+        negative `pageNumber` or a non-positive `pageSize` reaches
+        `PageRequest.of` and raises `IllegalArgumentException`, reported as **500**.
+
+        `orderCount` is the total number of matching orders, not the number of items in
+        `orders`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: sort
+          in: query
+          required: false
+          description: Sort order.
+          schema:
+            $ref: '#/components/schemas/OrderSortType'
+          example: CREATED_AT_DESC
+        - name: pageNumber
+          in: query
+          required: false
+          description: Zero-based page index. Not validated.
+          schema:
+            type: integer
+            format: int32
+            default: 0
+          example: 0
+        - name: pageSize
+          in: query
+          required: false
+          description: Page size. Not validated and not capped.
+          schema:
+            type: integer
+            format: int32
+            default: 10
+          example: 10
+      responses:
+        '200':
+          description: A page of orders.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderListResponse'
+              examples:
+                default:
+                  value:
+                    orderCount: 2
+                    orders:
+                      - id: 5001
+                        orderNumber: 7c9e6679-7425-40de-944b-e07fc1f90ae7
+                        storeId: 1
+                        createdAt: '2026-08-22T18:31:04Z'
+                        updatedAt: '2026-08-22T18:44:12Z'
+                        totalPrice: 15.56
+                        orderStatus: COMPLETED
+                        orderType: PICK_UP
+                      - id: 4980
+                        orderNumber: 1b4e28ba-2fa1-11d2-883f-0016d3cca427
+                        storeId: 2
+                        createdAt: '2026-08-14T12:02:55Z'
+                        updatedAt: '2026-08-14T12:40:31Z'
+                        totalPrice: 28.14
+                        orderStatus: CANCELLED
+                        orderType: DELIVERY
+                empty:
+                  summary: No orders yet
+                  value:
+                    orderCount: 0
+                    orders: []
+        '400':
+          description: '`sort` is not one of the `OrderSortType` values.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/FilterChainUnauthorized'
+        '500':
+          description: |
+            **Contract smell.** Invalid pagination (`pageNumber < 0`, `pageSize <= 0`)
+            surfaces as 500 instead of 400.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                badPageSize:
+                  value:
+                    message: Page size must not be less than one
+                    status: 500
+                    timestamp: '2026-08-23T13:58:26.335'
+
+  /api/v1/order/{orderNumber}/detail:
+    get:
+      operationId: getOrderDetail
+      tags: [Order]
+      summary: Get one of the authenticated user's orders in full
+      description: |
+        Returns a complete order: line items with the full option tree, payment and card
+        summary, contact and delivery address, and the store.
+
+        The lookup is scoped to the caller's user id, so another user's `orderNumber`
+        produces 404 rather than 403. Requires authentication
+        (`GET /api/v1/order/**` → `authenticated()`), meaning **guests cannot retrieve their
+        own orders through this endpoint**.
+
+        `orderNumber` is the public UUID of the order, not the numeric `id` that also appears
+        in the payload.
+
+        Field naming here is inconsistent with the rest of the API because of Jackson
+        renames: the wire names are `productResponses`, `customRuleResponses`,
+        `optionResponses` and `traitResponses`, while the Java fields are
+        `productResponse`, `customRuleResponseDtos`, `optionResponseDtos` and
+        `traitResponseDtos`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderNumber'
+      responses:
+        '200':
+          description: The order.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderDetailResponse'
+              examples:
+                default:
+                  value:
+                    id: 5001
+                    orderNumber: 7c9e6679-7425-40de-944b-e07fc1f90ae7
+                    totalPrice: 15.56
+                    orderStatus: COMPLETED
+                    orderType: PICK_UP
+                    orderDate: '2026-08-22T18:31:04Z'
+                    paymentStatus: PAID
+                    paymentMethod: CREDIT_CARD
+                    orderNote: No onions please
+                    discountType: null
+                    taxAmount: 1.28
+                    guestInfo:
+                      guestId: null
+                    cardInfo:
+                      cardBrand: visa
+                      cardLast4: '4242'
+                      cardExpireMonth: 12
+                      cardExpireYear: 2030
+                    contactInfo:
+                      firstName: Casey
+                      lastName: Nguyen
+                      email: casey.nguyen@example.com
+                      phoneNum: '+15125550137'
+                    addressInfo:
+                      streetAddr: null
+                      streetAddrDetail: null
+                      zipCode: null
+                      cityState: null
+                    storeResponse:
+                      storeId: 1
+                      overpassId: 358294712
+                      houseNumber: 1200
+                      openTime: '07:00:00'
+                      closeTime: '23:00:00'
+                      branch: Downtown Austin
+                      address:
+                        city: Austin
+                        street: Congress Ave
+                        state: TX
+                        zipcode: '78701'
+                      coordinate:
+                        longitude: -97.7431
+                        latitude: 30.2672
+                      phoneNum: '+15125550100'
+                      website: https://example.com/stores/1
+                    productResponses:
+                      - id: 9001
+                        storeProductId: 3001
+                        quantity: 2
+                        name: Whataburger
+                        basePrice: 6.29
+                        extraPrice: 1.49
+                        totalPrice: 15.56
+                        imageSource: products/whataburger.png
+                        calculatedCalories: 670.0
+                        productType: ONLY
+                        customRuleResponses:
+                          - id: 8001
+                            customRuleId: 900
+                            name: Add Extras
+                            calculatedPrice: 1.49
+                            optionResponses:
+                              - id: 7001
+                                productOptionId: 5001
+                                name: Bacon
+                                countType: COUNTABLE
+                                basePrice: 1.49
+                                calculatedPrice: 1.49
+                                calculatedCalories: 80.0
+                                quantity: 1
+                                quantityDetail:
+                                  productOptionOptionQuantityId: 21
+                                  quantityType: Regular
+                                  extraPrice: 0.00
+                                  extraCalories: 0.0
+                                traitResponses:
+                                  - id: 6001
+                                    productOptionTraitId: 7001
+                                    name: Grilled
+                                    labelCode: GRILLED
+                                    basePrice: 0.00
+                                    calculatedPrice: 0.00
+                                    calculatedCalories: 0.0
+                                    optionTraitType: BINARY
+                                    selectedValue: 1
+        '400':
+          description: '`orderNumber` is not a valid UUID.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/FilterChainUnauthorized'
+        '404':
+          description: No such order, or the order belongs to another user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    message: Order not found
+                    status: 404
+                    timestamp: '2026-08-23T14:02:19.771'
+
+  /api/v1/order/checkout-session/{sessionId}:
+    get:
+      operationId: getOrderByCheckoutSessionId
+      tags: [Order]
+      summary: Get the persisted order for a Stripe Checkout session
+      description: |
+        Resolves a Stripe Checkout session id to the order that was created from it. This is
+        what the post-payment confirmation page reads.
+
+        Two things to be aware of:
+
+        - **No ownership check.** `OrderService.loadOrderByCheckoutSessionId` accepts
+          `guestId` and `Authentication` but uses neither; any caller with the Stripe session
+          id gets the full order, contact details included.
+        - **Guests cannot use it anyway.** The path matches
+          `GET /api/v1/order/**` → `authenticated()`, so an unauthenticated caller is stopped
+          at the filter chain with 401 — even though the handler is written to accept a
+          `guestId` cookie. Guest order confirmation is therefore broken via this route; the
+          usable guest path is `GET /api/v1/order-session/checkout-session/{sessionId}`.
+        - The order becomes available only after Stripe's webhook has been processed, so a
+          client redirected back from Stripe may need to retry on 404.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: Stripe Checkout Session id.
+          schema:
+            type: string
+          example: cs_test_a1B2c3D4e5F6g7H8i9J0kLmNoPqRsTuVwXyZ
+        - $ref: '#/components/parameters/GuestIdCookieRequired'
+      responses:
+        '200':
+          description: The order.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderDetailResponse'
+        '400':
+          $ref: '#/components/responses/MissingGuestIdCookie'
+        '401':
+          $ref: '#/components/responses/FilterChainUnauthorized'
+        '404':
+          description: |
+            No order for that Stripe session id — either the id is wrong or the webhook has
+            not been processed yet.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notYetPersisted:
+                  value:
+                    message: Order not found
+                    status: 404
+                    timestamp: '2026-08-23T14:05:38.902'
+
+  # ---------------------------------------------------------------------------
+  # Checkout
+  # ---------------------------------------------------------------------------
+  /api/v1/checkout/{orderSessionId}:
+    post:
+      operationId: createCheckoutSession
+      tags: [Checkout]
+      summary: Attach the order form to a session and start Stripe Checkout
+      description: |
+        Two steps in one call: the contact/fulfilment form is written onto the order session,
+        then a Stripe Checkout Session is created for it. The response carries the Stripe
+        hosted-payment URL that the client must redirect the browser to.
+
+        The request body is **polymorphic**, discriminated by `type`:
+
+        - `"pickup"` — `PickupOrderForm`, with an `eta` timestamp.
+        - `"delivery"` — `DeliveryOrderForm`, with the delivery address.
+
+        An unrecognised or missing `type` is a Jackson deserialization failure and surfaces
+        as 400.
+
+        Contract caveats:
+
+        - `orderNumber` is a field on the body *and* `orderSessionId` is a path variable.
+          Which one wins, and whether they must agree, is not enforced by the handler.
+        - The form's `type` is not checked against the `orderType` the session was created
+          with, so a `PICK_UP` session can be completed with a `delivery` form.
+        - `successUrl` is the name of the response field, but the value is the Stripe
+          Checkout URL to redirect to — not the post-payment success URL.
+        - No ownership check: any caller who knows the `orderSessionId` UUID can overwrite
+          its contact details and start a payment.
+      security:
+        - {}
+        - bearerAuth: []
+      parameters:
+        - name: orderSessionId
+          in: path
+          required: true
+          description: The order session to check out.
+          schema:
+            type: string
+            format: uuid
+          example: 4f1a9c2e-8b3d-4a77-9c11-2e6f7d8a9b01
+        - $ref: '#/components/parameters/GuestIdCookieRequired'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderFormRequest'
+            examples:
+              pickup:
+                summary: Pickup order
+                value:
+                  type: pickup
+                  orderNumber: 4f1a9c2e-8b3d-4a77-9c11-2e6f7d8a9b01
+                  firstName: Casey
+                  lastName: Nguyen
+                  eta: '2026-08-23T19:15:00Z'
+                  email: casey.nguyen@example.com
+                  phoneNum: '+15125550137'
+              delivery:
+                summary: Delivery order
+                value:
+                  type: delivery
+                  orderNumber: 4f1a9c2e-8b3d-4a77-9c11-2e6f7d8a9b01
+                  firstName: Casey
+                  lastName: Nguyen
+                  streetAddr: 1200 Congress Ave
+                  streetAddrDetail: Apt 4B
+                  zipCode: '78701'
+                  cityState: Austin, TX
+                  email: casey.nguyen@example.com
+                  phoneNum: '+15125550137'
+      responses:
+        '201':
+          description: Stripe Checkout Session created. Redirect the browser to `successUrl`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutResponse'
+              examples:
+                default:
+                  value:
+                    successUrl: https://checkout.stripe.com/c/pay/cs_test_a1B2c3D4e5F6g7H8i9J0kLmNoPqRsTuVwXyZ
+        '400':
+          description: |
+            Unknown or missing `type` discriminator, malformed JSON, `email` failing `@Email`,
+            missing `guestId` cookie, or `orderSessionId` not a valid UUID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: The order session does not exist or has expired.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                expired:
+                  value:
+                    message: Order session has been expired
+                    status: 404
+                    timestamp: '2026-08-23T14:09:51.667'
+        '500':
+          description: The Stripe API call failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/checkout/webhook:
+    post:
+      operationId: handleStripeWebhook
+      tags: [Checkout]
+      summary: Stripe webhook receiver
+      description: |
+        **Called by Stripe, not by clients.**
+
+        Verifies the `Stripe-Signature` header against `stripe.webhook.secret`, then handles
+        `checkout.session.completed` (converts the order session into a persisted order) and
+        `payment_intent.succeeded` (records payment and card details).
+        `payment_method.attached` is accepted and ignored; any other event type is logged and
+        ignored.
+
+        The request body is Stripe's raw event JSON and is read from the input stream rather
+        than bound to a DTO, so signature verification sees the exact bytes.
+
+        Responses are written directly onto `HttpServletResponse` and the body is always the
+        empty string, served as `text/plain` — including on failure. Stripe only inspects the
+        status code.
+
+        Two defects worth noting:
+
+        - If `stripe.webhook.secret` is unset, verification is skipped, `event` stays `null`,
+          and the next line dereferences it — a 500 (`NullPointerException`) instead of a
+          rejected request.
+        - The deserialized object is cast to `Session` unconditionally before the `switch`,
+          so any event whose payload is not a Checkout Session (including
+          `payment_intent.succeeded` and `payment_method.attached`) throws
+          `ClassCastException` and returns 500. Stripe will keep retrying those events.
+      security: []
+      parameters:
+        - name: Stripe-Signature
+          in: header
+          required: true
+          description: Stripe's HMAC signature over the raw request body.
+          schema:
+            type: string
+          example: t=1755900000,v1=5257a869e7ecebeda32affa62cdca3fa51cad7e77a0e56ff536d0ce8e108d8bd
+      requestBody:
+        required: true
+        description: Raw Stripe event payload. Read as bytes; not validated against a schema.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StripeEvent'
+            examples:
+              checkoutSessionCompleted:
+                value:
+                  id: evt_1P2Q3R4S5T6U7V8W
+                  object: event
+                  type: checkout.session.completed
+                  created: 1755900000
+                  data:
+                    object:
+                      id: cs_test_a1B2c3D4e5F6g7H8i9J0kLmNoPqRsTuVwXyZ
+                      object: checkout.session
+                      payment_status: paid
+                      amount_total: 1556
+      responses:
+        '200':
+          description: Event accepted (or intentionally ignored). Empty body.
+          content:
+            text/plain:
+              schema:
+                type: string
+              examples:
+                default:
+                  value: ''
+        '400':
+          description: |
+            Signature verification failed (`SignatureVerificationException`). Empty body.
+            Also returned by Spring if the `Stripe-Signature` header is absent.
+          content:
+            text/plain:
+              schema:
+                type: string
+              examples:
+                default:
+                  value: ''
+        '500':
+          description: |
+            `NullPointerException` when the webhook secret is unconfigured, or
+            `ClassCastException` for a non-Checkout-Session payload. Note this response is
+            JSON (rendered by `GlobalExceptionHandler`) while the success responses are
+            `text/plain`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+# =============================================================================
+# Components
+# =============================================================================
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Access token from `POST /api/v1/login`, sent as `Authorization: Bearer <token>`.
+
+        Validated by `JwtFilter`. The subject is the user's email; the filter reloads the
+        user from the database on every request, so roles reflect current state rather than
+        the token. Lifetime is 30 minutes and the signing key is regenerated on every
+        application restart.
+
+  parameters:
+    StoreId:
+      name: storeId
+      in: path
+      required: true
+      description: Store identifier.
+      schema:
+        type: integer
+        format: int64
+      example: 1
+
+    StoreProductId:
+      name: storeProductId
+      in: path
+      required: true
+      description: |
+        Store product identifier — the id of the store↔product link, not the catalog
+        `productId`. Must belong to `storeId`.
+      schema:
+        type: integer
+        format: int64
+      example: 3001
+
+    ProductId:
+      name: productId
+      in: path
+      required: true
+      description: Catalog product identifier.
+      schema:
+        type: integer
+        format: int64
+      example: 101
+
+    CategoryId:
+      name: categoryId
+      in: path
+      required: true
+      description: Category identifier.
+      schema:
+        type: integer
+        format: int64
+      example: 1
+
+    CartIdx:
+      name: cartIdx
+      in: path
+      required: true
+      description: |
+        Zero-based position of the line item within the cart. **Not a stable identifier** —
+        it shifts whenever an earlier item is added or removed.
+      schema:
+        type: integer
+        format: int32
+        minimum: 0
+      example: 0
+
+    OrderNumber:
+      name: orderNumber
+      in: path
+      required: true
+      description: Public order identifier (UUID), distinct from the numeric `id`.
+      schema:
+        type: string
+        format: uuid
+      example: 7c9e6679-7425-40de-944b-e07fc1f90ae7
+
+    OrderSessionIdPath:
+      name: sessionId
+      in: path
+      required: true
+      description: Order session identifier.
+      schema:
+        type: string
+        format: uuid
+      example: 4f1a9c2e-8b3d-4a77-9c11-2e6f7d8a9b01
+
+    GuestIdCookieRequired:
+      name: guestId
+      in: cookie
+      required: true
+      description: |
+        Guest correlation id, issued automatically by `GuestFilter` on the first response.
+        **Required even for authenticated callers** on this operation — omitting it is a 400.
+      schema:
+        type: string
+        format: uuid
+      example: 9d5b1f30-6c4a-4f2e-8b77-0a1c2d3e4f50
+
+    GuestIdCookieOptional:
+      name: guestId
+      in: cookie
+      required: false
+      description: |
+        Guest correlation id. Optional at the binding level, but a request with neither a
+        bearer token nor this cookie is rejected with 400
+        (`Guest ID or authenticated user is required`).
+      schema:
+        type: string
+        format: uuid
+      example: 9d5b1f30-6c4a-4f2e-8b77-0a1c2d3e4f50
+
+  responses:
+    FilterChainUnauthorized:
+      description: |
+        No token, or the token is malformed, expired or signed with a stale key. Produced by
+        `CustomAuthenticationEntryPoint`, which replaces the specific reason with a generic
+        message — clients cannot distinguish "expired" from "invalid".
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            default:
+              value:
+                message: Authentication failed
+                status: 401
+                timestamp: '2026-08-23T14:12:00.115'
+
+    Forbidden:
+      description: |
+        Authenticated but lacking the required role. There is no `@ExceptionHandler` for
+        `AccessDeniedException`, so this is Spring Security's default 403 and the body shape
+        is **not** `ErrorResponse`.
+      content:
+        application/json:
+          schema:
+            type: object
+            description: Spring Boot's default error body.
+            properties:
+              timestamp:
+                type: string
+              status:
+                type: integer
+              error:
+                type: string
+              path:
+                type: string
+          examples:
+            default:
+              value:
+                timestamp: '2026-08-23T14:12:00.115+00:00'
+                status: 403
+                error: Forbidden
+                path: /api/v1/products
+
+    MissingGuestIdCookie:
+      description: |
+        The `guestId` cookie is absent. Typically the very first request from a fresh client,
+        because `GuestFilter` sets the cookie on the response *after* the handler has already
+        rejected the request.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            default:
+              value:
+                message: Required cookie 'guestId' for method parameter type UUID is not present
+                status: 400
+                timestamp: '2026-08-23T14:12:00.115'
+
+    StoreNotFound:
+      description: No store with that id.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            default:
+              value:
+                message: Store with ID[99] not found
+                status: 404
+                timestamp: '2026-08-23T14:12:00.115'
+
+    PathVariableTypeMismatch:
+      description: A path variable could not be converted to the expected type.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+
+    # -------------------------------------------------------------------------
+    # Common
+    # -------------------------------------------------------------------------
+    ErrorResponse:
+      type: object
+      title: ErrorResponse
+      description: |
+        Uniform error body produced by `GlobalExceptionHandler` and
+        `CustomAuthenticationEntryPoint`. There is no error code or field-level detail, so
+        clients cannot branch on anything but the HTTP status and the human-readable message.
+      required: [message, status, timestamp]
+      properties:
+        message:
+          type: [string, 'null']
+          description: |
+            Human-readable message. Can be `null` when the underlying exception carried no
+            message (for example a bare `IllegalStateException`). Not stable — treat as
+            display/debug text only.
+          examples: ['Store with ID[99] not found']
+        status:
+          type: integer
+          format: int32
+          description: Duplicates the HTTP status code.
+          examples: [404]
+        timestamp:
+          type: string
+          description: |
+            `LocalDateTime.now().toString()` — server-local time with **no timezone offset**,
+            unlike the `Instant` fields elsewhere in the API, which are UTC with a `Z` suffix.
+          examples: ['2026-08-23T14:12:00.115']
+
+    # -------------------------------------------------------------------------
+    # Enums
+    # -------------------------------------------------------------------------
+    ProductType:
+      type: string
+      title: ProductType
+      description: Whether the product is a standalone item or a combo meal.
+      enum: [ONLY, MEAL]
+
+    QuantityType:
+      type: string
+      title: QuantityType
+      description: |
+        Quantity variant of an option. Mixes two unrelated axes — portion size
+        (`Kids`…`Large`) and intensity (`Easy`, `Regular`, `Extra`) — and, unlike every other
+        enum in the API, uses PascalCase rather than SCREAMING_SNAKE_CASE.
+      enum: [Kids, Small, Medium, Large, Easy, Regular, Extra]
+
+    CountType:
+      type: string
+      title: CountType
+      description: |
+        How an option's amount is expressed. `COUNTABLE` uses `optionQuantity`,
+        `UNCOUNTABLE` uses a `quantityDetail` selection, `NONE` is a plain toggle.
+      enum: [COUNTABLE, UNCOUNTABLE, NONE]
+
+    CustomRuleType:
+      type: string
+      title: CustomRuleType
+      description: |
+        Selection semantics of a custom rule. `UNIQUE` = pick exactly one, `LIMIT` = bounded
+        by `minSelection`/`maxSelection`, `FREE` = unconstrained.
+      enum: [UNIQUE, LIMIT, FREE]
+
+    OptionTraitType:
+      type: string
+      title: OptionTraitType
+      description: 'Trait value domain. Only `BINARY` exists, where `selectedValue`/`currentValue` is 0 or 1.'
+      enum: [BINARY]
+
+    ModifyType:
+      type: string
+      title: ModifyType
+      description: |
+        Delta operation applied by the store-product override endpoint. `HIDE` makes an
+        option non-selectable at the store without deleting it.
+      enum: [ADD, DELETE, OVERRIDE, HIDE]
+
+    OrderType:
+      type: string
+      title: OrderType
+      description: |
+        Fulfilment method. `DINE_IN` is defined but no order form maps to it — the checkout
+        body only supports `pickup` and `delivery`.
+      enum: [PICK_UP, DELIVERY, DINE_IN]
+
+    OrderStatus:
+      type: string
+      title: OrderStatus
+      enum:
+        - PENDING
+        - CONFIRMING
+        - PREPARING
+        - PICKUP_READY
+        - DELIVERY_READY
+        - DELIVERING
+        - COMPLETED
+        - CANCELLED
+        - EXPIRED
+
+    PaymentStatus:
+      type: string
+      title: PaymentStatus
+      description: '`PENDING` and `UNPAID` overlap; the distinction is not documented in the code.'
+      enum: [PENDING, PAID, UNPAID, FAILED, REFUNDED]
+
+    PaymentMethod:
+      type: string
+      title: PaymentMethod
+      description: 'Only `CREDIT_CARD` is reachable today — payment goes through Stripe Checkout.'
+      enum: [CASH, CREDIT_CARD, PAYPAL, GIFT_CARD]
+
+    DiscountType:
+      type: string
+      title: DiscountType
+      enum: [FIXED, PERCENTAGE]
+
+    Role:
+      type: string
+      title: Role
+      description: |
+        Account role. Authorities are hierarchical and expanded at authentication time:
+        `USER` → `ROLE_USER`; `EMPLOYER` → `ROLE_EMPLOYER, ROLE_USER`;
+        `ADMIN` → `ROLE_ADMIN, ROLE_EMPLOYER, ROLE_USER`. Sign-up always creates `USER`;
+        there is no API for changing a role.
+      enum: [USER, EMPLOYER, ADMIN]
+
+    OrderSortType:
+      type: string
+      title: OrderSortType
+      description: Sort orders for the order-history listing.
+      enum: [CREATED_AT_DESC, CREATED_AT_ASC, TOTAL_PRICE_DESC]
+      default: CREATED_AT_DESC
+
+    # -------------------------------------------------------------------------
+    # Auth / user
+    # -------------------------------------------------------------------------
+    LoginRequest:
+      type: object
+      title: LoginRequest
+      description: |
+        Credentials. Only `email` carries a constraint (`@Email`), and because the handler
+        does not use `@Valid` even that is **not enforced**.
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          examples: [burger.lover@example.com]
+        password:
+          type: string
+          format: password
+          description: Write-only (`@JsonProperty(access = WRITE_ONLY)`); never serialized back.
+          writeOnly: true
+
+    LoginResponse:
+      type: object
+      title: LoginResponse
+      required: [accessToken, refreshToken]
+      properties:
+        accessToken:
+          type: string
+          description: 'JWT for the `Authorization: Bearer` header. Valid 30 minutes.'
+        refreshToken:
+          type: string
+          description: |
+            JWT valid 7 days. **Currently unusable** — no endpoint accepts it. Structurally
+            identical to the access token, so it would also be accepted as a bearer token.
+
+    UserCreateRequest:
+      type: object
+      title: UserCreateRequest
+      description: |
+        Sign-up payload. No field is validated: there are no Bean Validation annotations and
+        the handler does not use `@Valid`, so blanks and malformed emails/phone numbers are
+        persisted as given. The role is always `USER`.
+      required: [email, password]
+      properties:
+        firstName:
+          type: [string, 'null']
+          examples: [Casey]
+        lastName:
+          type: [string, 'null']
+          examples: [Nguyen]
+        phoneNum:
+          type: [string, 'null']
+          description: Free-form. No format enforced.
+          examples: ['+15125550137']
+        zipCode:
+          type: [string, 'null']
+          description: 'Note the casing: `zipCode` on the way in, `zipcode` on the way out in `UserReadResponse`.'
+          examples: ['78701']
+        email:
+          type: string
+          format: email
+          examples: [casey.nguyen@example.com]
+        password:
+          type: string
+          format: password
+          description: Stored BCrypt-hashed. No strength or length requirement is enforced.
+          writeOnly: true
+
+    UserCreateResponse:
+      type: object
+      title: UserCreateResponse
+      required: [userId]
+      properties:
+        userId:
+          type: integer
+          format: int64
+          examples: [42]
+
+    UserReadResponse:
+      type: object
+      title: UserReadResponse
+      properties:
+        userId:
+          type: integer
+          format: int64
+        firstName:
+          type: [string, 'null']
+        lastName:
+          type: [string, 'null']
+        phoneNum:
+          type: [string, 'null']
+        email:
+          type: string
+          format: email
+        zipcode:
+          type: [string, 'null']
+          description: Lowercase `zipcode` here, versus `zipCode` in `UserCreateRequest`.
+        role:
+          $ref: '#/components/schemas/Role'
+
+    # -------------------------------------------------------------------------
+    # Catalog
+    # -------------------------------------------------------------------------
+    CategoryReadResponse:
+      type: object
+      title: CategoryReadResponse
+      properties:
+        categoryId:
+          type: integer
+          format: int64
+        name:
+          type: string
+          examples: [Burgers]
+        productCount:
+          type: [integer, 'null']
+          format: int32
+          description: Number of products in the category, counted across the whole catalog rather than per store.
+
+    OptionQuantity:
+      type: object
+      title: OptionQuantity
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Option-quantity id. This is the value a cart request sends as `quantityDetailRequest.id`.
+        quantityType:
+          $ref: '#/components/schemas/QuantityType'
+
+    OptionReadResponse:
+      type: object
+      title: OptionReadResponse
+      properties:
+        optionId:
+          type: integer
+          format: int64
+        optionName:
+          type: string
+          examples: [Bacon]
+        imageSource:
+          type: [string, 'null']
+          description: |
+            Fully qualified URL (`aws.s3.public-url` + key), or `null` when the option has no
+            image. Other endpoints return a bare object key in the same-named field.
+        optionCalories:
+          type: [number, 'null']
+          format: double
+        quantityDetails:
+          type: array
+          items:
+            $ref: '#/components/schemas/OptionQuantity'
+
+    OptionTraitReadResponse:
+      type: object
+      title: OptionTraitReadResponse
+      properties:
+        optionTraitId:
+          type: integer
+          format: int64
+        name:
+          type: string
+          examples: [Grilled]
+        labelCode:
+          type: [string, 'null']
+          description: Stable key for client-side i18n of the display label.
+          examples: [GRILLED]
+        optionTraitType:
+          $ref: '#/components/schemas/OptionTraitType'
+
+    ProductReadResponse:
+      type: object
+      title: ProductReadResponse
+      description: Catalog product summary. Identifier field is `productId`.
+      properties:
+        productId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        price:
+          type: [number, 'null']
+          format: double
+          description: Catalog list price. A store may override it.
+        calories:
+          type: [number, 'null']
+          format: double
+        briefInfo:
+          type: [string, 'null']
+        imageSource:
+          type: [string, 'null']
+          description: Raw S3 object key, not a URL.
+        productType:
+          $ref: '#/components/schemas/ProductType'
+
+    ProductReadByCategoryIdResponse:
+      type: object
+      title: ProductReadByCategoryIdResponse
+      description: |
+        Catalog product summary as returned by the by-category endpoint. Differs from
+        `ProductReadResponse`: the identifier is `id`, and `productType` is absent.
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        price:
+          type: [number, 'null']
+          format: double
+        calories:
+          type: [number, 'null']
+          format: double
+        imageSource:
+          type: [string, 'null']
+        briefInfo:
+          type: [string, 'null']
+
+    ProductOptionCustomRule:
+      type: object
+      title: ProductOptionCustomRule
+      description: |
+        The custom rule an option belongs to, embedded on every option. Clients group options
+        by `customRuleId` to reconstruct the rule-by-rule configurator.
+      properties:
+        customRuleId:
+          type: integer
+          format: int64
+        name:
+          type: string
+          examples: [Add Extras]
+        customRuleType:
+          $ref: '#/components/schemas/CustomRuleType'
+        orderIndex:
+          type: [integer, 'null']
+          format: int32
+        minSelection:
+          type: [integer, 'null']
+          format: int32
+        maxSelection:
+          type: [integer, 'null']
+          format: int32
+
+    ProductOptionQuantityDetail:
+      type: object
+      title: ProductOptionQuantityDetail
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: '`ProductOptionOptionQuantity` id — send this as `quantityDetailRequest.id` when adding to the cart.'
+        quantityType:
+          $ref: '#/components/schemas/QuantityType'
+        labelCode:
+          type: [string, 'null']
+        extraPrice:
+          type: [number, 'null']
+          format: double
+        extraCalories:
+          type: [number, 'null']
+          format: double
+        isDefault:
+          type: [boolean, 'null']
+
+    ProductOptionTraitDetail:
+      type: object
+      title: ProductOptionTraitDetail
+      properties:
+        productOptionTraitId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        labelCode:
+          type: [string, 'null']
+        optionTraitType:
+          $ref: '#/components/schemas/OptionTraitType'
+        defaultSelection:
+          type: [integer, 'null']
+          format: int32
+        extraPrice:
+          type: [number, 'null']
+          format: double
+        extraCalories:
+          type: [number, 'null']
+          format: double
+
+    ProductOptionDetail:
+      type: object
+      title: ProductOptionDetail
+      description: One selectable option on a product, with its parent rule embedded.
+      properties:
+        productOptionId:
+          type: integer
+          format: int64
+          description: Identifies the product↔option pairing. This is what cart requests reference.
+        name:
+          type: string
+        isDefault:
+          type: [boolean, 'null']
+        defaultQuantity:
+          type: [integer, 'null']
+          format: int32
+        maxQuantity:
+          type: [integer, 'null']
+          format: int32
+        extraPrice:
+          type: [number, 'null']
+          format: double
+        calories:
+          type: [number, 'null']
+          format: double
+        countType:
+          $ref: '#/components/schemas/CountType'
+        imageSource:
+          type: [string, 'null']
+          description: Raw S3 object key.
+        orderIndex:
+          type: [integer, 'null']
+          format: int32
+        customRuleResponse:
+          $ref: '#/components/schemas/ProductOptionCustomRule'
+        quantityDetailResponses:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductOptionQuantityDetail'
+        optionTraitResponses:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductOptionTraitDetail'
+
+    ProductReadByProductId:
+      type: object
+      title: ProductReadByProductId
+      description: Catalog product with its full option tree.
+      properties:
+        productId:
+          type: integer
+          format: int64
+        productName:
+          type: string
+        productPrice:
+          type: [number, 'null']
+          format: double
+        productCalories:
+          type: 'null'
+          description: |
+            **Always `null`.** `ProductReadByProductIdDto.toDto` never sets this field even
+            though the product entity has a calorie value.
+        imageSource:
+          type: [string, 'null']
+        briefInfo:
+          type: [string, 'null']
+        optionResponses:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductOptionDetail'
+
+    StoreProductReadByProductId:
+      type: object
+      title: StoreProductReadByProductId
+      description: |
+        Store-specific product with its full option tree — the same shape as
+        `ProductReadByProductId` except the identifier is `storeProductId`, and prices and
+        option availability reflect the store's overrides.
+      properties:
+        storeProductId:
+          type: integer
+          format: int64
+        productName:
+          type: string
+        productPrice:
+          type: [number, 'null']
+          format: double
+          description: Store price, after any override.
+        productCalories:
+          type: [number, 'null']
+          format: double
+        imageSource:
+          type: [string, 'null']
+        briefInfo:
+          type: [string, 'null']
+        optionResponses:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductOptionDetail'
+
+    ProductCreateRequest:
+      type: object
+      title: ProductCreateRequest
+      description: |
+        Full product definition sent as the `productBlob` multipart part. Creates the
+        product, its category assignments, its custom rules, and the options and traits under
+        each rule, in one shot. No field is validated.
+      properties:
+        productName:
+          type: string
+        productPrice:
+          type: number
+          format: double
+        productCalories:
+          type: [number, 'null']
+          format: double
+        productType:
+          $ref: '#/components/schemas/ProductType'
+        briefInfo:
+          type: [string, 'null']
+        categoryIds:
+          type: array
+          description: Categories to assign the product to. Every id must already exist.
+          items:
+            type: integer
+            format: int64
+        customRuleRequests:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductCreateCustomRuleRequest'
+
+    ProductCreateCustomRuleRequest:
+      type: object
+      title: ProductCreateCustomRuleRequest
+      properties:
+        customRuleName:
+          type: string
+        customRuleType:
+          $ref: '#/components/schemas/CustomRuleType'
+        orderIndex:
+          type: [integer, 'null']
+          format: int32
+        minSelection:
+          type: [integer, 'null']
+          format: int32
+        maxSelection:
+          type: [integer, 'null']
+          format: int32
+          description: Consistency with `customRuleType` and `minSelection` is not validated server-side.
+        optionRequests:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductCreateOptionRequest'
+
+    ProductCreateOptionRequest:
+      type: object
+      title: ProductCreateOptionRequest
+      properties:
+        optionId:
+          type: integer
+          format: int64
+          description: References an existing option from `GET /api/v1/options`.
+        isDefault:
+          type: [boolean, 'null']
+        countType:
+          $ref: '#/components/schemas/CountType'
+        defaultQuantity:
+          type: [integer, 'null']
+          format: int32
+        maxQuantity:
+          type: [integer, 'null']
+          format: int32
+        extraPrice:
+          type: [number, 'null']
+          format: double
+        orderIndex:
+          type: [integer, 'null']
+          format: int32
+        quantityDetails:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductCreateQuantityRequest'
+        optionTraitRequests:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductCreateOptionTraitRequest'
+
+    ProductCreateQuantityRequest:
+      type: object
+      title: ProductCreateQuantityRequest
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Existing option-quantity id, from `OptionReadResponse.quantityDetails[].id`.
+        quantityType:
+          $ref: '#/components/schemas/QuantityType'
+        isDefault:
+          type: [boolean, 'null']
+        extraPrice:
+          type: [number, 'null']
+          format: double
+
+    ProductCreateOptionTraitRequest:
+      type: object
+      title: ProductCreateOptionTraitRequest
+      properties:
+        optionTraitId:
+          type: integer
+          format: int64
+        defaultSelection:
+          type: [integer, 'null']
+          format: int32
+        extraPrice:
+          type: [number, 'null']
+          format: double
+        extraCalories:
+          type: [number, 'null']
+          format: double
+
+    # -------------------------------------------------------------------------
+    # Store
+    # -------------------------------------------------------------------------
+    StoreAddress:
+      type: object
+      title: StoreAddress
+      properties:
+        city:
+          type: [string, 'null']
+        street:
+          type: [string, 'null']
+        state:
+          type: [string, 'null']
+        zipcode:
+          type: [string, 'null']
+
+    StoreCoordinate:
+      type: object
+      title: StoreCoordinate
+      properties:
+        longitude:
+          type: [number, 'null']
+          format: double
+        latitude:
+          type: [number, 'null']
+          format: double
+
+    StoreResponse:
+      type: object
+      title: StoreResponse
+      description: |
+        A store. **Population depends on the endpoint.** `GET /api/v1/store` fills only
+        `storeId`, `overpassId` and `houseNumber`; the copy embedded in
+        `OrderDetailResponse.storeResponse` is fully populated.
+      properties:
+        storeId:
+          type: integer
+          format: int64
+        overpassId:
+          type: [integer, 'null']
+          format: int64
+          description: OpenStreetMap/Overpass identifier the store record was imported from.
+        houseNumber:
+          type: [integer, 'null']
+          format: int64
+        openTime:
+          type: [string, 'null']
+          description: Local opening time, `HH:mm:ss`. No timezone is carried.
+          examples: ['07:00:00']
+        closeTime:
+          type: [string, 'null']
+          description: Local closing time, `HH:mm:ss`.
+          examples: ['23:00:00']
+        branch:
+          type: [string, 'null']
+        address:
+          anyOf:
+            - $ref: '#/components/schemas/StoreAddress'
+            - type: 'null'
+        coordinate:
+          anyOf:
+            - $ref: '#/components/schemas/StoreCoordinate'
+            - type: 'null'
+        phoneNum:
+          type: [string, 'null']
+        website:
+          type: [string, 'null']
+
+    NearByStoreReadResponse:
+      type: object
+      title: NearByStoreReadResponse
+      description: |
+        A store with routing metrics. `openTime`, `closeTime`, `website` and `overpassId` are
+        not populated by the controller's mapper and are always `null`.
+      properties:
+        storeId:
+          type: integer
+          format: int64
+        overpassId:
+          type: [integer, 'null']
+          format: int64
+        houseNumber:
+          type: [integer, 'null']
+          format: int64
+        openTime:
+          type: 'null'
+          description: Always `null` on this endpoint.
+        closeTime:
+          type: 'null'
+          description: Always `null` on this endpoint.
+        branch:
+          type: [string, 'null']
+        address:
+          anyOf:
+            - $ref: '#/components/schemas/StoreAddress'
+            - type: 'null'
+        coordinate:
+          anyOf:
+            - $ref: '#/components/schemas/StoreCoordinate'
+            - type: 'null'
+        phoneNum:
+          type: [string, 'null']
+        website:
+          type: 'null'
+          description: Always `null` on this endpoint.
+        distance:
+          type: [number, 'null']
+          format: double
+          description: Routing distance in meters (not straight-line).
+        duration:
+          type: [number, 'null']
+          format: double
+          description: Routing duration in seconds.
+
+    StoreProductCreateRequest:
+      type: object
+      title: StoreProductCreateRequest
+      properties:
+        storeIds:
+          type: array
+          description: Stores to register the product to. Not deduplicated or validated for emptiness.
+          items:
+            type: integer
+            format: int64
+        productId:
+          type: integer
+          format: int64
+
+    CategorizedStoreProductsRead:
+      type: object
+      title: CategorizedStoreProductsRead
+      properties:
+        categoryId:
+          type: integer
+          format: int64
+        categoryName:
+          type: string
+        orderIndex:
+          type: [integer, 'null']
+          format: int32
+          description: Display order of the category within the store's menu.
+        products:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategorizedStoreProduct'
+
+    CategorizedStoreProduct:
+      type: object
+      title: CategorizedStoreProduct
+      properties:
+        storeProductId:
+          type: integer
+          format: int64
+          description: Use this id for the cart and for the product-detail endpoint.
+        name:
+          type: string
+        price:
+          type: [number, 'null']
+          format: double
+          description: Store price.
+        calories:
+          type: [number, 'null']
+          format: double
+        briefInfo:
+          type: [string, 'null']
+        imageSource:
+          type: [string, 'null']
+        productType:
+          $ref: '#/components/schemas/ProductType'
+
+    StoreProductsRead:
+      type: object
+      title: StoreProductsRead
+      description: |
+        Flat store menu entry. **`productId` actually holds the store-product id**, matching
+        `CategorizedStoreProduct.storeProductId`; the field name is misleading.
+      properties:
+        productId:
+          type: integer
+          format: int64
+          description: Store-product id, despite the name.
+        name:
+          type: string
+        price:
+          type: [number, 'null']
+          format: double
+        calories:
+          type: [number, 'null']
+          format: double
+        briefInfo:
+          type: [string, 'null']
+        imageSource:
+          type: [string, 'null']
+        productType:
+          $ref: '#/components/schemas/ProductType'
+        categories:
+          type: array
+          description: Every category the product appears in, with its ordering inside each.
+          items:
+            $ref: '#/components/schemas/StoreProductCategory'
+
+    StoreProductCategory:
+      type: object
+      title: StoreProductCategory
+      properties:
+        categoryId:
+          type: integer
+          format: int64
+        orderIndex:
+          type: integer
+          format: int32
+
+    StoreProductModifyRequest:
+      type: object
+      title: StoreProductModifyRequest
+      description: Store-level override delta for a store product.
+      properties:
+        productPrice:
+          type: [number, 'null']
+          format: double
+          description: New store price. Semantics when omitted/`null` are not defined in code.
+        customRuleRequests:
+          type: array
+          items:
+            $ref: '#/components/schemas/StoreCustomRuleModifyRequest'
+
+    StoreCustomRuleModifyRequest:
+      type: object
+      title: StoreCustomRuleModifyRequest
+      properties:
+        customRuleId:
+          type: integer
+          format: int64
+        modifyType:
+          $ref: '#/components/schemas/ModifyType'
+        optionRequests:
+          type: array
+          items:
+            $ref: '#/components/schemas/StoreOptionModifyRequest'
+
+    StoreOptionModifyRequest:
+      type: object
+      title: StoreOptionModifyRequest
+      description: |
+        Which of these fields are read depends on `modifyType`; the mapping is implicit in
+        `StoreProductService` and not enforced by the schema. For `HIDE` and `DELETE`, only
+        `productOptionId` is meaningful.
+      properties:
+        productOptionId:
+          type: integer
+          format: int64
+        isDefault:
+          type: [boolean, 'null']
+        defaultQuantity:
+          type: [integer, 'null']
+          format: int32
+        maxQuantity:
+          type: [integer, 'null']
+          format: int32
+        extraPrice:
+          type: [number, 'null']
+          format: double
+        orderIndex:
+          type: [integer, 'null']
+          format: int32
+        modifyType:
+          $ref: '#/components/schemas/ModifyType'
+        quantityRequest:
+          type: array
+          description: 'Singular field name for an array; the sibling field is `optionTraitRequests` (plural).'
+          items:
+            $ref: '#/components/schemas/StoreQuantityModifyRequest'
+        optionTraitRequests:
+          type: array
+          items:
+            $ref: '#/components/schemas/StoreTraitModifyRequest'
+
+    StoreQuantityModifyRequest:
+      type: object
+      title: StoreQuantityModifyRequest
+      description: Has no `modifyType` of its own, unlike its sibling request types.
+      properties:
+        productOptionOptionQuantityId:
+          type: integer
+          format: int64
+        quantityType:
+          $ref: '#/components/schemas/QuantityType'
+        isDefault:
+          type: [boolean, 'null']
+        extraPrice:
+          type: [number, 'null']
+          format: double
+
+    StoreTraitModifyRequest:
+      type: object
+      title: StoreTraitModifyRequest
+      properties:
+        productOptionTraitId:
+          type: integer
+          format: int64
+        defaultSelection:
+          type: [integer, 'null']
+          format: int32
+        extraPrice:
+          type: [number, 'null']
+          format: double
+        modifyType:
+          $ref: '#/components/schemas/ModifyType'
+
+    # -------------------------------------------------------------------------
+    # Cart — requests
+    # -------------------------------------------------------------------------
+    CartCreateRequest:
+      type: object
+      title: CartCreateRequest
+      description: |
+        A configured product to append to the cart. `customRuleRequests` must describe the
+        complete selection; the server validates it against the store product's rules and
+        stock before pricing.
+      properties:
+        storeProductId:
+          type: integer
+          format: int64
+          description: From the store menu endpoints. Must belong to the `storeId` in the path.
+        quantity:
+          type: [integer, 'null']
+          format: int32
+          description: Number of this configured item. Not validated — `0` and negatives are accepted by binding.
+        customRuleRequests:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartCustomRuleRequest'
+
+    CartOptionModifyRequest:
+      type: object
+      title: CartOptionModifyRequest
+      description: |
+        Full replacement of a line item's option selection. Anything omitted counts as
+        deselected.
+      properties:
+        customRuleRequests:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartCustomRuleRequest'
+
+    CartProductModifyRequest:
+      type: object
+      title: CartProductModifyRequest
+      properties:
+        storeId:
+          type: [integer, 'null']
+          format: int64
+          description: '**Ignored.** The handler uses the path variable. Present in the DTO only.'
+        quantity:
+          type: integer
+          format: int32
+          description: |
+            New absolute quantity. Primitive `int` with no validation, so `0` and negatives
+            bind successfully. Omitting it defaults to `0`.
+
+    CartCustomRuleRequest:
+      type: object
+      title: CartCustomRuleRequest
+      properties:
+        customRuleId:
+          type: integer
+          format: int64
+        optionRequests:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartOptionRequest'
+
+    CartOptionRequest:
+      type: object
+      title: CartOptionRequest
+      description: |
+        One option selection. Which fields matter depends on the option's `countType`:
+        `COUNTABLE` uses `optionQuantity`, `UNCOUNTABLE` uses `quantityDetailRequest`, `NONE`
+        uses only `isSelected`. Violations raise `InvalidOptionRequestException` (400).
+      properties:
+        productOptionId:
+          type: integer
+          format: int64
+        optionQuantity:
+          type: [integer, 'null']
+          format: int32
+          description: 'Count for `COUNTABLE` options. Must not exceed the option''s `maxQuantity`.'
+        isSelected:
+          type: [boolean, 'null']
+          description: Whether the option is selected. Selecting an option hidden at this store is a 400.
+        optionTraitRequests:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartOptionTraitRequest'
+        quantityDetailRequest:
+          anyOf:
+            - $ref: '#/components/schemas/CartQuantityDetailRequest'
+            - type: 'null'
+          description: 'Size/intensity choice for `UNCOUNTABLE` options.'
+
+    CartOptionTraitRequest:
+      type: object
+      title: CartOptionTraitRequest
+      properties:
+        productOptionTraitId:
+          type: integer
+          format: int64
+        currentValue:
+          type: [integer, 'null']
+          format: int32
+          description: 'For `BINARY` traits: `0` (off) or `1` (on). Other values are not rejected by the schema.'
+
+    CartQuantityDetailRequest:
+      type: object
+      title: CartQuantityDetailRequest
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: The chosen `ProductOptionOptionQuantity` id, from `quantityDetailResponses[].id`.
+
+    # -------------------------------------------------------------------------
+    # Cart — responses
+    # -------------------------------------------------------------------------
+    CartResponse:
+      type: object
+      title: CartResponse
+      description: |
+        The whole cart. Returned by every cart operation except `POST`, which returns only
+        the created line item. Prices are recomputed on each read.
+      properties:
+        productResponses:
+          type: array
+          description: Line items in cart order. The array index is the `cartIdx` used by the item-level operations.
+          items:
+            $ref: '#/components/schemas/CartProductResponse'
+        cartTotalPrice:
+          type: [number, 'null']
+          format: double
+
+    CartProductResponse:
+      type: object
+      title: CartProductResponse
+      description: |
+        One priced line item. Carries no identifier of its own — it is addressed by its
+        position in `CartResponse.productResponses`.
+      properties:
+        storeProductId:
+          type: integer
+          format: int64
+        productName:
+          type: string
+        productType:
+          $ref: '#/components/schemas/ProductType'
+        basePrice:
+          type: [number, 'null']
+          format: double
+          description: Store price of one unit before options.
+        imageSource:
+          type: [string, 'null']
+        briefInfo:
+          type: [string, 'null']
+        calories:
+          type: [number, 'null']
+          format: double
+          description: Calories per unit including the selected options.
+        customRuleResponses:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartCustomRuleResponse'
+        quantity:
+          type: [integer, 'null']
+          format: int32
+        productExtraPrice:
+          type: [number, 'null']
+          format: double
+          description: Options surcharge for one unit.
+        productTotalPrice:
+          type: [number, 'null']
+          format: double
+          description: '`(basePrice + productExtraPrice) * quantity`.'
+
+    CartCustomRuleResponse:
+      type: object
+      title: CartCustomRuleResponse
+      description: |
+        A custom rule with its options and the caller's current selection state — enough to
+        re-render the configurator for editing.
+      properties:
+        customRuleId:
+          type: integer
+          format: int64
+        customRuleName:
+          type: string
+        orderIndex:
+          type: [integer, 'null']
+          format: int32
+        customRuleType:
+          $ref: '#/components/schemas/CustomRuleType'
+        minSelection:
+          type: [integer, 'null']
+          format: int32
+        maxSelection:
+          type: [integer, 'null']
+          format: int32
+        customRuleTotalPrice:
+          type: [number, 'null']
+          format: double
+        optionResponses:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartOptionResponse'
+
+    CartOptionResponse:
+      type: object
+      title: CartOptionResponse
+      properties:
+        productOptionId:
+          type: integer
+          format: int64
+        optionName:
+          type: string
+        isDefault:
+          type: [boolean, 'null']
+        defaultQuantity:
+          type: [integer, 'null']
+          format: int32
+        optionQuantity:
+          type: [integer, 'null']
+          format: int32
+          description: Currently selected count.
+        maxQuantity:
+          type: [integer, 'null']
+          format: int32
+        basePrice:
+          type: [number, 'null']
+          format: double
+        baseCalories:
+          type: [number, 'null']
+          format: double
+        imageSource:
+          type: [string, 'null']
+        isSelected:
+          type: [boolean, 'null']
+        countType:
+          $ref: '#/components/schemas/CountType'
+        orderIndex:
+          type: [integer, 'null']
+          format: int32
+        optionTotalPrice:
+          type: [number, 'null']
+          format: double
+        optionTraitResponses:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartOptionTraitResponse'
+        quantityDetailResponse:
+          anyOf:
+            - $ref: '#/components/schemas/CartQuantityDetailResponse'
+            - type: 'null'
+
+    CartOptionTraitResponse:
+      type: object
+      title: CartOptionTraitResponse
+      properties:
+        productOptionTraitId:
+          type: integer
+          format: int64
+        currentValue:
+          type: [integer, 'null']
+          format: int32
+        labelCode:
+          type: [string, 'null']
+        optionTraitName:
+          type: string
+        optionTraitType:
+          $ref: '#/components/schemas/OptionTraitType'
+        defaultSelection:
+          type: [integer, 'null']
+          format: int32
+        basePrice:
+          type: [number, 'null']
+          format: double
+        baseCalories:
+          type: [number, 'null']
+          format: double
+        traitTotalPrice:
+          type: [number, 'null']
+          format: double
+
+    CartQuantityDetailResponse:
+      type: object
+      title: CartQuantityDetailResponse
+      description: The available size/intensity choices plus which one is selected.
+      properties:
+        quantityDetails:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartQuantityDetail'
+        selectedId:
+          type: [integer, 'null']
+          format: int64
+          description: 'Selected `quantityId`, or `null` if nothing is selected.'
+
+    CartQuantityDetail:
+      type: object
+      title: CartQuantityDetail
+      properties:
+        quantityId:
+          type: integer
+          format: int64
+          description: |
+            Named `quantityId` here, but `id` in `ProductOptionQuantityDetail` and
+            `quantityDetailRequest.id` on the way in — the same value under three names.
+        labelCode:
+          type: [string, 'null']
+        extraPrice:
+          type: [number, 'null']
+          format: double
+        extraCalories:
+          type: [number, 'null']
+          format: double
+        isDefault:
+          type: [boolean, 'null']
+        quantityType:
+          $ref: '#/components/schemas/QuantityType'
+
+    # -------------------------------------------------------------------------
+    # Order session
+    # -------------------------------------------------------------------------
+    OrderSessionCreateRequest:
+      type: object
+      title: OrderSessionCreateRequest
+      properties:
+        orderType:
+          $ref: '#/components/schemas/OrderType'
+
+    GuestInfo:
+      type: object
+      title: GuestInfo
+      properties:
+        guestId:
+          type: [string, 'null']
+          format: uuid
+          description: '`null` for orders placed by an authenticated user.'
+
+    OrderSessionResponse:
+      type: object
+      title: OrderSessionResponse
+      description: |
+        Frozen snapshot of a cart, priced, awaiting checkout. Distinct from `OrderDetailResponse`:
+        no card/contact/address block until the checkout form is submitted, and its identifier
+        is `sessionId` rather than `orderNumber`.
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+        storeId:
+          type: integer
+          format: int64
+        totalPrice:
+          type: [number, 'null']
+          format: double
+        orderStatus:
+          $ref: '#/components/schemas/OrderStatus'
+        orderType:
+          $ref: '#/components/schemas/OrderType'
+        paymentStatus:
+          $ref: '#/components/schemas/PaymentStatus'
+        paymentMethod:
+          anyOf:
+            - $ref: '#/components/schemas/PaymentMethod'
+            - type: 'null'
+          description: '`null` until payment completes.'
+        orderNote:
+          type: [string, 'null']
+          description: No endpoint sets this on a session; always `null` in practice.
+        discountType:
+          anyOf:
+            - $ref: '#/components/schemas/DiscountType'
+            - type: 'null'
+        taxAmount:
+          type: [number, 'null']
+          format: double
+        guestInfo:
+          anyOf:
+            - $ref: '#/components/schemas/GuestInfo'
+            - type: 'null'
+        productResponses:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderSessionProductResponse'
+
+    OrderSessionProductResponse:
+      type: object
+      title: OrderSessionProductResponse
+      properties:
+        id:
+          type: [integer, 'null']
+          format: int64
+          description: Position/identity within the session, not a persisted order-item id.
+        storeProductId:
+          type: integer
+          format: int64
+        quantity:
+          type: [integer, 'null']
+          format: int32
+        name:
+          type: string
+        basePrice:
+          type: [number, 'null']
+          format: double
+        extraPrice:
+          type: [number, 'null']
+          format: double
+        totalPrice:
+          type: [number, 'null']
+          format: double
+        imageSource:
+          type: [string, 'null']
+        calculatedCalories:
+          type: [number, 'null']
+          format: double
+        productType:
+          $ref: '#/components/schemas/ProductType'
+        customRuleResponses:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderSessionCustomRuleResponse'
+
+    OrderSessionCustomRuleResponse:
+      type: object
+      title: OrderSessionCustomRuleResponse
+      properties:
+        id:
+          type: [integer, 'null']
+          format: int64
+        customRuleId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        calculatedPrice:
+          type: [number, 'null']
+          format: double
+        optionResponses:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderSessionOptionResponse'
+
+    OrderSessionOptionResponse:
+      type: object
+      title: OrderSessionOptionResponse
+      description: |
+        Only the *selected* options appear here, unlike the cart response, which returns every
+        option with its selection state.
+      properties:
+        id:
+          type: [integer, 'null']
+          format: int64
+        productOptionId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        countType:
+          $ref: '#/components/schemas/CountType'
+        basePrice:
+          type: [number, 'null']
+          format: double
+        calculatedPrice:
+          type: [number, 'null']
+          format: double
+        calculatedCalories:
+          type: [number, 'null']
+          format: double
+        quantity:
+          type: [integer, 'null']
+          format: int32
+        quantityDetail:
+          anyOf:
+            - $ref: '#/components/schemas/OrderQuantityDetail'
+            - type: 'null'
+        traitResponses:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderTraitResponse'
+
+    OrderQuantityDetail:
+      type: object
+      title: OrderQuantityDetail
+      description: |
+        The selected size/intensity. Carries only the chosen value, not the list of
+        alternatives as the cart's `CartQuantityDetailResponse` does. It also lacks
+        `labelCode`, so clients cannot localise it without a separate catalog lookup.
+      properties:
+        productOptionOptionQuantityId:
+          type: [integer, 'null']
+          format: int64
+        quantityType:
+          $ref: '#/components/schemas/QuantityType'
+        extraPrice:
+          type: [number, 'null']
+          format: double
+        extraCalories:
+          type: [number, 'null']
+          format: double
+
+    OrderTraitResponse:
+      type: object
+      title: OrderTraitResponse
+      properties:
+        id:
+          type: [integer, 'null']
+          format: int64
+        productOptionTraitId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        labelCode:
+          type: [string, 'null']
+        basePrice:
+          type: [number, 'null']
+          format: double
+        calculatedPrice:
+          type: [number, 'null']
+          format: double
+        calculatedCalories:
+          type: [number, 'null']
+          format: double
+        optionTraitType:
+          $ref: '#/components/schemas/OptionTraitType'
+        selectedValue:
+          type: [integer, 'null']
+          format: int32
+
+    # -------------------------------------------------------------------------
+    # Order
+    # -------------------------------------------------------------------------
+    OrderListResponse:
+      type: object
+      title: OrderListResponse
+      description: |
+        A page of orders. Note that this is a hand-rolled envelope rather than Spring's `Page`
+        shape: there is no `totalPages`, `number`, `size`, `first` or `last`, so a client must
+        derive paging state from `orderCount` and the `pageSize` it requested.
+      properties:
+        orderCount:
+          type: [integer, 'null']
+          format: int64
+          description: Total number of orders for the user across all pages.
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderSummary'
+
+    OrderSummary:
+      type: object
+      title: OrderSummary
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Internal numeric id. Use `orderNumber` for the detail endpoint.
+        orderNumber:
+          type: string
+          format: uuid
+        storeId:
+          type: [integer, 'null']
+          format: int64
+        createdAt:
+          type: [string, 'null']
+          format: date-time
+          description: UTC instant, ISO-8601 with a `Z` suffix.
+          examples: ['2026-08-22T18:31:04Z']
+        updatedAt:
+          type: [string, 'null']
+          format: date-time
+        totalPrice:
+          type: [number, 'null']
+          format: double
+        orderStatus:
+          $ref: '#/components/schemas/OrderStatus'
+        orderType:
+          $ref: '#/components/schemas/OrderType'
+
+    CardInfo:
+      type: object
+      title: CardInfo
+      description: Non-sensitive card summary echoed from Stripe. No PAN is ever stored.
+      properties:
+        cardBrand:
+          type: [string, 'null']
+          examples: [visa]
+        cardLast4:
+          type: [string, 'null']
+          examples: ['4242']
+        cardExpireMonth:
+          type: [integer, 'null']
+          format: int64
+        cardExpireYear:
+          type: [integer, 'null']
+          format: int64
+
+    ContactInfo:
+      type: object
+      title: ContactInfo
+      properties:
+        firstName:
+          type: [string, 'null']
+        lastName:
+          type: [string, 'null']
+        email:
+          type: [string, 'null']
+          format: email
+        phoneNum:
+          type: [string, 'null']
+
+    AddressInfo:
+      type: object
+      title: AddressInfo
+      description: Delivery address. All fields are `null` for pickup orders.
+      properties:
+        streetAddr:
+          type: [string, 'null']
+        streetAddrDetail:
+          type: [string, 'null']
+        zipCode:
+          type: [string, 'null']
+        cityState:
+          type: [string, 'null']
+          description: 'City and state in one free-text field, e.g. `"Austin, TX"`.'
+
+    OrderDetailResponse:
+      type: object
+      title: OrderDetailResponse
+      description: |
+        A persisted order in full. The nested product/rule/option/trait shapes match
+        `OrderSessionResponse`, but the wire names come from Jackson renames that differ from
+        the Java field names.
+      properties:
+        id:
+          type: integer
+          format: int64
+        orderNumber:
+          type: string
+          format: uuid
+        totalPrice:
+          type: [number, 'null']
+          format: double
+        orderStatus:
+          $ref: '#/components/schemas/OrderStatus'
+        orderType:
+          $ref: '#/components/schemas/OrderType'
+        orderDate:
+          type: [string, 'null']
+          format: date-time
+          description: 'Named `orderDate` here but `createdAt` in `OrderSummary`, for the same value.'
+        paymentStatus:
+          $ref: '#/components/schemas/PaymentStatus'
+        paymentMethod:
+          anyOf:
+            - $ref: '#/components/schemas/PaymentMethod'
+            - type: 'null'
+        orderNote:
+          type: [string, 'null']
+        discountType:
+          anyOf:
+            - $ref: '#/components/schemas/DiscountType'
+            - type: 'null'
+        taxAmount:
+          type: [number, 'null']
+          format: double
+        guestInfo:
+          anyOf:
+            - $ref: '#/components/schemas/GuestInfo'
+            - type: 'null'
+        cardInfo:
+          anyOf:
+            - $ref: '#/components/schemas/CardInfo'
+            - type: 'null'
+        contactInfo:
+          anyOf:
+            - $ref: '#/components/schemas/ContactInfo'
+            - type: 'null'
+        addressInfo:
+          anyOf:
+            - $ref: '#/components/schemas/AddressInfo'
+            - type: 'null'
+        productResponses:
+          type: array
+          description: 'Wire name from `@JsonProperty("productResponses")`; the Java field is `productResponse`.'
+          items:
+            $ref: '#/components/schemas/OrderProductResponse'
+        storeResponse:
+          anyOf:
+            - $ref: '#/components/schemas/StoreResponse'
+            - type: 'null'
+          description: The fulfilling store, fully populated here.
+
+    OrderProductResponse:
+      type: object
+      title: OrderProductResponse
+      properties:
+        id:
+          type: integer
+          format: int64
+        storeProductId:
+          type: integer
+          format: int64
+        quantity:
+          type: [integer, 'null']
+          format: int32
+        name:
+          type: string
+        basePrice:
+          type: [number, 'null']
+          format: double
+        extraPrice:
+          type: [number, 'null']
+          format: double
+        totalPrice:
+          type: [number, 'null']
+          format: double
+        imageSource:
+          type: [string, 'null']
+        calculatedCalories:
+          type: [number, 'null']
+          format: double
+        productType:
+          $ref: '#/components/schemas/ProductType'
+        customRuleResponses:
+          type: array
+          description: 'Wire name from `@JsonProperty`; the Java field is `customRuleResponseDtos`.'
+          items:
+            $ref: '#/components/schemas/OrderCustomRuleResponse'
+
+    OrderCustomRuleResponse:
+      type: object
+      title: OrderCustomRuleResponse
+      properties:
+        id:
+          type: integer
+          format: int64
+        customRuleId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        calculatedPrice:
+          type: [number, 'null']
+          format: double
+        optionResponses:
+          type: array
+          description: 'Wire name from `@JsonProperty`; the Java field is `optionResponseDtos`.'
+          items:
+            $ref: '#/components/schemas/OrderOptionResponse'
+
+    OrderOptionResponse:
+      type: object
+      title: OrderOptionResponse
+      properties:
+        id:
+          type: integer
+          format: int64
+        productOptionId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        countType:
+          $ref: '#/components/schemas/CountType'
+        basePrice:
+          type: [number, 'null']
+          format: double
+        calculatedPrice:
+          type: [number, 'null']
+          format: double
+        calculatedCalories:
+          type: [number, 'null']
+          format: double
+        quantity:
+          type: [integer, 'null']
+          format: int32
+        quantityDetail:
+          anyOf:
+            - $ref: '#/components/schemas/OrderQuantityDetail'
+            - type: 'null'
+        traitResponses:
+          type: array
+          description: 'Wire name from `@JsonProperty`; the Java field is `traitResponseDtos`.'
+          items:
+            $ref: '#/components/schemas/OrderTraitResponse'
+
+    # -------------------------------------------------------------------------
+    # Checkout
+    # -------------------------------------------------------------------------
+    OrderFormRequest:
+      title: OrderFormRequest
+      description: |
+        Contact and fulfilment details, discriminated by `type`. Deserialized via Jackson
+        `@JsonTypeInfo`/`@JsonSubTypes`, so an unknown `type` is a 400. There is no variant
+        for `OrderType.DINE_IN`.
+      oneOf:
+        - $ref: '#/components/schemas/PickupOrderForm'
+        - $ref: '#/components/schemas/DeliveryOrderForm'
+      discriminator:
+        propertyName: type
+        mapping:
+          pickup: '#/components/schemas/PickupOrderForm'
+          delivery: '#/components/schemas/DeliveryOrderForm'
+
+    PickupOrderForm:
+      type: object
+      title: PickupOrderForm
+      required: [type]
+      properties:
+        type:
+          type: string
+          const: pickup
+        orderNumber:
+          type: [string, 'null']
+          format: uuid
+          description: |
+            Redundant with the `orderSessionId` path variable. The handler does not check that
+            the two agree.
+        firstName:
+          type: [string, 'null']
+        lastName:
+          type: [string, 'null']
+        eta:
+          type: [string, 'null']
+          format: date-time
+          description: |
+            Requested pickup time as a UTC instant. Not validated — a past time or a time
+            outside the store's opening hours is accepted.
+          examples: ['2026-08-23T19:15:00Z']
+        email:
+          type: [string, 'null']
+          format: email
+          description: 'Annotated `@Email`, but the handler omits `@Valid`, so the constraint is not enforced.'
+        phoneNum:
+          type: [string, 'null']
+
+    DeliveryOrderForm:
+      type: object
+      title: DeliveryOrderForm
+      required: [type]
+      properties:
+        type:
+          type: string
+          const: delivery
+        orderNumber:
+          type: [string, 'null']
+          format: uuid
+          description: Redundant with the `orderSessionId` path variable; consistency is not checked.
+        firstName:
+          type: [string, 'null']
+        lastName:
+          type: [string, 'null']
+        streetAddr:
+          type: [string, 'null']
+        streetAddrDetail:
+          type: [string, 'null']
+        zipCode:
+          type: [string, 'null']
+        cityState:
+          type: [string, 'null']
+          description: 'City and state in one free-text field, e.g. `"Austin, TX"`.'
+        email:
+          type: [string, 'null']
+          format: email
+          description: 'Annotated `@Email`, but not enforced (no `@Valid`).'
+        phoneNum:
+          type: [string, 'null']
+        # Note: no field on this form is required, so a delivery order can be created with
+        # no address at all.
+
+    CheckoutResponse:
+      type: object
+      title: CheckoutResponse
+      properties:
+        successUrl:
+          type: string
+          format: uri
+          description: |
+            **Misnamed.** This is the Stripe Checkout URL the client must redirect the browser
+            to — not the post-payment success URL.
+          examples: ['https://checkout.stripe.com/c/pay/cs_test_a1B2c3D4e5F6g7H8i9J0kLmNoPqRsTuVwXyZ']
+
+    StripeEvent:
+      type: object
+      title: StripeEvent
+      description: |
+        Stripe event envelope, documented loosely because the handler reads the raw body
+        rather than binding a DTO. See Stripe's own API reference for the authoritative
+        shape.
+      properties:
+        id:
+          type: string
+          examples: [evt_1P2Q3R4S5T6U7V8W]
+        object:
+          type: string
+          const: event
+        type:
+          type: string
+          description: |
+            Handled: `checkout.session.completed`, `payment_intent.succeeded`. Accepted and
+            ignored: `payment_method.attached`. Anything else is logged and ignored.
+          examples: [checkout.session.completed]
+        created:
+          type: integer
+          format: int64
+        data:
+          type: object
+          properties:
+            object:
+              type: object
+              description: The Stripe object the event is about.
+              additionalProperties: true
+      additionalProperties: true
