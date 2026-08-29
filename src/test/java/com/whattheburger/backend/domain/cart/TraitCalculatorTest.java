@@ -1,6 +1,5 @@
-package com.whattheburger.backend.domain.broken.cart;
+package com.whattheburger.backend.domain.cart;
 
-import com.whattheburger.backend.domain.cart.TraitCalculator;
 import com.whattheburger.backend.domain.cart.exception.TraitCalcStrategyNotSupportedException;
 import com.whattheburger.backend.domain.cart.strategy.BinaryStrategy;
 import com.whattheburger.backend.domain.cart.strategy.TraitCalcStrategyResolver;

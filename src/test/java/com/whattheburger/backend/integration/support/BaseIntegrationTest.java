@@ -14,17 +14,14 @@ import org.testcontainers.utility.DockerImageName;
 
 @SpringBootTest
 @ActiveProfiles("integration")
-@Testcontainers
 public abstract class BaseIntegrationTest {
 
-    @Container
     @ServiceConnection
     static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
             .withDatabaseName("whattheburger_integration")
             .withUsername("root")
             .withPassword("1234");
 
-    @Container
     static GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
             .withExposedPorts(6379)
             .waitingFor(Wait.forListeningPort());
@@ -33,5 +30,10 @@ public abstract class BaseIntegrationTest {
     static void registerRedisProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.data.redis.host", redis::getHost);
         registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
+    }
+
+    static {
+        mysql.start();
+        redis.start();
     }
 }

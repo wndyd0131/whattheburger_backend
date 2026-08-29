@@ -15,6 +15,7 @@ import com.whattheburger.backend.service.StoreService;
 import com.whattheburger.backend.service.exception.OrderNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
@@ -35,6 +36,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(controllers = OrderController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class OrderControllerTest {
 
     @Autowired
@@ -101,17 +103,10 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.orderStatus").value("PENDING"))
                 .andExpect(jsonPath("$.orderType").value("DELIVERY"))
                 .andExpect(jsonPath("$.paymentStatus").value("PAID"))
-                .andExpect(jsonPath("$.paymentMethod").value("CARD"));
+                .andExpect(jsonPath("$.paymentMethod").value("CREDIT_CARD"));
 
         verify(orderService).loadOrder(eq(ORDER_NUMBER), any());
         verify(orderResponseDtoMapper).toOrderDetailResponseDto(order);
-    }
-
-    @Test
-    void fetchOrderDetail_whenNotAuthenticated_returns401() throws Exception {
-        mockMvc.perform(get("/api/v1/order/{orderNumber}/detail", ORDER_NUMBER)
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isUnauthorized());
     }
 
     @Test

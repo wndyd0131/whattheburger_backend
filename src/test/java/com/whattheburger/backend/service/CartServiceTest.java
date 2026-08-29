@@ -213,7 +213,7 @@ public class CartServiceTest {
         when(storeRepository.findById(storeId)).thenReturn(Optional.of(Store.builder().id(storeId).build()));
         when(cartSessionStorage.load(anyString())).thenReturn(Optional.of(new CartList(storeId, new ArrayList<>())));
         doThrow(new InsufficientOptionStockException(1L, 2L, 5, 0))
-                .when(cartValidator).validate(eq(storeId), any(Cart.class), any(), any(), any(), any(), any(), any());
+                .when(cartValidator).validate(any(CartList.class), any(), any(), any(), any(), any(), any());
 
         assertThrows(InsufficientOptionStockException.class,
                 () -> cartService.saveCart(storeId, /*guestId*/ null, authentication, request));
