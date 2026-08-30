@@ -1,0 +1,41 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+
+defaults: # run from .
+  run:
+    working-directory: .
+
+jobs:
+  build-and-test:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code # checkout the code from my repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17 # set up the Java 17 environment
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t ${{ secrets.DOCKER_USERNAME }}/whattheburger:${{ github.sha }} .
+
+      - name: Push Docker image
+        run: |
+          docker push \
+            ${{ secrets.DOCKER_USERNAME }}/whattheburger:${{ github.sha }}

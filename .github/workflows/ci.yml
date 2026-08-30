@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+defaults: # run from .
+  run:
+    working-directory: .
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code # checkout the code from my repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17 # set up the Java 17 environment
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Grant execute permission for gradlew # grant execute permission for the gradlew file
+        run: chmod +x gradlew
+
+      - name: Test
+        run: ./gradlew test
+
+      - name: Upload test results # upload the test results to the repository
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: build/reports/tests/
+          retention-days: 7

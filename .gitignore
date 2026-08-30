@@ -34,9 +34,11 @@ out/
 /.nb-gradle/
 
 ### Properties ###
-resources
-src/**/resources/application*.yml
-src/**/resources/data.sql
+src/**/resources/db
+src/**/resources/seeds
+src/**/resources/static
+src/**/resources/application.yml
+src/**/resources/application-dev.yml
 
 ### Personal ###
 note.txt
