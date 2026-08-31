@@ -1,4 +1,4 @@
-name: Backend CI
+name: Deploy
 
 on:
   push:
@@ -39,3 +39,31 @@ jobs:
         run: |
           docker push \
             ${{ secrets.DOCKER_USERNAME }}/whattheburger:${{ github.sha }}
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            export IMAGE_TAG=${{ github.sha }}
+            
+            docker compose pull backend
+            docker compose up -d backend
+            
+            echo "Waiting for application startup..."
+            
+            for i in {1..30} do
+              if curl -fsS http://localhost:8080/actuator/health; then
+                echo "Health check passed"
+                exit 0
+              fi
+              
+              echo "Waiting... ($i/30)"
+              sleep 5
+            done
+            
+            echo "Health check failed"
+            docker compose logs backend --tail=100
+            exit 1
