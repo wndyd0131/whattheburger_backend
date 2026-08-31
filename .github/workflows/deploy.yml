@@ -12,6 +12,7 @@ jobs:
   build-and-test:
     name: Build
     runs-on: ubuntu-latest
+    environment: whattheburger_backend_prod
 
     steps:
       - name: Checkout code # checkout the code from my repository
