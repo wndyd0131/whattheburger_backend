@@ -25,12 +25,15 @@ public class Category {
     @JoinColumn(name = "PARENT_ID")
     private Category parent;
 
+    @Builder.Default
     @OneToMany(mappedBy = "parent")
     private List<Category> children = new ArrayList<>();
 
+    @Builder.Default
     @OneToMany(mappedBy = "category")
     private List<CategoryProduct> categoryProducts = new ArrayList<>();
 
+    @Builder.Default
     @OneToMany(mappedBy = "category")
     private List<CategoryStoreProduct> categoryStoreProducts = new ArrayList<>();
 

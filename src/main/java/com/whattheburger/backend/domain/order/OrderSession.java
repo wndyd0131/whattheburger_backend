@@ -38,6 +38,8 @@ public class OrderSession {
     private DiscountType discountType;
     private Long orderStatusModifiedTime;
     private Integer orderStatusDuration;
+
+    @Builder.Default
     private List<OrderSessionProduct> orderSessionProducts = new ArrayList<>();
 
     public void assignOrderSessionProducts(List<OrderSessionProduct> orderSessionProducts) {

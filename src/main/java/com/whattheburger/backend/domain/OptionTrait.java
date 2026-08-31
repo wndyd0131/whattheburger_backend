@@ -25,6 +25,7 @@ public class OptionTrait {
     @Enumerated(EnumType.STRING)
     private OptionTraitType optionTraitType;
 
+    @Builder.Default
     @OneToMany(mappedBy = "optionTrait")
     private List<ProductOptionTrait> productOptionTraits = new ArrayList<>();
 

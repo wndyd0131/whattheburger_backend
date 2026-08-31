@@ -38,12 +38,15 @@ public class Store {
     @JoinColumn(name = "user_id")
     private User owner;
 
+    @Builder.Default
     @OneToMany(mappedBy = "store")
     private List<Order> orders = new ArrayList<>();
 
+    @Builder.Default
     @OneToMany(mappedBy = "store")
     private List<StoreProduct> storeProducts = new ArrayList<>();
 
+    @Builder.Default
     @OneToMany(mappedBy = "store")
     private List<StoreInventory> storeInventories = new ArrayList<>();
 }

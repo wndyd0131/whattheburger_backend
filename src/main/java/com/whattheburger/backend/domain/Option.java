@@ -24,12 +24,15 @@ public class Option {
     private String imageSource;
     private Double calories;
 
+    @Builder.Default
     @OneToMany(mappedBy = "option")
     private List<ProductOption> productOptions = new ArrayList<>();
 
+    @Builder.Default
     @OneToMany(mappedBy = "option")
     private List<OptionQuantity> optionQuantities = new ArrayList<>();
 
+    @Builder.Default
     @OneToMany(mappedBy = "option")
     private List<OptionIngredient> optionIngredients = new ArrayList<>();
 

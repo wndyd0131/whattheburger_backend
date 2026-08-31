@@ -27,6 +27,7 @@ public class CustomRule {
     private Integer minSelection;
     private Integer maxSelection;
 
+    @Builder.Default
     @OneToMany(mappedBy = "customRule")
     private List<ProductOption> productOptions = new ArrayList<>();
 
