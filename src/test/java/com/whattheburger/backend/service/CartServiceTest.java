@@ -3,9 +3,10 @@ package com.whattheburger.backend.service;
 import com.whattheburger.backend.controller.dto.cart.*;
 import com.whattheburger.backend.domain.*;
 import com.whattheburger.backend.domain.cart.*;
-import com.whattheburger.backend.domain.enums.*;
 import com.whattheburger.backend.dto_mapper.CartDtoMapper;
 import com.whattheburger.backend.repository.*;
+import com.whattheburger.backend.service.exception.cart.InsufficientOptionStockException;
+import com.whattheburger.backend.service.exception.cart.CartOwnerRequiredException;
 import com.whattheburger.backend.security.UserDetailsImpl;
 import com.whattheburger.backend.service.dto.cart.*;
 import com.whattheburger.backend.utils.*;
@@ -17,16 +18,14 @@ import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
-import java.math.BigDecimal;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -41,7 +40,12 @@ public class CartServiceTest {
     @Mock OptionTraitRepository optionTraitRepository;
     @Mock ProductOptionTraitRepository productOptionTraitRepository;
     @Mock StoreRepository storeRepository;
-    @Mock CartSessionStorage cartSessionStorage;
+    @Mock StoreProductRepository storeProductRepository;
+    @Mock StoreInventoryRepository storeInventoryRepository;
+    @Mock
+    CartSessionStorage cartSessionStorage;
+    @Mock CartValidator cartValidator;
+    @Mock CartCalculator cartCalculator;
 
     @Mock
     RedisTemplate<String, CartList> rt;
@@ -97,6 +101,7 @@ public class CartServiceTest {
         ));
 
         when(storeRepository.findById(anyLong())).thenReturn(Optional.of(new Store()));
+        when(cartValidator.canMergeItemCount(anyInt(), anyInt())).thenReturn(true);
         when(cartSessionStorage.load(anyString())).thenReturn(Optional.of(userCartList), Optional.of(guestCartList));
         doReturn(new ProcessedCartDto()).when(cartService).loadCart(anyLong(), any(), any());
 
@@ -121,6 +126,7 @@ public class CartServiceTest {
         CartList guestCartList = new CartList(storeId, new ArrayList<>());
 
         when(storeRepository.findById(anyLong())).thenReturn(Optional.of(new Store()));
+        when(cartValidator.canMergeItemCount(anyInt(), anyInt())).thenReturn(true);
         when(cartSessionStorage.load(anyString())).thenReturn(Optional.of(userCartList), Optional.of(guestCartList));
         doReturn(new ProcessedCartDto()).when(cartService).loadCart(anyLong(), any(), any());
 
@@ -129,6 +135,51 @@ public class CartServiceTest {
         verify(cartSessionStorage, times(2)).save(anyString(), any(CartList.class));
 //
         Assertions.assertThat(userCartList.getCarts().size()).isEqualTo(0);
+    }
+
+    @Test
+    public void givenMergeWouldExceedLimit_mergeCart_doesNotSaveAndReturnsLoadCart() throws Exception {
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                new UserDetailsImpl(mockUser),
+                null,
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+
+        Long storeId = 1L;
+        UUID guestId = UUID.randomUUID();
+        List<Cart> userCarts = new ArrayList<>();
+        for (int i = 0; i < 15; i++) {
+            userCarts.add(new Cart((long) i, 1, Collections.emptyList()));
+        }
+        List<Cart> guestCarts = new ArrayList<>();
+        for (int i = 0; i < 6; i++) {
+            guestCarts.add(new Cart(100L + i, 1, Collections.emptyList()));
+        }
+        CartList userCartList = new CartList(storeId, userCarts);
+        CartList guestCartList = new CartList(storeId, guestCarts);
+
+        when(storeRepository.findById(anyLong())).thenReturn(Optional.of(new Store()));
+        when(cartValidator.canMergeItemCount(15, 6)).thenReturn(false);
+        when(cartSessionStorage.load(anyString())).thenReturn(Optional.of(userCartList), Optional.of(guestCartList));
+        doReturn(new ProcessedCartDto()).when(cartService).loadCart(anyLong(), any(), any());
+
+        cartService.mergeCart(storeId, guestId, authentication);
+
+        verify(cartSessionStorage, never()).save(anyString(), any(CartList.class));
+        verify(cartService).loadCart(storeId, guestId, authentication);
+        Assertions.assertThat(userCartList.getCarts()).hasSize(15);
+        Assertions.assertThat(guestCartList.getCarts()).hasSize(6);
+    }
+
+    @Test
+    public void givenNoGuestAndNoAuth_whenLoadCart_thenThrowsCartOwnerRequiredException() {
+        Authentication unauthenticated = mock(Authentication.class);
+        when(unauthenticated.isAuthenticated()).thenReturn(false);
+
+        assertThrows(CartOwnerRequiredException.class,
+                () -> cartService.loadCart(1L, null, unauthenticated));
+
+        verifyNoInteractions(cartSessionStorage);
     }
 
     @Test
@@ -144,120 +195,31 @@ public class CartServiceTest {
     }
 
     @Test
-    public void givenExistingCart_whenLoadCart_thenReturnsExpectedDto() throws Exception {
-//        String cartId = "1";
-//        CartList mockCartList = MockCartFactory.createCartList();
-//
-//        ValidatedProduct validatedProduct = ValidatedProduct
-//                .builder()
-//                .product(mockProduct)
-//                .build();
-//        List<ValidatedTrait> validatedTraits = List.of(
-//                ValidatedTrait
-//                        .builder()
-//                        .currentValue(1)
-//                        .productOptionTrait(mockProductOptionTrait)
-//                        .build()
-//        );
-//
-//        List<ValidatedOption> validatedOptions = List.of(
-//                ValidatedOption
-//                        .builder()
-//                        .isSelected(true)
-//                        .quantity(1)
-//                        .productOption(mockProductOption)
-//                        .validatedTraits(validatedTraits)
-//                        .validatedQuantity(null)
-//                        .build()
-//        );
-//        List<ValidatedCustomRule> validatedCustomRules = List.of(
-//                ValidatedCustomRule
-//                        .builder()
-//                        .customRule(mockCustomRule)
-//                        .validatedOptions(validatedOptions)
-//                        .build()
-//        );
-//
-//        List<ValidatedCartDto> validatedCartDtos = List.of(
-//                ValidatedCartDto
-//                        .builder()
-//                        .validatedProduct(validatedProduct)
-//                        .validatedCustomRules(validatedCustomRules)
-//                        .build()
-//        );
-//
-//        ProcessedCartDto processedCartDto = ProcessedCartDto
-//                .builder()
-//                .cartDtos(validatedCartDtos)
-//                .totalPrice(BigDecimal.ZERO)
-//                .build();
-//
-//
-//        ProductResponse productResponse = ProductResponse
-//                .builder()
-//                .productId(1L)
-//                .productName("Whattheburger")
-//                .productPrice(new BigDecimal("5.99"))
-//                .imageSource("")
-//                .productType(ProductType.ONLY)
-//                .build();
-//
-//        List<OptionTraitResponse> optionTraitResponses = List.of(
-//                OptionTraitResponse
-//                        .builder()
-//                        .currentValue(1)
-//                        .labelCode("TBS")
-//                        .productOptionTraitId(1L)
-//                        .optionTraitName("Toast Both Sides")
-//                        .optionTraitType(OptionTraitType.BINARY)
-//                        .build()
-//        );
-//
-//        List<OptionResponse> optionResponses = List.of(
-//                OptionResponse
-//                        .builder()
-//                        .countType(CountType.COUNTABLE)
-//                        .isSelected(true)
-//                        .measureType(MeasureType.COUNT)
-//                        .optionName("Large Bun")
-//                        .optionQuantity(1)
-//                        .optionTraitResponses(optionTraitResponses)
-//                        .productOptionId(1L)
-//                        .orderIndex(0)
-//                        .quantityDetailResponse(null)
-//                        .build()
-//        );
-//        List<CustomRuleResponse> customRuleResponses = List.of(
-//                CustomRuleResponse
-//                        .builder()
-//                        .customRuleId(1L)
-//                        .customRuleName("Bread")
-//                        .optionResponses(optionResponses)
-//                        .orderIndex(0)
-//                        .build()
-//        );
-//
-//        List<CartResponse> cartResponses = List.of(
-//                CartResponse
-//                        .builder()
-//                        .productResponse(productResponse)
-//                        .customRuleResponses(customRuleResponses)
-//                        .build()
-//        );
-//        CartResponseDto cartResponseDto = CartResponseDto
-//                .builder()
-//                .cartResponses(cartResponses)
-//                .totalPrice(BigDecimal.ZERO)
-//                .build();
-//
-//        when(rt.opsForValue()).thenReturn(valueOperations);
-//        when(valueOperations.get("cart:"+cartId)).thenReturn(mockCartList);
-//        doReturn(processedCartDto).when(cartService).processCart(anyList());
-//        when(cartDtoMapper.toCartResponseDto(processedCartDto)).thenReturn(cartResponseDto);
-//
-//        CartResponseDto resultDto = cartService.loadCart(cartId, authentication);
-//
-//        Assertions.assertNotNull(resultDto);
+    public void givenValidatorThrows_whenSaveCart_thenPropagatesAndDoesNotSaveSession() {
+        Long storeId = 1L;
+        Long storeProductId = 42L;
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                new UserDetailsImpl(mockUser),
+                null,
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+
+        CartCreateRequestDto request = CartCreateRequestDto.builder()
+                .storeProductId(storeProductId)
+                .quantity(1)
+                .customRuleRequests(Collections.emptyList())
+                .build();
+
+        when(storeRepository.findById(storeId)).thenReturn(Optional.of(Store.builder().id(storeId).build()));
+        when(cartSessionStorage.load(anyString())).thenReturn(Optional.of(new CartList(storeId, new ArrayList<>())));
+        doThrow(new InsufficientOptionStockException(1L, 2L, 5, 0))
+                .when(cartValidator).validate(any(CartList.class), any(), any(), any(), any(), any(), any());
+
+        assertThrows(InsufficientOptionStockException.class,
+                () -> cartService.saveCart(storeId, /*guestId*/ null, authentication, request));
+
+        verify(storeInventoryRepository).findAllByStoreId(storeId);
+        verify(cartSessionStorage, never()).save(anyString(), any(CartList.class));
     }
 
     private void initMock() {

@@ -6,6 +6,7 @@ import com.whattheburger.backend.domain.*;
 import com.whattheburger.backend.domain.cart.strategy.BinaryStrategy;
 import com.whattheburger.backend.domain.cart.strategy.TraitCalcStrategyResolver;
 import com.whattheburger.backend.domain.enums.DeltaType;
+import com.whattheburger.backend.service.dto.cart.calculator.CalculatedCartDto;
 import com.whattheburger.backend.service.dto.cart.calculator.ProductCalculationDetail;
 import com.whattheburger.backend.utils.*;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,9 +51,58 @@ class CartCalculatorTest {
 
     @Test
     void calculateProductPrice_whenOverrideDelta_appliesOverrideExtraPrice() {
-        Cart cart = new Cart(
+        ProductCalculationDetail result = cartCalculator.calculateProductPrice(
+                cartWithQuantity(1),
+                storeProductMap,
+                customRuleMap,
+                productOptionMap,
+                Map.of(),
+                Map.of()
+        );
+
+        assertThat(result.getCalculatedExtraPrice()).isEqualByComparingTo(OVERRIDE_DELTA_PRICE);
+        assertThat(result.getCalculatedTotalPrice())
+                .isEqualByComparingTo(BASE_PRODUCT_PRICE.add(OVERRIDE_DELTA_PRICE));
+    }
+
+    @Test
+    void calculateProductPrice_whenQuantityGreaterThanOne_multipliesUnitPriceByQuantity() {
+        ProductCalculationDetail result = cartCalculator.calculateProductPrice(
+                cartWithQuantity(2),
+                storeProductMap,
+                customRuleMap,
+                productOptionMap,
+                Map.of(),
+                Map.of()
+        );
+
+        BigDecimal unitPrice = BASE_PRODUCT_PRICE.add(OVERRIDE_DELTA_PRICE);
+        assertThat(result.getCalculatedExtraPrice()).isEqualByComparingTo(OVERRIDE_DELTA_PRICE);
+        assertThat(result.getCalculatedTotalPrice())
+                .isEqualByComparingTo(unitPrice.multiply(BigDecimal.valueOf(2)));
+    }
+
+    @Test
+    void calculateTotalPrice_sumsProductLineTotalsWithoutReapplyingQuantity() {
+        CalculatedCartDto result = cartCalculator.calculateTotalPrice(
+                List.of(cartWithQuantity(2)),
+                storeProductMap,
+                customRuleMap,
+                productOptionMap,
+                Map.of(),
+                Map.of()
+        );
+
+        BigDecimal expectedLineTotal = BASE_PRODUCT_PRICE.add(OVERRIDE_DELTA_PRICE)
+                .multiply(BigDecimal.valueOf(2));
+        assertThat(result.getCartCalculationResult().getCartTotalPrice())
+                .isEqualByComparingTo(expectedLineTotal);
+    }
+
+    private Cart cartWithQuantity(int quantity) {
+        return new Cart(
                 1L,
-                1,
+                quantity,
                 List.of(new CustomRuleRequest(
                         1L,
                         List.of(new OptionRequest(
@@ -64,19 +114,6 @@ class CartCalculatorTest {
                         ))
                 ))
         );
-
-        ProductCalculationDetail result = cartCalculator.calculateProductPrice(
-                cart,
-                storeProductMap,
-                customRuleMap,
-                productOptionMap,
-                Map.of(),
-                Map.of()
-        );
-
-        assertThat(result.getCalculatedExtraPrice()).isEqualByComparingTo(OVERRIDE_DELTA_PRICE);
-        assertThat(result.getCalculatedTotalPrice())
-                .isEqualByComparingTo(BASE_PRODUCT_PRICE.add(OVERRIDE_DELTA_PRICE));
     }
 
     private void initFixtures() {

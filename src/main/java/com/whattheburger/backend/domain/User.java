@@ -3,6 +3,8 @@ package com.whattheburger.backend.domain;
 import com.whattheburger.backend.domain.order.Order;
 import com.whattheburger.backend.security.enums.Role;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -12,6 +14,8 @@ import java.util.List;
 @Entity
 @Getter
 @NoArgsConstructor
+@Builder
+@AllArgsConstructor
 public class User {
     @Id
     @Column(name = "user_id")
@@ -34,11 +38,14 @@ public class User {
 
     @Column(nullable = false)
     private String zipcode;
-    private Integer point;
+
+    @Builder.Default
+    private int point = 0;
 
     @Enumerated(EnumType.STRING)
     private Role role;
 
+    @Builder.Default
     @OneToMany(mappedBy = "user")
     private List<Order> orderList = new ArrayList<>();
 

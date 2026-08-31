@@ -1,0 +1,73 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  sql:
+    init:
+      mode: ${SQL_INIT_MODE}
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    database: mysql
+    database-platform: org.hibernate.dialect.MySQL8Dialect
+    defer-datasource-initialization: true
+
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+      file-size-threshold: 0B # if smaller than threshold, spring stores file in memory instead of disk
+
+  data:
+    redis:
+      port: 6379
+      host: ${SPRING_DATA_REDIS_HOST}
+
+client:
+  url: ${CLIENT_URL}
+
+seeding:
+  enabled: false
+  store: ${STORE_SEEDING_FLAG} # overpass
+  product: ${PRODUCT_SEEDING_FLAG}
+  storeProduct: ${STOREPRODUCT_SEEDING_FLAG}
+  user: ${USER_SEEDING_FLAG}
+  inventory: ${INVENTORY_SEEDING_FLAG}
+
+aws:
+  access-key: ${AWS_ACCESS_KEY}
+  secret-key: ${AWS_SECRET_KEY}
+  s3:
+    public-url: ${AWS_S3_PUBLIC_URL}
+    bucket-name: ${AWS_S3_BUCKET_NAME}
+  region: ${AWS_REGION}
+
+stripe:
+  secret: ${STRIPE_SECRET_KEY}
+  successUrl: ${STRIPE_SUCCESS_URL}
+  webhook:
+    secret: ${STRIPE_WEBHOOK_SECRET_KEY}
+
+google:
+  apiKey: ${GOOGLE_API_KEY}
+
+mapbox:
+  accessToken: ${MAPBOX_ACCESS_TOKEN}
+
+springdoc:
+  swagger-ui:
+    path: /doc
+    tags-sorter: alpha
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+
+server:
+  port: ${SERVER_PORT}

@@ -37,15 +37,16 @@ public class StoreProduct {
     @JoinColumn(name = "product_id")
     private Product product;
 
+    @Builder.Default
     @OneToMany(mappedBy = "storeProduct")
     private List<StoreOptionDelta> storeOptionDeltas = new ArrayList<>();
-
+    @Builder.Default
     @OneToMany(mappedBy = "storeProduct")
     private List<StoreTraitDelta> storeTraitDeltas = new ArrayList<>();
-
+    @Builder.Default
     @OneToMany(mappedBy = "storeProduct")
     private List<StoreQuantityDelta> storeQuantityDeltas = new ArrayList<>();
-
+    @Builder.Default
     @OneToMany(mappedBy = "storeProduct")
     private List<CategoryStoreProduct> categoryStoreProducts = new ArrayList<>();
 

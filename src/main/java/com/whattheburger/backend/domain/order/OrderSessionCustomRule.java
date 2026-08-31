@@ -18,5 +18,7 @@ public class OrderSessionCustomRule {
     private Long customRuleId;
     private String name;
     private BigDecimal totalPrice;
+
+    @Builder.Default
     private List<OrderSessionOption> orderSessionOptions = new ArrayList<>();
 }

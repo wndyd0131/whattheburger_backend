@@ -1,18 +1,13 @@
 package com.whattheburger.backend.service;
 
-import com.whattheburger.backend.controller.dto.cart.CustomRuleRequest;
-import com.whattheburger.backend.controller.dto.cart.OptionRequest;
-import com.whattheburger.backend.controller.dto.cart.OptionTraitRequest;
+import com.stripe.model.PaymentMethod;
 import com.whattheburger.backend.controller.dto.order.DeliveryOrderFormRequestDto;
 import com.whattheburger.backend.controller.dto.order.OrderFormRequestDto;
 import com.whattheburger.backend.controller.dto.order.PickupOrderFormRequestDto;
 import com.whattheburger.backend.controller.enums.OrderSortType;
 import com.whattheburger.backend.domain.*;
-import com.whattheburger.backend.domain.cart.Cart;
-import com.whattheburger.backend.domain.cart.CartList;
 import com.whattheburger.backend.domain.enums.OrderStatus;
 import com.whattheburger.backend.domain.enums.OrderType;
-import com.whattheburger.backend.domain.enums.PaymentMethod;
 import com.whattheburger.backend.domain.enums.PaymentStatus;
 import com.whattheburger.backend.domain.order.*;
 import com.whattheburger.backend.repository.*;
@@ -54,6 +49,7 @@ public class OrderService {
     private final OrderSessionStorage orderSessionStorage;
     private final OrderSessionFactory orderSessionFactory;
     private final OrderFactory orderFactory;
+    private final InventoryService inventoryService;
 
     public Order loadOrderByOrderId(Long orderId) {
         return orderRepository.findById(orderId)
@@ -107,33 +103,20 @@ public class OrderService {
                 .orElseThrow(() -> new OrderNotFoundException());
     }
 
-    public OrderSession createOrderSession(Long storeId, UUID guestId, UUID orderSessionId, Authentication authentication, OrderType orderType) {
+    public Optional<Order> loadOrderByCheckoutSessionId(String checkoutSessionId) {
+        return orderStorage.loadByCheckoutSessionId(checkoutSessionId);
+    }
+
+    public OrderSession createOrderSession(Long storeId, UUID guestId, Authentication authentication, OrderType orderType) {
         ProcessedCartDto processedCartDto = cartService.loadCart(storeId, guestId, authentication);
 
-        // add security
-        OrderSession orderSession = orderSessionStorage.load(orderSessionId)
-                .map(existingSession -> {
-                    orderSessionFactory.overwriteFromCartDto(
-                            processedCartDto,
-                            orderType,
-                            storeId,
-                            existingSession
-                    );
-                    log.info("session exists");
-                    return existingSession;
-                })
-                .orElseGet(() -> {
-                    log.info("session does not exist");
-                    Long userId = null;
-                    log.info("Authenticated {}", authentication.isAuthenticated());
-                    if (authentication.isAuthenticated()) {
-                        UserDetailsImpl principal = (UserDetailsImpl) authentication.getPrincipal();
-                        userId = principal.getUserId();
-                    }
-                    log.info("order session user id: {}", userId);
-                    return orderSessionFactory.createFromCartDto(processedCartDto, userId, orderType, storeId);
-                });
-        log.info("current session key {}", orderSession.getSessionId());
+        Long userId = null;
+        if (authentication.isAuthenticated()) {
+            UserDetailsImpl principal = (UserDetailsImpl) authentication.getPrincipal();
+            userId = principal.getUserId();
+        }
+
+        OrderSession orderSession = orderSessionFactory.createFromCartDto(processedCartDto, userId, orderType, storeId);
         orderSessionStorage.save(orderSession);
         return orderSession;
     }
@@ -184,19 +167,49 @@ public class OrderService {
     }
 
     public Order transferFromOrderSession(OrderSession orderSession) {
-        Long storeId = orderSession.getStoreId();
-        Long userId = orderSession.getUserId();
-        log.info("orderSession.userId: {}", userId);
-        User user = userService.loadUserById(userId);
-        Store store = storeService.loadStoreById(storeId);
-        Order newOrder = orderFactory.createFromOrderSession(orderSession, user, store);
+        Order newOrder = buildOrderFromSession(orderSession);
         log.info("orderSession.getOrderId: {}", orderSession.getOrderId());
         orderSessionStorage.save(orderSession);
         return newOrder;
     }
 
+    @Transactional
+    public Order completePaidOrder(
+            OrderSession orderSession,
+            String checkoutSessionId,
+            PaymentMethod paymentMethodObject
+    ) {
+        Order order = buildOrderFromSession(orderSession);
+        order.updateOrderStatus(OrderStatus.CONFIRMING);
+        order.changePaymentStatus(PaymentStatus.PAID);
+        applyCardInfo(order, paymentMethodObject);
+        order.changeCheckoutSessionId(checkoutSessionId);
+        inventoryService.deductStock(order);
+        return saveOrder(order);
+    }
+
+    private Order buildOrderFromSession(OrderSession orderSession) {
+        Long storeId = orderSession.getStoreId();
+        Long userId = orderSession.getUserId();
+        log.info("orderSession.userId: {}", userId);
+        User user = userService.loadUserById(userId);
+        Store store = storeService.loadStoreById(storeId);
+        return orderFactory.createFromOrderSession(orderSession, user, store);
+    }
+
+    private void applyCardInfo(Order order, PaymentMethod paymentMethodObject) {
+        if (paymentMethodObject != null && paymentMethodObject.getCard() != null) {
+            order.changePaymentMethod(com.whattheburger.backend.domain.enums.PaymentMethod.CREDIT_CARD);
+            String brand = paymentMethodObject.getCard().getBrand();
+            String last4 = paymentMethodObject.getCard().getLast4();
+            Long expMonth = paymentMethodObject.getCard().getExpMonth();
+            Long expYear = paymentMethodObject.getCard().getExpYear();
+            order.changeCardInfo(brand, last4, expMonth, expYear);
+            log.info("Card {} ****{} exp {}/{}", brand, last4, expMonth, expYear);
+        }
+    }
+
 //    public Order createOrderPreview(UUID guestId, Authentication authentication, OrderType orderType) {
-//        ProcessedCartDto processedCartDto = cartService.loadCart(guestId.toString(), authentication);
 //        boolean isUser = authentication != null && authentication.isAuthenticated() && !(authentication instanceof AnonymousAuthenticationToken);
 //
 //        if (isUser) {

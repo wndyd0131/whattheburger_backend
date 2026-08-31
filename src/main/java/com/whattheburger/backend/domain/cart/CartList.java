@@ -23,4 +23,15 @@ public class CartList {
     public void clearCartList() {
         this.carts.clear();
     }
+
+    public int addOrMerge(Cart cart) {
+        for (int i = 0; i < carts.size(); i++) {
+            if (carts.get(i).matches(cart)) {
+                carts.get(i).mergeQuantity(cart.getQuantity());
+                return i;
+            }
+        }
+        carts.add(cart);
+        return carts.size() - 1;
+    }
 }

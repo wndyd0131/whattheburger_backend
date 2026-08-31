@@ -35,10 +35,7 @@ public class CartCalculator {
                 .map(cart -> calculateProductPrice(cart, storeProductMap, customRuleMap, productOptionMap, productOptionTraitMap, quantityMap))
                 .toList();
         BigDecimal cartTotalPrice = productCalculationDetails.stream()
-                .map(productCalculationDetail -> {
-                    BigDecimal quantity = BigDecimal.valueOf(productCalculationDetail.getQuantity());
-                    return productCalculationDetail.getCalculatedTotalPrice().multiply(quantity);
-                })
+                .map(ProductCalculationDetail::getCalculatedTotalPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         CartCalculationResult cartCalculationResult = new CartCalculationResult(
                 productCalculationDetails,

@@ -31,15 +31,18 @@ public class ProductCalculator implements PriceCalculator<List<ProductCalculator
 
     public ProductCalculationDetail calculatePrice(ProductCalculatorDto productCalculatorDto) {
         BigDecimal productBasePrice = productCalculatorDto.getBasePrice();
+        Integer productQuantity = productCalculatorDto.getQuantity();
         log.info("Product Price: {}", productCalculatorDto.getBasePrice());
-        log.info("Product Quantity: {}", productCalculatorDto.getQuantity());
+        log.info("Product Quantity: {}", productQuantity);
         BigDecimal customRuleTotalPrice = productCalculatorDto.getCustomRuleCalculationResult().getCustomRuleTotalPrice();
         log.info("Option Total Price: {}", customRuleTotalPrice);
-        BigDecimal calculatedPrice = productBasePrice.add(customRuleTotalPrice);
+        BigDecimal calculatedPrice = productBasePrice.add(customRuleTotalPrice)
+                .multiply(BigDecimal.valueOf(productQuantity));
+        log.info("Calculated Price: {}", calculatedPrice);
         return new ProductCalculationDetail(
                 productCalculatorDto.getStoreProductId(),
                 productCalculatorDto.getCustomRuleCalculationResult().getCustomRuleCalculationDetails(),
-                productCalculatorDto.getQuantity(),
+                productQuantity,
                 calculatedPrice,
                 productCalculatorDto.getCustomRuleCalculationResult().getCustomRuleTotalPrice()
         );

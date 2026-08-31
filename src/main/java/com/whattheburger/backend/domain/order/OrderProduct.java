@@ -41,6 +41,7 @@ public class OrderProduct {
     @JoinColumn(name = "order_id")
     private Order order;
 
+    @Builder.Default
     @OneToMany(mappedBy = "orderProduct", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderCustomRule> orderCustomRules = new ArrayList<>();
 

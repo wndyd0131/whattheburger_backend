@@ -17,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -34,9 +35,10 @@ public class ProductServiceTest {
     @Mock CustomRuleRepository customRuleRepository;
     @Mock OptionTraitRepository optionTraitRepository;
     @Mock ProductOptionTraitRepository productOptionTraitRepository;
-
+    @Mock S3Service s3Service;
     @InjectMocks
     ProductService productService;
+
 
     Category mockCategory;
     Option mockOption;
@@ -116,6 +118,7 @@ public class ProductServiceTest {
         when(productOptionTraitRepository.save(any(ProductOptionTrait.class))).thenReturn(mockProductOptionTrait);
         when(customRuleRepository.save(any(CustomRule.class))).thenReturn(mockCustomRule);
 
+        when(s3Service.uploadFile(any())).thenReturn(anyString());
 
         List<OptionTraitRequest> optionTraitRequests = Arrays.asList(OptionTraitRequest
                 .builder()
@@ -135,6 +138,7 @@ public class ProductServiceTest {
                 .maxQuantity(0)
                 .extraPrice(BigDecimal.ZERO)
                 .orderIndex(0)
+                .quantityDetails(List.of())
                 .optionTraitRequests(optionTraitRequests)
                 .build()
         );

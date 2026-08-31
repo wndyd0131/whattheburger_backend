@@ -2,12 +2,12 @@ package com.whattheburger.backend.service;
 
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
+import com.stripe.model.Event;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.checkout.Session;
 import com.stripe.param.PaymentIntentRetrieveParams;
 import com.stripe.param.checkout.SessionCreateParams;
 import com.whattheburger.backend.domain.enums.OrderStatus;
-import com.whattheburger.backend.domain.enums.PaymentMethod;
 import com.whattheburger.backend.domain.enums.PaymentStatus;
 import com.whattheburger.backend.domain.order.*;
 import com.whattheburger.backend.exception.ApiException;
@@ -19,6 +19,7 @@ import com.whattheburger.backend.util.UserType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -26,6 +27,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
@@ -43,6 +45,7 @@ public class CheckoutService {
     private final CheckoutSessionStorage checkoutSessionStorage;
     private final OrderTrackingService orderTrackingService;
     private final CartService cartService;
+    private final WebhookService webhookService;
 
     public Session createCheckoutSession(
             OrderSession orderSession,
@@ -125,8 +128,14 @@ public class CheckoutService {
     }
 
     public void handleCheckoutSessionCompleted(
+            Event event,
             Session session
     ) {
+        String objectId = session.getId();
+        String eventType = event.getType();
+        String idempotencyKey = eventType + ":" + objectId;
+
+        boolean idempotencyKeyExists = webhookService.processIdempotency(idempotencyKey, session.getId());
 
         String piId = session.getPaymentIntent();
         log.info("piId {}", piId);
@@ -162,36 +171,35 @@ public class CheckoutService {
 
         OrderSession orderSession = orderService.loadOrderSessionByOrderSessionId(UUID.fromString(orderSessionId));
         orderService.updateOrderSessionPaymentStatus(orderSession, PaymentStatus.PAID);
-        Integer randomDuration = new Random().nextInt(20, 30) * 1000;
-        orderService.updateOrderSessionOrderStatus(orderSession, OrderStatus.CONFIRMING, System.currentTimeMillis(), randomDuration);
+        markOrderConfirming(orderSession);
 
-        Order order = orderService.transferFromOrderSession(orderSession);
-        order.updateOrderStatus(OrderStatus.CONFIRMING);
-        order.changePaymentStatus(PaymentStatus.PAID);
-
-        if (paymentMethodObject != null && paymentMethodObject.getCard() != null) {
-            order.changePaymentMethod(PaymentMethod.CREDIT_CARD);
-            String brand = paymentMethodObject.getCard().getBrand();
-            String last4 = paymentMethodObject.getCard().getLast4();
-            Long expMonth = paymentMethodObject.getCard().getExpMonth();
-            Long expYear = paymentMethodObject.getCard().getExpYear();
-            order.changeCardInfo(brand, last4, expMonth, expYear);
-            log.info("Card {} ****{} exp {}/{}", brand, last4, expMonth, expYear);
+        Order order;
+        if (idempotencyKeyExists == false) {
+            order = orderService.completePaidOrder(
+                    orderSession,
+                    session.getId(),
+                    paymentMethodObject
+            );
+        } else {
+            order = orderService.loadOrderByCheckoutSessionId(session.getId())
+                    .orElseGet(() ->
+                            orderService.completePaidOrder(
+                                    orderSession,
+                                    session.getId(),
+                                    paymentMethodObject
+                            )
+                    );
         }
 
         orderTrackingService.scheduleOrder(orderSession, order);
-
         cartService.cleanUp(UUID.fromString(cartSessionId));
-//        orderService.cleanUp(UUID.fromString(orderSessionId));
+        orderService.addOrderToOrderSession(order, orderSession);
 
-        order.changeCheckoutSessionId(session.getId());
-        Order savedOrder = orderService.saveOrder(order);
-        orderService.addOrderToOrderSession(savedOrder, orderSession);
-
-        log.info("Order ID {}", savedOrder.getId());
+        log.info("Order ID {}", order.getId());
     }
 
     public void handlePaymentIntentSucceeded(
+            Event event,
             PaymentIntent paymentIntent
     ) {
         log.info("Payment intent succeeded");
@@ -203,21 +211,21 @@ public class CheckoutService {
         log.info("Order payment status: {}", orderSession.getPaymentStatus());
     }
 
-//    public void handlePaymentIntentSucceeded(
-//            PaymentIntent paymentIntent
-//    ) {
-//        Map<String, String> metadata = paymentIntent.getMetadata();
-//        String sessionId = metadata.get("orderSessionId");
-//        if (sessionId == null)
-//            throw new IllegalStateException("key orderSessionId does not exist in stripe metadata");
-//        Order order = orderSessionStorage.load(sessionId)
-//                .map(orderSession -> orderFactory.createFromOrderSession(orderSession))
-//                .orElseThrow(() -> new OrderSessionNotFoundException(sessionId));
-//        order.updateOrderStatus(OrderStatus.CONFIRMED);
-//        order.changePaymentStatus(PaymentStatus.PAID);
-//        order.changePaymentMethod(PaymentMethod.CASH);
-//        orderService.saveOrder(order);
-//    }
+    private void markOrderConfirming(
+            OrderSession orderSession
+    ) {
+        if (orderSession.getOrderStatus() == OrderStatus.CONFIRMING) {
+            return;
+        }
+
+        int randomDuration = new Random().nextInt(20, 30) * 1000;
+
+        orderSession.updateOrderStatus(
+                OrderStatus.CONFIRMING,
+                System.currentTimeMillis(),
+                randomDuration
+        );
+    }
 
     private String getCartSessionKey(UUID guestId, Long storeId, Authentication authentication) {
         boolean isUser = authentication != null && authentication.isAuthenticated() && !(authentication instanceof AnonymousAuthenticationToken);

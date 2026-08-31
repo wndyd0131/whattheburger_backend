@@ -4,26 +4,26 @@ import com.stripe.exception.SignatureVerificationException;
 import com.stripe.model.*;
 import com.stripe.model.checkout.Session;
 import com.stripe.net.Webhook;
-import com.whattheburger.backend.controller.dto.CheckoutRequestDto;
 import com.whattheburger.backend.controller.dto.CheckoutResponseDto;
 import com.whattheburger.backend.controller.dto.order.OrderFormRequestDto;
+import com.whattheburger.backend.domain.checkout.IdempotencyStorage;
 import com.whattheburger.backend.domain.order.OrderSession;
 import com.whattheburger.backend.service.CheckoutService;
 import com.whattheburger.backend.service.OrderService;
+import com.whattheburger.backend.service.WebhookService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import retrofit2.http.Path;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -36,12 +36,13 @@ public class CheckoutController {
 
     private final CheckoutService checkoutService;
     private final OrderService orderService;
+    private final WebhookService webhookService;
 
-    @PostMapping("/api/v1/checkout")
+    @PostMapping("/api/v1/checkout/{orderSessionId}")
     public ResponseEntity<CheckoutResponseDto> createCheckoutSession(
             @RequestBody OrderFormRequestDto formRequestDto,
+            @PathVariable(name = "orderSessionId") UUID orderSessionId,
             @CookieValue(name = "guestId") UUID guestId,
-            @CookieValue(name = "orderSessionId")  UUID orderSessionId,
             Authentication authentication
     ) {
         OrderSession orderSession = orderService.updateOrderSession(formRequestDto, orderSessionId, authentication, guestId);
@@ -89,11 +90,13 @@ public class CheckoutController {
             return "";
         }
 
+        Session session = (Session) stripeObject;
+
         switch (event.getType()) {
             case "checkout.session.completed":
-                Session session = (Session) stripeObject;
                 log.info("Checkout Session {}", session);
                 checkoutService.handleCheckoutSessionCompleted(
+                        event,
                         session
                 );
                 break;
@@ -101,6 +104,7 @@ public class CheckoutController {
                 PaymentIntent paymentIntent = (PaymentIntent) stripeObject;
                 log.info("Payment Intent {}", paymentIntent);
                 checkoutService.handlePaymentIntentSucceeded(
+                        event,
                         paymentIntent
                 );
                 break;
@@ -113,4 +117,5 @@ public class CheckoutController {
         response.setStatus(HttpServletResponse.SC_OK);
         return "";
     }
+
 }
