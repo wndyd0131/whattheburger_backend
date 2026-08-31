@@ -50,6 +50,8 @@ jobs:
           script: |
             export IMAGE_TAG=${{ github.sha }}
             
+            cd /home/ubuntu/whattheburger_backend
+            
             docker compose pull backend
             docker compose up -d backend
             
