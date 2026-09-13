@@ -6,7 +6,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.util.Optional;
 
 @Entity
 @NoArgsConstructor
@@ -42,13 +41,17 @@ public class StoreOptionDelta {
         this.deltaType = deltaType;
     }
 
-    public static Optional<BigDecimal> resolveExtraPrice(ProductOption productOption, StoreOptionDelta delta) {
-        if (delta == null) {
-            return Optional.of(productOption.getExtraPrice());
+    public static boolean isHidden(StoreOptionDelta delta) {
+        return delta != null && delta.getDeltaType() == DeltaType.HIDDEN;
+    }
+
+    public static BigDecimal resolveBaseExtraPrice(ProductOption productOption, StoreOptionDelta delta) {
+        if (isHidden(delta)) {
+            throw new IllegalArgumentException("Cannot resolve base extra price for hidden option");
         }
-        if (delta.getDeltaType() == DeltaType.OVERRIDE) {
-            return Optional.of(delta.getOverridePrice());
+        if (delta != null && delta.getDeltaType() == DeltaType.OVERRIDE) {
+            return delta.getOverridePrice();
         }
-        return Optional.empty();
+        return productOption.getExtraPrice();
     }
 }

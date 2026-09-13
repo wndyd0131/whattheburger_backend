@@ -144,10 +144,7 @@ public class CartValidator {
                         .orElseThrow(() -> new ProductOptionNotFoundException(productOptionId));
 
                 if (Boolean.TRUE.equals(optionRequest.getIsSelected())
-                        && StoreOptionDelta.resolveExtraPrice(
-                                productOption,
-                                optionDeltaMap.get(productOptionId)
-                        ).isEmpty()) {
+                        && StoreOptionDelta.isHidden(optionDeltaMap.get(productOptionId))) {
                     throw new HiddenOptionSelectedException(productOptionId);
                 }
 

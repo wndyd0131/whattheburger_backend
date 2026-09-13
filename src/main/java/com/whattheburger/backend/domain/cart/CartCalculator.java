@@ -60,13 +60,13 @@ public class CartCalculator {
                             .map(optionRequest -> {
                                 ProductOption productOption = productOptionMap.get(optionRequest.getProductOptionId());
 
-                                Optional<BigDecimal> extraPrice = StoreOptionDelta.resolveExtraPrice(
-                                        productOption,
-                                        optionDeltaMap.get(productOption.getId())
-                                );
-                                if (extraPrice.isEmpty()) {
+                                StoreOptionDelta delta = optionDeltaMap.get(productOption.getId());
+                                if (StoreOptionDelta.isHidden(delta)) {
                                     return null;
                                 }
+                                BigDecimal extraPrice = Optional.ofNullable(
+                                        StoreOptionDelta.resolveBaseExtraPrice(productOption, delta)
+                                ).orElse(BigDecimal.ZERO);
 
                                 // quantity handling
                                 QuantityCalculatorDto quantityCalculatorDto = Optional.ofNullable(optionRequest.getQuantityDetailRequest())
@@ -103,7 +103,7 @@ public class CartCalculator {
                                 return OptionCalculatorDto
                                         .builder()
                                         .productOptionId(productOption.getId())
-                                        .price(extraPrice.get())
+                                        .price(extraPrice)
                                         .isDefault(productOption.getIsDefault())
                                         .defaultQuantity(productOption.getDefaultQuantity())
                                         .isSelected(optionRequest.getIsSelected())
