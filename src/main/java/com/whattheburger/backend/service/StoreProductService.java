@@ -308,14 +308,12 @@ public class StoreProductService {
         List<StoreProductReadByProductIdDto.OptionResponse> optionResponses = new ArrayList<>();
 
         for (ProductOption productOption : productOptions) {
-            Optional<BigDecimal> extraPrice = StoreOptionDelta.resolveExtraPrice(
-                    productOption,
-                    storeOptionDeltaMap.get(productOption.getId())
-            );
-            if (extraPrice.isEmpty()) {
+            StoreOptionDelta delta = storeOptionDeltaMap.get(productOption.getId());
+            if (StoreOptionDelta.isHidden(delta)) {
                 continue;
             }
-            optionResponses.add(buildOptionResponse(productOption, extraPrice.get()));
+            BigDecimal extraPrice = StoreOptionDelta.resolveBaseExtraPrice(productOption, delta);
+            optionResponses.add(buildOptionResponse(productOption, extraPrice));
         }
         return StoreProductReadByProductIdDto
                 .builder()
