@@ -12,7 +12,7 @@
 
 import http from 'k6/http';
 import exec from 'k6/execution';
-import { check, sleep } from 'k6';
+import { check, sleep, fail } from 'k6';
 import { uuidv4 } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
 
 /* =========================================================
@@ -159,6 +159,36 @@ function withGuestCookie(guestId, headers = {}) {
     ...headers,
     Cookie: `guestId=${guestId}`,
   };
+}
+
+function isValidId(value) {
+  return value != null && Number(value) > 0;
+}
+
+function isValidUuid(value) {
+  return typeof value === 'string'
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function runStepChecks(step, res, checks) {
+  const ok = check(res, checks);
+  if (!ok) {
+    console.error(`[SMOKE FAIL] ${step}`);
+    console.error(`  status: ${res.status}`);
+    console.error(`  body: ${res.body}`);
+    fail(step);
+  }
+  return ok;
+}
+
+function runAssertions(step, context, checks) {
+  const ok = check(context, checks);
+  if (!ok) {
+    console.error(`[SMOKE FAIL] ${step}`);
+    console.error(`  context: ${JSON.stringify(context)}`);
+    fail(step);
+  }
+  return ok;
 }
 
 function randomInt(min, max) {
@@ -367,18 +397,23 @@ function buildRandomOptionModifyPayload(productDetail) {
 
 function getStores(lon, lat, radiusMeter) {
   const res = http.get(`${BASE_URL}/store/nearby?lon=${lon}&lat=${lat}&radiusMeter=${radiusMeter}`, {
-    tags: { name: 'GET /stores/nearby' },
+    tags: { name: 'GET /store/nearby' },
   });
 
-  check(res, {
-    '1. 매장 조회 성공 (200)': (r) => r.status === 200
+  runStepChecks('GET /store/nearby', res, {
+    'status is 200': (r) => r.status === 200,
+    'body is array': (r) => {
+      try {
+        return Array.isArray(r.json());
+      } catch (e) {
+        return false;
+      }
+    },
   });
 
-  if (res.status !== 200) {
-    return [];
-  }
-
-  return res.json();
+  const stores = res.json();
+  console.log(`[GET /store/nearby] stores count: ${stores.length}`);
+  return stores;
 }
 
 
@@ -387,15 +422,20 @@ function getProducts(storeId) {
     tags: { name: 'GET /store/{storeId}/category/product' },
   });
 
-  check(res, {
-    'products: 200': (r) => r.status === 200,
+  runStepChecks('GET /store/{storeId}/category/product', res, {
+    'status is 200': (r) => r.status === 200,
+    'body is array': (r) => {
+      try {
+        return Array.isArray(r.json());
+      } catch (e) {
+        return false;
+      }
+    },
   });
 
-  if (res.status !== 200) {
-    return [];
-  }
-
-  return res.json();
+  const categories = res.json();
+  console.log(`[GET /store/{storeId}/category/product] categories count: ${categories.length}`);
+  return categories;
 }
 
 
@@ -404,8 +444,16 @@ function getProduct(storeId, storeProductId) {
     tags: { name: 'GET /store/{storeId}/product/{storeProductId}' },
   });
 
-  check(res, {
-    'product detail: 200': (r) => r.status === 200,
+  runStepChecks('GET /store/{storeId}/product/{storeProductId}', res, {
+    'status is 200': (r) => r.status === 200,
+    'storeProductId is valid and matches': (r) => {
+      try {
+        const body = r.json();
+        return isValidId(body.storeProductId) && body.storeProductId === storeProductId;
+      } catch (e) {
+        return false;
+      }
+    },
   });
 
   return res;
@@ -413,19 +461,29 @@ function getProduct(storeId, storeProductId) {
 
 
 function addCart(storeId, guestId, productDetail) {
-  const payload = JSON.stringify(
-    buildRandomCartPayload(normalizeProductDetail(productDetail))
-  );
+  const payload = buildRandomCartPayload(normalizeProductDetail(productDetail));
 
-  const res = http.post(`${BASE_URL}/store/${storeId}/cart`, payload, {
+  runAssertions('POST /store/{storeId}/cart payload', { payload }, {
+    'storeProductId is valid': (ctx) => isValidId(ctx.payload.storeProductId),
+  });
+
+  const res = http.post(`${BASE_URL}/store/${storeId}/cart`, JSON.stringify(payload), {
     headers: withGuestCookie(guestId, {
       'Content-Type': 'application/json',
     }),
     tags: { name: 'POST /store/{storeId}/cart' },
   });
 
-  check(res, {
-    'add cart: success': (r) => r.status >= 200 && r.status < 300,
+  runStepChecks('POST /store/{storeId}/cart', res, {
+    'status is 201': (r) => r.status === 201,
+    'response storeProductId matches': (r) => {
+      try {
+        const body = r.json();
+        return body.storeProductId === payload.storeProductId;
+      } catch (e) {
+        return false;
+      }
+    },
   });
 
   return res;
@@ -469,20 +527,33 @@ function pickRandomCartItem(cartRes) {
 }
 
 
-function updateCart(storeId, guestId, cartIdx, productDetail) {
-  const payload = JSON.stringify(
-    buildRandomOptionModifyPayload(productDetail)
+function updateCart(storeId, guestId, cartIdx, productDetail, expectedStoreProductId) {
+
+  const payload = buildRandomOptionModifyPayload(productDetail);
+
+  const res = http.patch(
+    `${BASE_URL}/store/${storeId}/cart/${cartIdx}/option`,
+    JSON.stringify(payload),
+    {
+      headers: withGuestCookie(guestId, {
+        'Content-Type': 'application/json',
+      }),
+      tags: { name: 'PATCH /store/{storeId}/cart/{cartIdx}/option' },
+    }
   );
 
-  const res = http.patch(`${BASE_URL}/store/${storeId}/cart/${cartIdx}/option`, payload, {
-    headers: withGuestCookie(guestId, {
-      'Content-Type': 'application/json',
-    }),
-    tags: { name: 'PATCH /store/{storeId}/cart/{cartIdx}/option' },
-  });
-
-  check(res, {
-    'update cart: success': (r) => r.status >= 200 && r.status < 300,
+  runStepChecks('PATCH /store/{storeId}/cart/{cartIdx}/option', res, {
+    'status is 200': (r) => r.status === 200,
+    'response storeProductId matches': (r) => {
+      try {
+        const body = r.json();
+        const items = body.productResponses || [];
+        return items[cartIdx] != null
+          && items[cartIdx].storeProductId === expectedStoreProductId;
+      } catch (e) {
+        return false;
+      }
+    },
   });
 
   return res;
@@ -490,14 +561,27 @@ function updateCart(storeId, guestId, cartIdx, productDetail) {
 
 
 function createOrderSession(storeId, guestId) {
-  // TODO 실제 주문/Stripe Checkout API로 변경
-  const res = http.post(`${BASE_URL}/order-session/store/${storeId}`, null, {
-    headers: withGuestCookie(guestId),
-    tags: { name: 'POST /order-session/store/{storeId}' },
-  });
+  const res = http.post(
+    `${BASE_URL}/order-session/store/${storeId}`,
+    JSON.stringify({ orderType: 'DELIVERY' }),
+    {
+      headers: withGuestCookie(guestId, {
+        'Content-Type': 'application/json',
+      }),
+      tags: { name: 'POST /order-session/store/{storeId}' },
+    }
+  );
 
-  check(res, {
-    'checkout: success': (r) => r.status >= 200 && r.status < 300,
+  runStepChecks('POST /order-session/store/{storeId}', res, {
+    'status is 201': (r) => r.status === 201,
+    'sessionId is valid': (r) => {
+      try {
+        const body = r.json();
+        return isValidUuid(String(body.sessionId));
+      } catch (e) {
+        return false;
+      }
+    },
   });
 
   return res;
@@ -518,9 +602,10 @@ export default function () {
   const location = getUserLocation();
 
   let selectedStore = null;
+  let stores = [];
 
   for (let i = 0; i < 3; i++) {
-    const stores = getStores(
+    stores = getStores(
       location.lon,
       location.lat,
       RADIUS_METER
@@ -555,12 +640,20 @@ export default function () {
     return;
   }
 
+  runAssertions('selected store validation', { selectedStore, stores }, {
+    'selected storeId is valid': (ctx) => isValidId(ctx.selectedStore.storeId),
+    'selected storeId exists in list': (ctx) =>
+      ctx.stores.some((s) => s.storeId === ctx.selectedStore.storeId),
+  });
+
 
   /* ---------------------------------------------------------
    * 2. 상품 목록
    * ------------------------------------------------------- */
 
-  let storeProducts = flattenStoreProducts(getProducts(selectedStore.id));
+  const categories = getProducts(selectedStore.storeId);
+  let storeProducts = flattenStoreProducts(categories);
+  console.log(`[GET /store/{storeId}/category/product] products count: ${storeProducts.length}`);
 
   if (storeProducts.length === 0) {
     return;
@@ -587,10 +680,7 @@ export default function () {
 
     const product = randomItem(storeProducts);
 
-    const productRes = getProduct(selectedStore.id, product.storeProductId);
-    if (productRes.status !== 200) {
-      continue;
-    }
+    const productRes = getProduct(selectedStore.storeId, product.storeProductId);
 
     // 상품 상세를 보는 시간
     think(5, 120);
@@ -603,7 +693,7 @@ export default function () {
      */
     if (action < 0.50) {
       // 다시 상품 목록 조회
-      storeProducts = flattenStoreProducts(getProducts(selectedStore.id));
+      storeProducts = flattenStoreProducts(getProducts(selectedStore.storeId));
 
       if (storeProducts.length === 0) {
         return;
@@ -619,11 +709,7 @@ export default function () {
      * 0.50 ~ 0.80
      */
     if (action < 0.80) {
-      const result = addCart(selectedStore.id, guestId, productRes.json());
-
-      if (result.status < 200 || result.status >= 300) {
-        return;
-      }
+      addCart(selectedStore.storeId, guestId, productRes.json());
 
       hasCartItem = true;
 
@@ -652,7 +738,7 @@ export default function () {
 
   while (true) {
 
-    const cartRes = getCart(selectedStore.id, guestId);
+    const cartRes = getCart(selectedStore.storeId, guestId);
     const cartItemCount = getCartItemCount(cartRes);
 
     think(10, 20);
@@ -669,10 +755,7 @@ export default function () {
         continue;
       }
 
-      const productRes = getProduct(selectedStore.id, picked.cartItem.storeProductId);
-      if (productRes.status !== 200) {
-        continue;
-      }
+      const productRes = getProduct(selectedStore.storeId, picked.cartItem.storeProductId);
 
       // 수정 화면에서 옵션 살펴보는 시간
       think(10, 60);
@@ -681,7 +764,13 @@ export default function () {
        * 50% 수정 확정
        */
       if (chance(0.50)) {
-        updateCart(selectedStore.id, guestId, picked.cartIdx, productRes.json());
+        updateCart(
+          selectedStore.storeId,
+          guestId,
+          picked.cartIdx,
+          productRes.json(),
+          picked.cartItem.storeProductId
+        );
       }
 
       /*
@@ -700,7 +789,7 @@ export default function () {
      */
     if (action < 0.45) {
 
-      storeProducts = flattenStoreProducts(getProducts(selectedStore.id));
+      storeProducts = flattenStoreProducts(getProducts(selectedStore.storeId));
 
       if (storeProducts.length === 0) {
         return;
@@ -716,10 +805,7 @@ export default function () {
 
       const product = randomItem(storeProducts);
 
-      const productRes = getProduct(selectedStore.id, product.storeProductId);
-      if (productRes.status !== 200) {
-        continue;
-      }
+      const productRes = getProduct(selectedStore.storeId, product.storeProductId);
 
       think(5, 120);
 
@@ -728,7 +814,7 @@ export default function () {
        * (장바구니 최대 20개)
        */
       if (chance(0.30) && cartItemCount < MAX_CART_ITEMS) {
-        addCart(selectedStore.id, guestId, productRes.json());
+        addCart(selectedStore.storeId, guestId, productRes.json());
       }
 
       continue;
@@ -770,5 +856,5 @@ export default function () {
    *
    * Stripe Checkout Session 생성까지만 수행.
    */
-  createOrderSession(selectedStore.id, guestId);
+  createOrderSession(selectedStore.storeId, guestId);
 }
