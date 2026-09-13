@@ -4,6 +4,7 @@ import com.whattheburger.backend.controller.dto.store.StoreCustomRuleModifyReque
 import com.whattheburger.backend.controller.dto.store.StoreOptionModifyRequest;
 import com.whattheburger.backend.controller.dto.store.StoreProductModifyRequestDto;
 import com.whattheburger.backend.domain.*;
+import com.whattheburger.backend.domain.enums.CountType;
 import com.whattheburger.backend.domain.enums.DeltaType;
 import com.whattheburger.backend.domain.enums.ModifyType;
 import com.whattheburger.backend.repository.*;
@@ -213,6 +214,39 @@ class StoreProductServiceTest {
             StoreProductReadByProductIdDto result = storeProductService.getProductById(STORE_ID, STORE_PRODUCT_ID);
 
             assertThat(result.getOptionResponses()).isEmpty();
+        }
+
+        @Test
+        void whenNoneCountTypeWithNullExtraPrice_includesOption() {
+            Product product = MockProductFactory.createMockProduct();
+            CustomRule customRule = MockCustomRuleFactory.createMockCustomRule();
+            Option option = MockOptionFactory.createMockOption();
+            MockOptionFactory.createMockProductOption(
+                    2L,
+                    false,
+                    CountType.NONE,
+                    0,
+                    0,
+                    null,
+                    0,
+                    product,
+                    option,
+                    customRule
+            );
+            StoreProduct storeProduct = MockStoreProductFactory.createStoreProduct(
+                    STORE_PRODUCT_ID,
+                    OVERRIDE_PRODUCT_PRICE,
+                    true,
+                    baseStore,
+                    product
+            );
+            givenStoreProductExists(storeProduct);
+
+            StoreProductReadByProductIdDto result = storeProductService.getProductById(STORE_ID, STORE_PRODUCT_ID);
+
+            assertThat(result.getOptionResponses()).hasSize(1);
+            assertThat(result.getOptionResponses().get(0).getExtraPrice()).isNull();
+            assertThat(result.getOptionResponses().get(0).getCountType()).isEqualTo(CountType.NONE);
         }
 
         @Test
