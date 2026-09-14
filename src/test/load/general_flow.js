@@ -20,30 +20,31 @@ import { uuidv4 } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
  * ======================================================= */
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
+const IS_SMOKE = (__ENV.is_smoke || '').toLowerCase() === 'true';
 
-export const options = {
-  scenarios: {
-    user_journey: {
-      executor: 'ramping-vus',
-      startVUs: 0,
-      stages: [
-        { duration: '1m', target: 10 },
-        { duration: '3m', target: 10 },
-        { duration: '1m', target: 25 },
-        { duration: '3m', target: 25 },
-        { duration: '1m', target: 50 },
-        { duration: '3m', target: 50 },
-        { duration: '1m', target: 0 },
-      ],
-      gracefulRampDown: '30s',
-    },
-  },
+// export const options = {
+//   scenarios: {
+//     user_journey: {
+//       executor: 'ramping-vus',
+//       startVUs: 0,
+//       stages: [
+//         { duration: '1m', target: 10 },
+//         { duration: '3m', target: 10 },
+//         { duration: '1m', target: 25 },
+//         { duration: '3m', target: 25 },
+//         { duration: '1m', target: 50 },
+//         { duration: '3m', target: 50 },
+//         { duration: '1m', target: 0 },
+//       ],
+//       gracefulRampDown: '30s',
+//     },
+//   },
 
-  thresholds: {
-    http_req_failed: ['rate<0.01'],
-    http_req_duration: ['p(95)<1000'],
-  },
-};
+//   thresholds: {
+//     http_req_failed: ['rate<0.01'],
+//     http_req_duration: ['p(95)<1000'],
+//   },
+// };
 
 /* =========================================================
  * Parameters
@@ -127,6 +128,10 @@ function chance(probability) {
   return Math.random() < probability;
 }
 
+function maybeChurn(probability) {
+  return !IS_SMOKE && chance(probability);
+}
+
 function randomItem(array) {
   return array[Math.floor(Math.random() * array.length)];
 }
@@ -142,6 +147,10 @@ function flattenStoreProducts(categorizedProducts) {
 }
 
 function think(min, max) {
+  if (IS_SMOKE) {
+    sleep(random(min / 100, max / 100));
+    return;
+  }
   sleep(random(min, max));
 }
 
@@ -619,8 +628,13 @@ export default function () {
     // 매장 살펴보는 시간
     think(60, 90);
 
+    if (IS_SMOKE) {
+      selectedStore = randomItem(stores);
+      break;
+    }
+
     // 20% 이탈
-    if (chance(0.20)) {
+    if (maybeChurn(0.20)) {
       return;
     }
 
@@ -660,7 +674,7 @@ export default function () {
   }
 
   // 30% 이탈
-  if (chance(0.30)) {
+  if (maybeChurn(0.30)) {
     return;
   }
 
@@ -685,6 +699,11 @@ export default function () {
     // 상품 상세를 보는 시간
     think(5, 120);
 
+    if (IS_SMOKE) {
+      addCart(selectedStore.storeId, guestId, productRes.json());
+      hasCartItem = true;
+      break;
+    }
 
     const action = Math.random();
 
@@ -742,6 +761,25 @@ export default function () {
     const cartItemCount = getCartItemCount(cartRes);
 
     think(10, 20);
+
+    if (IS_SMOKE) {
+      const picked = pickRandomCartItem(cartRes);
+      if (picked) {
+        const productRes = getProduct(
+          selectedStore.storeId,
+          picked.cartItem.storeProductId
+        );
+        think(10, 60);
+        updateCart(
+          selectedStore.storeId,
+          guestId,
+          picked.cartIdx,
+          productRes.json(),
+          picked.cartItem.storeProductId
+        );
+      }
+      break;
+    }
 
     const action = Math.random();
 
@@ -846,7 +884,7 @@ export default function () {
   think(60, 180);
 
   // 60% 이탈
-  if (chance(0.60)) {
+  if (maybeChurn(0.60)) {
     return;
   }
 
