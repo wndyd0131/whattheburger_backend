@@ -57,7 +57,7 @@ jobs:
             
             echo "Waiting for application startup..."
             
-            for i in {1..30} do
+            for i in {1..30}; do
               if curl -fsS http://localhost:8080/actuator/health; then
                 echo "Health check passed"
                 exit 0
