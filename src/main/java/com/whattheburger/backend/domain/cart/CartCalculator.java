@@ -117,7 +117,6 @@ public class CartCalculator {
                             .toList();
                     OptionCalculationResult optionCalculationResult = optionCalculator.calculateTotalPrice(optionCalculatorDtos); // calculate option per customRule
                     log.info("customRule {}", customRule.getName());
-                    log.info("option trait calc result size {}", optionCalculationResult.getOptionCalculationDetails().get(0).getTraitCalculationDetails().size());
 
                     return CustomRuleCalculatorDto
                             .builder()
