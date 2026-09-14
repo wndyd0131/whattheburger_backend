@@ -1,5 +1,6 @@
 package com.whattheburger.backend.service.dto.cart.calculator;
 
+import com.whattheburger.backend.domain.enums.CountType;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
@@ -17,6 +18,7 @@ public class OptionCalculatorDto {
     private Boolean isSelected;
     private Boolean isDefault;
     private Integer defaultQuantity;
+    private CountType countType;
     private QuantityCalculatorDto quantityCalculatorDto;
     @NotNull(message = "TraitResult cannot be null")
     private TraitCalculationResult traitCalculationResult;

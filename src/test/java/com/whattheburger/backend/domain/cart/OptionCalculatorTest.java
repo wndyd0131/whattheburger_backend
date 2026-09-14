@@ -1,9 +1,11 @@
 package com.whattheburger.backend.domain.cart;
 
+import com.whattheburger.backend.domain.enums.CountType;
 import com.whattheburger.backend.service.dto.cart.calculator.OptionCalculationResult;
 import com.whattheburger.backend.service.dto.cart.calculator.OptionCalculatorDto;
 import com.whattheburger.backend.service.dto.cart.calculator.QuantityCalculatorDto;
 import com.whattheburger.backend.service.dto.cart.calculator.TraitCalculationResult;
+import com.whattheburger.backend.service.exception.cart.InvalidOptionRequestException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,6 +13,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @ExtendWith(MockitoExtension.class)
 public class OptionCalculatorTest {
@@ -168,5 +173,100 @@ public class OptionCalculatorTest {
         );
         OptionCalculationResult optionCalculationResult = optionCalculator.calculateTotalPrice(mockOptionCalculatorDtos);
         Assertions.assertEquals(BigDecimal.valueOf(41.91), optionCalculationResult.getOptionTotalPrice()); // 34.93 + 6.98 = 41.91
+    }
+
+    @Test
+    public void givenDefaultNoneOptionWithNullQuantity_whenCalculate_thenReturnTraitPriceOnly() {
+        List<OptionCalculatorDto> mockOptionCalculatorDtos = List.of(
+                OptionCalculatorDto
+                        .builder()
+                        .productOptionId(1L)
+                        .countType(CountType.NONE)
+                        .isSelected(true)
+                        .isDefault(true)
+                        .quantity(null)
+                        .quantityCalculatorDto(null)
+                        .price(BigDecimal.valueOf(2.99))
+                        .traitCalculationResult(
+                                new TraitCalculationResult(
+                                        List.of(),
+                                        BigDecimal.valueOf(0.50)
+                                )
+                        )
+                        .build()
+        );
+
+        OptionCalculationResult result = optionCalculator.calculateTotalPrice(mockOptionCalculatorDtos);
+
+        Assertions.assertEquals(BigDecimal.valueOf(0.50), result.getOptionTotalPrice());
+    }
+
+    @Test
+    public void givenNonDefaultNoneOptionWithNullQuantity_whenCalculate_thenReturnFlatOptionAndTraitPrice() {
+        List<OptionCalculatorDto> mockOptionCalculatorDtos = List.of(
+                OptionCalculatorDto
+                        .builder()
+                        .productOptionId(2L)
+                        .countType(CountType.NONE)
+                        .isSelected(true)
+                        .isDefault(false)
+                        .quantity(null)
+                        .quantityCalculatorDto(null)
+                        .price(BigDecimal.valueOf(1.99))
+                        .traitCalculationResult(
+                                new TraitCalculationResult(
+                                        List.of(),
+                                        BigDecimal.valueOf(0.25)
+                                )
+                        )
+                        .build()
+        );
+
+        OptionCalculationResult result = optionCalculator.calculateTotalPrice(mockOptionCalculatorDtos);
+
+        Assertions.assertEquals(new BigDecimal("2.24"), result.getOptionTotalPrice());
+    }
+
+    @Test
+    public void givenNoneOptionWithoutCountType_whenCalculate_thenDoesNotThrow() {
+        OptionCalculatorDto dto = OptionCalculatorDto
+                .builder()
+                .productOptionId(3L)
+                .isSelected(true)
+                .isDefault(false)
+                .quantity(null)
+                .quantityCalculatorDto(null)
+                .price(BigDecimal.valueOf(3.00))
+                .traitCalculationResult(
+                        new TraitCalculationResult(
+                                List.of(),
+                                BigDecimal.ZERO
+                        )
+                )
+                .build();
+
+        assertDoesNotThrow(() -> optionCalculator.calculatePrice(dto));
+    }
+
+    @Test
+    public void givenCountableOptionWithNullQuantity_whenCalculate_thenThrowsInvalidOptionRequestException() {
+        OptionCalculatorDto dto = OptionCalculatorDto
+                .builder()
+                .productOptionId(4L)
+                .countType(CountType.COUNTABLE)
+                .isSelected(true)
+                .isDefault(false)
+                .quantity(null)
+                .quantityCalculatorDto(null)
+                .price(BigDecimal.valueOf(1.00))
+                .traitCalculationResult(
+                        new TraitCalculationResult(
+                                List.of(),
+                                BigDecimal.ZERO
+                        )
+                )
+                .build();
+
+        assertThrows(InvalidOptionRequestException.class, () -> optionCalculator.calculatePrice(dto));
     }
 }

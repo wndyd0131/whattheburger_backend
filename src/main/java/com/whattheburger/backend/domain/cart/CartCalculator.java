@@ -104,6 +104,7 @@ public class CartCalculator {
                                         .builder()
                                         .productOptionId(productOption.getId())
                                         .price(extraPrice)
+                                        .countType(productOption.getCountType())
                                         .isDefault(productOption.getIsDefault())
                                         .defaultQuantity(productOption.getDefaultQuantity())
                                         .isSelected(optionRequest.getIsSelected())
