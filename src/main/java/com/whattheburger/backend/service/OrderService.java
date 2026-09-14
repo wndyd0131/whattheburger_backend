@@ -111,7 +111,7 @@ public class OrderService {
         ProcessedCartDto processedCartDto = cartService.loadCart(storeId, guestId, authentication);
 
         Long userId = null;
-        if (authentication.isAuthenticated()) {
+        if (isAuthenticatedUser(authentication)) {
             UserDetailsImpl principal = (UserDetailsImpl) authentication.getPrincipal();
             userId = principal.getUserId();
         }
@@ -263,7 +263,7 @@ public class OrderService {
 //    }
 
     public Order loadOrder(UUID orderNumber, Authentication authentication) {
-        if (authentication.isAuthenticated()) {
+        if (isAuthenticatedUser(authentication)) {
             UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
             Long userId = userDetails.getUserId();
             return orderStorage.loadByOrderNumber(orderNumber, userId)
@@ -315,7 +315,7 @@ public class OrderService {
 //    }
 
     private Optional<OrderPreviewOwnerKey> resolveOwner(Authentication authentication, UUID guestId) {
-        boolean isUser = authentication != null && authentication.isAuthenticated() && !(authentication instanceof AnonymousAuthenticationToken);
+        boolean isUser = isAuthenticatedUser(authentication);
         if (isUser) {
             Object principal = authentication.getPrincipal();
             if (principal instanceof UserDetailsImpl userDetails) {
@@ -336,7 +336,7 @@ public class OrderService {
 //    }
 
     private SessionKey getSessionKey(UUID guestId, Authentication authentication) {
-        boolean isUser = authentication != null && authentication.isAuthenticated() && !(authentication instanceof AnonymousAuthenticationToken);
+        boolean isUser = isAuthenticatedUser(authentication);
         log.info("isUser {}", isUser);
         if (isUser) {
             Object principal = authentication.getPrincipal();
@@ -371,7 +371,7 @@ public class OrderService {
     public List<Order> loadOrders(
             Authentication authentication
     ) {
-        if (authentication.isAuthenticated()) {
+        if (isAuthenticatedUser(authentication)) {
             UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
             Long userId = userDetails.getUserId();
             return orderRepository.findByUserId(userId);
@@ -385,11 +385,17 @@ public class OrderService {
             int pageSize,
             Authentication authentication
     ) {
-        if (authentication.isAuthenticated()) {
+        if (isAuthenticatedUser(authentication)) {
             UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
             Long userId = userDetails.getUserId();
             return orderRepository.findByUserId(userId, PageRequest.of(pageNumber, pageSize, sortType.getSort()));
         }
         throw new IllegalStateException();
+    }
+
+    private boolean isAuthenticatedUser(Authentication authentication) {
+        return authentication != null
+                && authentication.isAuthenticated()
+                && !(authentication instanceof AnonymousAuthenticationToken);
     }
 }
