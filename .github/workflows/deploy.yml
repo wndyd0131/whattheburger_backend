@@ -43,6 +43,15 @@ jobs:
           docker push \
             ${{ secrets.DOCKER_USERNAME }}/whattheburger:${{ github.sha }}
 
+      - name: Copy files to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "docker-compose.yml,prometheus/prometheus.yml"
+          target: "/home/ubuntu/whattheburger_backend"
+
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1
         with:
@@ -51,6 +60,8 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             export IMAGE_TAG=${{ github.sha }}
+            
+            cd /home/ubuntu/whattheburger_backend
             
             docker compose pull backend
             docker compose up -d backend
@@ -62,7 +73,7 @@ jobs:
                 echo "Health check passed"
                 exit 0
               fi
-              
+            
               echo "Waiting... ($i/30)"
               sleep 5
             done
