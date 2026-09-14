@@ -140,6 +140,34 @@ class InventoryRequirementCalculatorTest {
         ));
     }
 
+    @Test
+    @DisplayName("line의 countType이 uncountable일 때, ingredient가 없으면 재고 계산이 스킵되어야 한다.")
+    void givenUncountableLineWithNoIngredients_whenAggregate_thenSkipsLine() {
+        ProductOptionOptionQuantity pooq = buildUncountablePooqWithoutIngredients(POOQ_ID);
+
+        Map<Long, Integer> result = calculator.aggregate(
+                List.of(new StockRequirementLine(1, CountType.UNCOUNTABLE, PRODUCT_OPTION_ID, null, POOQ_ID)),
+                Collections.emptyMap(),
+                Map.of(POOQ_ID, pooq)
+        );
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("line의 countType이 countable일 때, ingredient가 없으면 재고 계산이 스킵되어야 한다.")
+    void givenCountableLineWithNoIngredients_whenAggregate_thenSkipsLine() {
+        ProductOption productOption = buildCountableProductOptionWithoutIngredients(PRODUCT_OPTION_ID);
+
+        Map<Long, Integer> result = calculator.aggregate(
+                List.of(new StockRequirementLine(1, CountType.COUNTABLE, PRODUCT_OPTION_ID, 2, null)),
+                Map.of(PRODUCT_OPTION_ID, productOption),
+                Collections.emptyMap()
+        );
+
+        assertThat(result).isEmpty();
+    }
+
     private ProductOption buildCountableProductOption(long productOptionId, long ingredientId, int requiredQuantity) {
         Ingredient ingredient = Ingredient.builder().id(ingredientId).build();
         OptionIngredient optionIngredient = OptionIngredient.builder()
@@ -156,6 +184,31 @@ class InventoryRequirementCalculatorTest {
                 .id(productOptionId)
                 .countType(CountType.COUNTABLE)
                 .option(option)
+                .build();
+    }
+
+    private ProductOption buildCountableProductOptionWithoutIngredients(long productOptionId) {
+        Option option = Option.builder()
+                .id(1L)
+                .name("Sauce")
+                .optionIngredients(new ArrayList<>())
+                .build();
+        return ProductOption.builder()
+                .id(productOptionId)
+                .countType(CountType.COUNTABLE)
+                .option(option)
+                .build();
+    }
+
+    private ProductOptionOptionQuantity buildUncountablePooqWithoutIngredients(long pooqId) {
+        OptionQuantity optionQuantity = OptionQuantity.builder()
+                .id(1L)
+                .optionQuantityIngredients(new ArrayList<>())
+                .build();
+        return ProductOptionOptionQuantity.builder()
+                .id(pooqId)
+                .optionQuantity(optionQuantity)
+                .extraPrice(BigDecimal.ZERO)
                 .build();
     }
 

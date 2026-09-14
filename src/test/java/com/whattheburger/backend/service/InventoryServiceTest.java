@@ -81,7 +81,7 @@ class InventoryServiceTest {
         ProductOption productOption = buildProductOption(PRODUCT_OPTION_ID, INGREDIENT_ID, 3);
         StoreInventory storeInventory = buildStoreInventory(INGREDIENT_ID, 5);
 
-        when(productOptionRepository.findAllWithOptionIngredientsByIdIn(anyCollection()))
+        when(productOptionRepository.findAllWithOptionByIdIn(anyCollection()))
                 .thenReturn(List.of(productOption));
         when(storeInventoryRepository.findAllByStoreIdAndIngredientIdInForUpdate(STORE_ID, List.of(INGREDIENT_ID)))
                 .thenReturn(List.of(storeInventory));
@@ -103,7 +103,7 @@ class InventoryServiceTest {
         ProductOption productOption2 = buildProductOption(PRODUCT_OPTION_ID_2, INGREDIENT_ID, 4);
         StoreInventory storeInventory = buildStoreInventory(INGREDIENT_ID, 100);
 
-        when(productOptionRepository.findAllWithOptionIngredientsByIdIn(anyCollection()))
+        when(productOptionRepository.findAllWithOptionByIdIn(anyCollection()))
                 .thenReturn(List.of(productOption1, productOption2));
         when(storeInventoryRepository.findAllByStoreIdAndIngredientIdInForUpdate(STORE_ID, List.of(INGREDIENT_ID)))
                 .thenReturn(List.of(storeInventory));
@@ -128,7 +128,7 @@ class InventoryServiceTest {
         StoreInventory storeInventory1 = buildStoreInventory(INGREDIENT_ID, 100);
         StoreInventory storeInventory2 = buildStoreInventory(INGREDIENT_ID_2, 100);
 
-        when(productOptionRepository.findAllWithOptionIngredientsByIdIn(anyCollection()))
+        when(productOptionRepository.findAllWithOptionByIdIn(anyCollection()))
                 .thenReturn(List.of(productOption1, productOption2));
         when(storeInventoryRepository.findAllByStoreIdAndIngredientIdInForUpdate(
                 STORE_ID,

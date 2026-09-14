@@ -76,14 +76,14 @@ public class InventoryService {
         List<StockRequirementLine> lines = OrderStockRequirementLineMapper.fromOrder(order);
 
         Map<Long, ProductOption> productOptionMap = productOptionRepository
-                .findAllWithOptionIngredientsByIdIn(
+                .findAllWithOptionByIdIn(
                         OrderStockRequirementLineMapper.collectCountableProductOptionIds(lines)
                 )
                 .stream()
                 .collect(Collectors.toMap(ProductOption::getId, Function.identity()));
 
         Map<Long, ProductOptionOptionQuantity> pooqMap = productOptionOptionQuantityRepository
-                .findAllWithOptionQuantityIngredientsByIdIn(
+                .findAllWithOptionQuantityByIdIn(
                         OrderStockRequirementLineMapper.collectUncountablePooqIds(lines)
                 )
                 .stream()

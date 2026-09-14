@@ -374,11 +374,11 @@ public class CartService {
                 productOptionMap
         );
 
-        productOptionRepository.findAllWithOptionIngredientsByIdIn(countableProductOptionIds) // update productOptionMap after fetch join
+        productOptionRepository.findAllWithOptionByIdIn(countableProductOptionIds) // update productOptionMap after fetch join
                 .forEach(productOption -> productOptionMap.put(productOption.getId(), productOption));
 
         Map<Long, ProductOptionOptionQuantity> quantityMap = productOptionOptionQuantityRepository
-                .findAllWithOptionQuantityIngredientsByIdIn(uncountablePooqIds)
+                .findAllWithOptionQuantityByIdIn(uncountablePooqIds)
                 .stream()
                 .collect(Collectors.toMap(ProductOptionOptionQuantity::getId, Function.identity()));
 
