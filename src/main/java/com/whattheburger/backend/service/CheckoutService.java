@@ -4,8 +4,11 @@ import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Event;
 import com.stripe.model.PaymentIntent;
+import com.stripe.model.Refund;
 import com.stripe.model.checkout.Session;
+import com.stripe.net.RequestOptions;
 import com.stripe.param.PaymentIntentRetrieveParams;
+import com.stripe.param.RefundCreateParams;
 import com.stripe.param.checkout.SessionCreateParams;
 import com.whattheburger.backend.domain.enums.OrderStatus;
 import com.whattheburger.backend.domain.enums.PaymentStatus;
@@ -14,6 +17,7 @@ import com.whattheburger.backend.exception.ApiException;
 import com.whattheburger.backend.repository.checkout.CheckoutSessionStorage;
 import com.whattheburger.backend.security.UserDetailsImpl;
 import com.whattheburger.backend.service.exception.ResourceNotFoundException;
+import com.whattheburger.backend.service.exception.order.NonRetryableOrderProcessingException;
 import com.whattheburger.backend.util.SessionKey;
 import com.whattheburger.backend.util.UserType;
 import lombok.RequiredArgsConstructor;
@@ -174,21 +178,31 @@ public class CheckoutService {
         markOrderConfirming(orderSession);
 
         Order order;
-        if (idempotencyKeyExists == false) {
-            order = orderService.completePaidOrder(
-                    orderSession,
-                    session.getId(),
-                    paymentMethodObject
-            );
-        } else {
-            order = orderService.loadOrderByCheckoutSessionId(session.getId())
-                    .orElseGet(() ->
-                            orderService.completePaidOrder(
-                                    orderSession,
-                                    session.getId(),
-                                    paymentMethodObject
-                            )
-                    );
+        try {
+            if (idempotencyKeyExists == false) {
+                order = orderService.completePaidOrder(
+                        orderSession,
+                        session.getId(),
+                        paymentMethodObject
+                );
+            } else {
+                order = orderService.loadOrderByCheckoutSessionId(session.getId())
+                        .orElseGet(() ->
+                                orderService.completePaidOrder(
+                                        orderSession,
+                                        session.getId(),
+                                        paymentMethodObject
+                                )
+                        );
+            }
+        } catch(NonRetryableOrderProcessingException e1) {
+            try {
+                refundPayment(pi.getId());
+            } catch (StripeException e2) {
+                log.error(e2.getMessage());
+                throw new ApiException("Something is wrong with stripe server", HttpStatus.INTERNAL_SERVER_ERROR);
+            }
+            return;
         }
 
         orderTrackingService.scheduleOrder(orderSession, order);
@@ -196,6 +210,20 @@ public class CheckoutService {
         orderService.addOrderToOrderSession(order, orderSession);
 
         log.info("Order ID {}", order.getId());
+    }
+
+    private Refund refundPayment(String paymentIntentId) throws StripeException {
+        RequestOptions requestOptions =
+                RequestOptions.builder()
+                        .setIdempotencyKey("refund:" + paymentIntentId)
+                        .build();
+
+        RefundCreateParams params =
+                RefundCreateParams.builder()
+                        .setPaymentIntent(paymentIntentId)
+                        .build();
+
+        return Refund.create(params, requestOptions);
     }
 
     public void handlePaymentIntentSucceeded(

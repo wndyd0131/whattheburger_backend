@@ -32,7 +32,7 @@ public class InventoryService {
     private final InventoryRequirementCalculator inventoryRequirementCalculator;
 
     @Transactional
-    public void deductStock(Order order) {
+    public void deductStock(Order order) throws InsufficientOptionStockException{
         if (order == null) {
             throw new IllegalArgumentException("Order must not be null");
         }

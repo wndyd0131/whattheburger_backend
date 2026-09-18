@@ -15,7 +15,9 @@ import com.whattheburger.backend.security.UserDetailsImpl;
 import com.whattheburger.backend.service.dto.cart.ProcessedCartDto;
 import com.whattheburger.backend.service.exception.ExpiredSessionException;
 import com.whattheburger.backend.service.exception.OrderNotFoundException;
+import com.whattheburger.backend.service.exception.cart.InsufficientOptionStockException;
 import com.whattheburger.backend.service.exception.order.ExpiredOrderSessionException;
+import com.whattheburger.backend.service.exception.order.NonRetryableOrderProcessingException;
 import com.whattheburger.backend.service.exception.order.OrderSessionNotFoundException;
 import com.whattheburger.backend.util.OrderSessionFactory;
 import com.whattheburger.backend.util.SessionKey;
@@ -178,13 +180,17 @@ public class OrderService {
             OrderSession orderSession,
             String checkoutSessionId,
             PaymentMethod paymentMethodObject
-    ) {
+    ) throws NonRetryableOrderProcessingException {
         Order order = buildOrderFromSession(orderSession);
         order.updateOrderStatus(OrderStatus.CONFIRMING);
         order.changePaymentStatus(PaymentStatus.PAID);
         applyCardInfo(order, paymentMethodObject);
         order.changeCheckoutSessionId(checkoutSessionId);
-        inventoryService.deductStock(order);
+        try {
+            inventoryService.deductStock(order);
+        } catch (InsufficientOptionStockException e) {
+            throw new NonRetryableOrderProcessingException(e);
+        }
         return saveOrder(order);
     }
 

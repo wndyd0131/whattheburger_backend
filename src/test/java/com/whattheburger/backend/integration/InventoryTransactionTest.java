@@ -27,6 +27,7 @@ import com.whattheburger.backend.security.enums.Role;
 import com.whattheburger.backend.service.InventoryService;
 import com.whattheburger.backend.service.OrderService;
 import com.whattheburger.backend.service.exception.cart.InsufficientOptionStockException;
+import com.whattheburger.backend.service.exception.order.NonRetryableOrderProcessingException;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.assertj.core.api.Assertions;
@@ -105,7 +106,9 @@ public class InventoryTransactionTest extends BaseIntegrationTest {
 
         Assertions.assertThatThrownBy(() -> {
             orderService.completePaidOrder(orderSession, checkoutSessionId, null);
-        }).isInstanceOf(InsufficientOptionStockException.class);
+        })
+                .isInstanceOf(NonRetryableOrderProcessingException.class)
+                .hasCauseInstanceOf(InsufficientOptionStockException.class);
 
         // Order should not be saved
         assertThat(orderRepository.count()).isEqualTo(prevOrderCount);
