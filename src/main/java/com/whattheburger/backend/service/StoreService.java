@@ -51,7 +51,11 @@ public class StoreService {
                 );
             }
         } else {
-            throw new IllegalStateException();
+            throw new IllegalStateException(
+                    "Mapbox response size mismatch: stores=" + stores.size()
+                            + ", distances=" + distances.size()
+                            + ", durations=" + durations.size()
+            );
         }
 
         return nearByStoreDtos;

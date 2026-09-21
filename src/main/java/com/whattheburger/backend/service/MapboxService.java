@@ -5,6 +5,7 @@ import com.mapbox.api.matrix.v1.MapboxMatrix;
 import com.mapbox.api.matrix.v1.models.MatrixResponse;
 import com.mapbox.geojson.Point;
 import com.whattheburger.backend.service.dto.MapboxResponse;
+import com.whattheburger.backend.service.exception.MapboxApiException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -50,10 +51,24 @@ public class MapboxService {
         try {
             Response<MatrixResponse> response = mapboxMatrix.cloneCall().execute();
 
-            MatrixResponse body = response.body();
+            if (!response.isSuccessful()) {
+                throw new MapboxApiException(
+                        "Mapbox API failed. status=" + response.code()
+                );
+            }
+
             log.info("Matrix API call succeeded!");
             log.info("Response code: {}", response.code());
             log.info("Coordinates count: {}", coordinates.size());
+
+            MatrixResponse body = response.body();
+
+            if (body == null) {
+                throw new MapboxApiException(
+                        "Mapbox response body is null"
+                );
+            }
+
             log.info("Distances count: {}", body.distances().size());
             log.info("Durations count: {}", body.durations().size());
 
@@ -70,7 +85,9 @@ public class MapboxService {
             log.info("Duration list: {}", durations);
 
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new MapboxApiException(
+                    "Failed to communicate with Mapbox"
+            );
         }
 
         return MapboxResponse
