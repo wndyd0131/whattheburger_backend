@@ -76,7 +76,7 @@ export default function () {
       RADIUS_METER
     );
 
-    if (stores.length === 0) {
+    if (!stores || stores.length === 0) {
       return;
     }
 

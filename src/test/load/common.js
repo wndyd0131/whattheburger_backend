@@ -369,6 +369,12 @@ export function createApiClient({ failFast }) {
         }
       },
     });
+    if (res.status !== 200) {
+        console.error(
+            `[API] GET /store/nearby failed status=${res.status} body=${res.body}`
+        );
+        return null;
+    }
 
     return res.json();
   }
