@@ -1,5 +1,6 @@
 package com.whattheburger.backend.integration.support;
 
+import org.junit.jupiter.api.AfterEach;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.test.context.ActiveProfiles;
@@ -35,5 +36,16 @@ public abstract class BaseIntegrationTest {
     static {
         mysql.start();
         redis.start();
+    }
+
+    protected static GenericContainer<?> redisContainer() {
+        return redis;
+    }
+
+    @AfterEach
+    void restoreRedisContainer() {
+        if (!redis.isRunning()) {
+            redis.start();
+        }
     }
 }
