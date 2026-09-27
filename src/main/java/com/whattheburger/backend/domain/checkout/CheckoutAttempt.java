@@ -113,4 +113,8 @@ public class CheckoutAttempt {
     public void changeCheckoutSessionId(String checkoutSessionId) {
         this.checkoutSessionId = checkoutSessionId;
     }
+
+    public void changePaymentStatus(PaymentStatus paymentStatus) {
+        this.paymentStatus = paymentStatus;
+    }
 }

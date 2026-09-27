@@ -26,8 +26,8 @@ public class StripeWebhookTestSupport {
     public String buildCheckoutSessionCompletedPayload(
             String checkoutSessionId,
             String paymentIntentId,
-            UUID orderSessionId,
-            UUID cartSessionId
+            UUID checkoutAttemptId,
+            UUID orderSessionId
     ) {
         String eventId = "evt_test_" + UUID.randomUUID().toString().replace("-", "");
         return """
@@ -43,8 +43,8 @@ public class StripeWebhookTestSupport {
                       "object": "checkout.session",
                       "payment_intent": "%s",
                       "metadata": {
-                        "orderSessionId": "%s",
-                        "cartSessionId": "%s"
+                        "checkoutAttemptId": "%s",
+                        "orderSessionId": "%s"
                       }
                     }
                   }
@@ -53,8 +53,8 @@ public class StripeWebhookTestSupport {
                 eventId,
                 checkoutSessionId,
                 paymentIntentId,
-                orderSessionId,
-                cartSessionId
+                checkoutAttemptId,
+                orderSessionId
         );
     }
 

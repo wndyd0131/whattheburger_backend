@@ -1,6 +1,7 @@
 package com.whattheburger.backend.service;
 
 import com.whattheburger.backend.domain.*;
+import com.whattheburger.backend.domain.checkout.CheckoutAttempt;
 import com.whattheburger.backend.domain.enums.*;
 import com.whattheburger.backend.domain.order.*;
 import com.whattheburger.backend.domain.order.QuantityDetail;
@@ -47,6 +48,40 @@ public class OrderFactory {
         return order;
     }
 
+    public Order createFromCheckoutAttempt(CheckoutAttempt checkoutAttempt, User user, Store store) {
+        Order.OrderBuilder orderBuilder = Order.builder()
+                .orderType(checkoutAttempt.getOrderType())
+                .store(store)
+                .orderStatus(OrderStatus.PENDING)
+                .orderNote(checkoutAttempt.getOrderNote())
+                .paymentStatus(checkoutAttempt.getPaymentStatus())
+                .discountType(checkoutAttempt.getDiscountType())
+                .taxAmount(checkoutAttempt.getTaxAmount())
+                .totalPrice(checkoutAttempt.getTotalPrice())
+                .contactInfo(checkoutAttempt.getContactInfo());
+
+        if (user != null) {
+            orderBuilder.user(user);
+        } else {
+            orderBuilder.guestInfo(new GuestInfo(checkoutAttempt.getGuestId()));
+        }
+
+        if (checkoutAttempt.getOrderType() == OrderType.DELIVERY) {
+            orderBuilder.addressInfo(checkoutAttempt.getAddressInfo());
+        } else if (checkoutAttempt.getOrderType() == OrderType.PICK_UP) {
+            throw new IllegalStateException("Pickup checkout attempt is not supported yet");
+        } else {
+            throw new IllegalStateException();
+        }
+
+        Order order = orderBuilder.build();
+        List<OrderProduct> orderProducts = checkoutAttempt.getOrderRecord().stream()
+                .map(sessionProduct -> createOrderProduct(sessionProduct, order))
+                .toList();
+        order.assignOrderProducts(orderProducts);
+        return order;
+    }
+
     private OrderProduct createOrderProduct(OrderSessionProduct sessionProduct, Order order) {
         log.info("Product ID {}", sessionProduct.getStoreProductId());
         OrderProduct orderProduct = OrderProduct
@@ -62,7 +97,9 @@ public class OrderFactory {
                 .productType(sessionProduct.getProductType())
                 .orderCustomRules(new ArrayList<>())
                 .build();
-        List<OrderCustomRule> orderCustomRules = sessionProduct.getOrderSessionCustomRules().stream()
+        List<OrderCustomRule> orderCustomRules = Optional.ofNullable(sessionProduct.getOrderSessionCustomRules())
+                .orElse(List.of())
+                .stream()
                 .map(sessionCustomRule -> createOrderCustomRule(sessionCustomRule, orderProduct))
                 .toList();
         orderProduct.assignOrderCustomRules(orderCustomRules);
@@ -111,7 +148,9 @@ public class OrderFactory {
                 .quantityDetail(quantityDetail)
                 .orderProductOptionTraits(new ArrayList<>())
                 .build();
-        List<OrderProductOptionTrait> orderProductOptionTraits = sessionOption.getOrderSessionOptionTraits().stream()
+        List<OrderProductOptionTrait> orderProductOptionTraits = Optional.ofNullable(sessionOption.getOrderSessionOptionTraits())
+                .orElse(List.of())
+                .stream()
                 .map(sessionOptionTrait -> createOrderProductOptionTrait(sessionOptionTrait, orderProductOption))
                 .toList();
         log.info("OPOT {}", orderProductOptionTraits);

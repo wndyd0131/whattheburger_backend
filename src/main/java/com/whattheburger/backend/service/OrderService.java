@@ -195,13 +195,17 @@ public class OrderService {
 
     @Transactional
     public Order completePaidOrder(
-            OrderSession orderSession,
+            CheckoutAttempt checkoutAttempt,
             String checkoutSessionId,
             PaymentMethod paymentMethodObject
     ) throws NonRetryableOrderProcessingException {
-        Order order = buildOrderFromSession(orderSession);
-        order.updateOrderStatus(OrderStatus.CONFIRMING);
-        order.changePaymentStatus(PaymentStatus.PAID);
+        CheckoutAttempt persistedAttempt = checkoutAttemptRepository.findById(checkoutAttempt.getCheckoutAttemptId())
+                .orElseThrow(() -> new IllegalStateException("checkoutAttempt not found"));
+        persistedAttempt.changePaymentStatus(PaymentStatus.PAID);
+        checkoutAttemptRepository.save(persistedAttempt);
+
+        Order order = buildOrderFromCheckoutAttempt(persistedAttempt);
+        order.changePaymentStatus(persistedAttempt.getPaymentStatus());
         applyCardInfo(order, paymentMethodObject);
         order.changeCheckoutSessionId(checkoutSessionId);
         try {
@@ -210,6 +214,23 @@ public class OrderService {
             throw new NonRetryableOrderProcessingException(e);
         }
         return saveOrder(order);
+    }
+
+    @Transactional
+    public void markCheckoutAttemptRefunded(UUID checkoutAttemptId) {
+        CheckoutAttempt checkoutAttempt = checkoutAttemptRepository.findById(checkoutAttemptId)
+                .orElseThrow(() -> new IllegalStateException("checkoutAttempt not found"));
+        checkoutAttempt.changePaymentStatus(PaymentStatus.REFUNDED);
+        checkoutAttemptRepository.save(checkoutAttempt);
+    }
+
+    private Order buildOrderFromCheckoutAttempt(CheckoutAttempt checkoutAttempt) {
+        Long storeId = checkoutAttempt.getStoreId();
+        Long userId = checkoutAttempt.getUserId();
+        log.info("checkoutAttempt.userId: {}", userId);
+        User user = userService.loadUserById(userId);
+        Store store = storeService.loadStoreById(storeId);
+        return orderFactory.createFromCheckoutAttempt(checkoutAttempt, user, store);
     }
 
     private Order buildOrderFromSession(OrderSession orderSession) {

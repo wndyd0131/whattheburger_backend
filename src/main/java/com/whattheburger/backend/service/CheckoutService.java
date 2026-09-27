@@ -11,30 +11,22 @@ import com.stripe.param.PaymentIntentRetrieveParams;
 import com.stripe.param.RefundCreateParams;
 import com.stripe.param.checkout.SessionCreateParams;
 import com.whattheburger.backend.domain.checkout.CheckoutAttempt;
-import com.whattheburger.backend.domain.enums.OrderStatus;
 import com.whattheburger.backend.domain.enums.PaymentStatus;
-import com.whattheburger.backend.domain.order.*;
+import com.whattheburger.backend.domain.order.Order;
+import com.whattheburger.backend.domain.order.OrderSession;
+import com.whattheburger.backend.domain.order.OrderSessionProduct;
 import com.whattheburger.backend.exception.ApiException;
 import com.whattheburger.backend.repository.CheckoutAttemptRepository;
-import com.whattheburger.backend.security.UserDetailsImpl;
 import com.whattheburger.backend.service.exception.ResourceNotFoundException;
 import com.whattheburger.backend.service.exception.order.NonRetryableOrderProcessingException;
-import com.whattheburger.backend.util.SessionKey;
-import com.whattheburger.backend.util.UserType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.time.Duration;
 import java.util.Map;
-import java.util.Random;
 import java.util.UUID;
 
 @Service
@@ -48,9 +40,7 @@ public class CheckoutService {
 
     private final OrderService orderService;
     private final CheckoutAttemptRepository checkoutAttemptRepository;
-    private final OrderTrackingService orderTrackingService;
     private final CartService cartService;
-    private final WebhookService webhookService;
 
     public Session createCheckoutSession(
             CheckoutAttempt checkoutAttempt,
@@ -109,19 +99,6 @@ public class CheckoutService {
         }
     }
 
-    private SessionKey getSessionKey(UUID guestId, Authentication authentication) {
-        boolean isUser = authentication != null && authentication.isAuthenticated() && !(authentication instanceof AnonymousAuthenticationToken);
-        log.info("isUser {}", isUser);
-        if (isUser) {
-            Object principal = authentication.getPrincipal();
-            if (principal instanceof UserDetailsImpl userDetailsImpl) {
-                return new SessionKey(UserType.USER, "user:" + userDetailsImpl.getUsername());
-            }
-            log.info("Principal {}", principal);
-        }
-        return new SessionKey(UserType.GUEST, "guest:" + guestId.toString());
-    }
-
     public String getOrderSessionId(String checkoutSessionId) {
         return checkoutAttemptRepository.findByCheckoutSessionId(checkoutSessionId)
                 .map(attempt -> attempt.getOrderSessionId().toString())
@@ -132,11 +109,10 @@ public class CheckoutService {
             Event event,
             Session session
     ) {
-        String objectId = session.getId();
-        String eventType = event.getType();
-        String idempotencyKey = eventType + ":" + objectId;
-
-        boolean idempotencyKeyExists = webhookService.processIdempotency(idempotencyKey, session.getId());
+        if (orderService.loadOrderByCheckoutSessionId(session.getId()).isPresent()) {
+            log.info("Order already exists for checkout session {}", session.getId());
+            return;
+        }
 
         String piId = session.getPaymentIntent();
         log.info("piId {}", piId);
@@ -159,40 +135,20 @@ public class CheckoutService {
         }
         com.stripe.model.PaymentMethod paymentMethodObject = pi.getPaymentMethodObject();
 
-//        String brand = session.getPaymentIntentObject().getPaymentMethodObject().getCard().getBrand();
-//        String last4 = session.getPaymentIntentObject().getPaymentMethodObject().getCard().getLast4();
-//        log.info("brand info {}", brand);
-//        log.info("las4 info {}", last4);
         Map<String, String> metadata = session.getMetadata();
         log.info("Checkout Session Id {}", session.getId());
-        String orderSessionId = metadata.get("orderSessionId");
-        String cartSessionId = metadata.get("cartSessionId");
-        if (orderSessionId == null)
-            throw new IllegalStateException("key orderSessionId does not exist in stripe metadata");
-
-        OrderSession orderSession = orderService.loadOrderSessionByOrderSessionId(UUID.fromString(orderSessionId));
-        orderService.updateOrderSessionPaymentStatus(orderSession, PaymentStatus.PAID);
-        markOrderConfirming(orderSession);
+        String checkoutAttemptId = metadata.get("checkoutAttemptId");
+        CheckoutAttempt checkoutAttempt = resolveCheckoutAttempt(checkoutAttemptId, session.getId());
 
         Order order;
         try {
-            if (idempotencyKeyExists == false) {
-                order = orderService.completePaidOrder(
-                        orderSession,
-                        session.getId(),
-                        paymentMethodObject
-                );
-            } else {
-                order = orderService.loadOrderByCheckoutSessionId(session.getId())
-                        .orElseGet(() ->
-                                orderService.completePaidOrder(
-                                        orderSession,
-                                        session.getId(),
-                                        paymentMethodObject
-                                )
-                        );
-            }
-        } catch(NonRetryableOrderProcessingException e1) {
+            order = orderService.completePaidOrder(
+                    checkoutAttempt,
+                    session.getId(),
+                    paymentMethodObject
+            );
+        } catch (NonRetryableOrderProcessingException e1) {
+            orderService.markCheckoutAttemptRefunded(checkoutAttempt.getCheckoutAttemptId());
             try {
                 refundPayment(pi.getId());
             } catch (StripeException e2) {
@@ -202,11 +158,23 @@ public class CheckoutService {
             return;
         }
 
-        orderTrackingService.scheduleOrder(orderSession, order);
-        cartService.cleanUp(UUID.fromString(cartSessionId));
-        orderService.addOrderToOrderSession(order, orderSession);
+        if (checkoutAttempt.getCartSessionId() != null) {
+            cartService.cleanUp(checkoutAttempt.getCartSessionId());
+        }
+
+//        orderTrackingService.scheduleOrder(orderSession, order);
+//        orderService.addOrderToOrderSession(order, orderSession);
 
         log.info("Order ID {}", order.getId());
+    }
+
+    private CheckoutAttempt resolveCheckoutAttempt(String checkoutAttemptId, String checkoutSessionId) {
+        if (checkoutAttemptId != null) {
+            return checkoutAttemptRepository.findById(UUID.fromString(checkoutAttemptId))
+                    .orElseThrow(() -> new ResourceNotFoundException("checkoutAttempt not found"));
+        }
+        return checkoutAttemptRepository.findByCheckoutSessionId(checkoutSessionId)
+                .orElseThrow(() -> new ResourceNotFoundException("checkoutAttempt not found"));
     }
 
     private Refund refundPayment(String paymentIntentId) throws StripeException {
@@ -234,34 +202,5 @@ public class CheckoutService {
         OrderSession orderSession = orderService.loadOrderSessionByOrderSessionId(UUID.fromString(orderSessionId));
         orderService.updateOrderSessionPaymentStatus(orderSession, PaymentStatus.PENDING);
         log.info("Order payment status: {}", orderSession.getPaymentStatus());
-    }
-
-    private void markOrderConfirming(
-            OrderSession orderSession
-    ) {
-        if (orderSession.getOrderStatus() == OrderStatus.CONFIRMING) {
-            return;
-        }
-
-        int randomDuration = new Random().nextInt(20, 30) * 1000;
-
-        orderSession.updateOrderStatus(
-                OrderStatus.CONFIRMING,
-                System.currentTimeMillis(),
-                randomDuration
-        );
-    }
-
-    private String getCartSessionKey(UUID guestId, Long storeId, Authentication authentication) {
-        boolean isUser = authentication != null && authentication.isAuthenticated() && !(authentication instanceof AnonymousAuthenticationToken);
-        log.info("isUser {}", isUser);
-        if (isUser) {
-            Object principal = authentication.getPrincipal();
-            if (principal instanceof UserDetails userDetails) {
-                return "cart:store:" + storeId + ":" + userDetails.getUsername();
-            }
-            log.info("Principal {}", principal);
-        }
-        return "cart:store:" + storeId + ":" + guestId;
     }
 }

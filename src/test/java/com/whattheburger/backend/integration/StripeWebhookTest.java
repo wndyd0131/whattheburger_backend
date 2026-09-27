@@ -11,6 +11,7 @@ import com.whattheburger.backend.domain.Store;
 import com.whattheburger.backend.domain.StoreInventory;
 import com.whattheburger.backend.domain.StoreProduct;
 import com.whattheburger.backend.domain.User;
+import com.whattheburger.backend.domain.checkout.CheckoutAttempt;
 import com.whattheburger.backend.domain.enums.CountType;
 import com.whattheburger.backend.domain.enums.CustomRuleType;
 import com.whattheburger.backend.domain.enums.IngredientUnit;
@@ -18,16 +19,17 @@ import com.whattheburger.backend.domain.enums.OrderStatus;
 import com.whattheburger.backend.domain.enums.OrderType;
 import com.whattheburger.backend.domain.enums.PaymentStatus;
 import com.whattheburger.backend.domain.enums.ProductType;
+import com.whattheburger.backend.domain.order.AddressInfo;
+import com.whattheburger.backend.domain.order.ContactInfo;
 import com.whattheburger.backend.domain.order.Order;
-import com.whattheburger.backend.domain.order.OrderSession;
 import com.whattheburger.backend.domain.order.OrderSessionCustomRule;
 import com.whattheburger.backend.domain.order.OrderSessionOption;
 import com.whattheburger.backend.domain.order.OrderSessionProduct;
-import com.whattheburger.backend.domain.order.OrderSessionStorage;
 import com.whattheburger.backend.integration.support.BaseIntegrationTest;
 import com.whattheburger.backend.integration.support.CartTestSupport;
 import com.whattheburger.backend.integration.support.CatalogIntegrationFixture;
 import com.whattheburger.backend.integration.support.StripeWebhookTestSupport;
+import com.whattheburger.backend.repository.CheckoutAttemptRepository;
 import com.whattheburger.backend.repository.CustomRuleRepository;
 import com.whattheburger.backend.repository.IngredientRepository;
 import com.whattheburger.backend.repository.OptionRepository;
@@ -67,7 +69,7 @@ public class StripeWebhookTest extends BaseIntegrationTest {
     @Autowired
     OrderRepository orderRepository;
     @Autowired
-    OrderSessionStorage orderSessionStorage;
+    CheckoutAttemptRepository checkoutAttemptRepository;
     @Autowired
     CatalogIntegrationFixture catalog;
     @Autowired
@@ -112,20 +114,16 @@ public class StripeWebhookTest extends BaseIntegrationTest {
     void paymentSuccess_whenOrderSessionIsMissing_successfullyCreatesOrder() throws Exception {
         CountableScenario scenario = saveCountableScenario(50);
         User user = cartTestSupport.saveUser(Role.USER);
-        OrderSession orderSession = buildOrderSession(user, scenario);
-        UUID cartSessionId = UUID.randomUUID();
-        String checkoutSessionId = "cs_test_" + UUID.randomUUID().toString().replace("-", "");
+        CheckoutAttempt checkoutAttempt = saveCheckoutAttempt(user, scenario);
+        String checkoutSessionId = checkoutAttempt.getCheckoutSessionId();
         String paymentIntentId = "pi_test_" + UUID.randomUUID().toString().replace("-", "");
-
-        orderSessionStorage.save(orderSession);
-        orderSessionStorage.remove(orderSession.getSessionId());
 
         long prevOrderCount = orderRepository.count();
         String payload = stripeWebhookTestSupport.buildCheckoutSessionCompletedPayload(
                 checkoutSessionId,
                 paymentIntentId,
-                orderSession.getSessionId(),
-                cartSessionId
+                checkoutAttempt.getCheckoutAttemptId(),
+                checkoutAttempt.getOrderSessionId()
         );
         String signature = stripeWebhookTestSupport.signPayload(payload, webhookSecret);
 
@@ -140,19 +138,16 @@ public class StripeWebhookTest extends BaseIntegrationTest {
     void paymentSuccess_whenRedisIsUnavailable_successfullyCreatesOrder() throws Exception {
         CountableScenario scenario = saveCountableScenario(50);
         User user = cartTestSupport.saveUser(Role.USER);
-        OrderSession orderSession = buildOrderSession(user, scenario);
-        UUID cartSessionId = UUID.randomUUID();
-        String checkoutSessionId = "cs_test_" + UUID.randomUUID().toString().replace("-", "");
+        CheckoutAttempt checkoutAttempt = saveCheckoutAttempt(user, scenario);
+        String checkoutSessionId = checkoutAttempt.getCheckoutSessionId();
         String paymentIntentId = "pi_test_" + UUID.randomUUID().toString().replace("-", "");
-
-        orderSessionStorage.save(orderSession);
 
         long prevOrderCount = orderRepository.count();
         String payload = stripeWebhookTestSupport.buildCheckoutSessionCompletedPayload(
                 checkoutSessionId,
                 paymentIntentId,
-                orderSession.getSessionId(),
-                cartSessionId
+                checkoutAttempt.getCheckoutAttemptId(),
+                checkoutAttempt.getOrderSessionId()
         );
         String signature = stripeWebhookTestSupport.signPayload(payload, webhookSecret);
 
@@ -175,12 +170,16 @@ public class StripeWebhookTest extends BaseIntegrationTest {
 
         Order order = orderRepository.findByCheckoutSessionId(checkoutSessionId).orElseThrow();
         assertThat(order.getPaymentStatus()).isEqualTo(PaymentStatus.PAID);
-        assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.CONFIRMING);
+        assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.PENDING);
         assertThat(order.getUser().getId()).isEqualTo(user.getId());
         assertThat(order.getStore().getId()).isEqualTo(store.getId());
     }
 
-    private OrderSession buildOrderSession(User user, CountableScenario scenario) {
+    private CheckoutAttempt saveCheckoutAttempt(User user, CountableScenario scenario) {
+        UUID orderSessionId = UUID.randomUUID();
+        UUID guestId = UUID.randomUUID();
+        String checkoutSessionId = "cs_test_" + UUID.randomUUID().toString().replace("-", "");
+
         OrderSessionOption orderSessionOption = OrderSessionOption.builder()
                 .productOptionId(scenario.productOption().getId())
                 .countType(CountType.COUNTABLE)
@@ -200,19 +199,26 @@ public class StripeWebhookTest extends BaseIntegrationTest {
                 .quantity(PRODUCT_QTY)
                 .name("Burger")
                 .productType(ProductType.ONLY)
+                .totalPrice(BigDecimal.valueOf(5.99))
                 .orderSessionCustomRules(List.of(orderSessionCustomRule))
                 .build();
 
-        return OrderSession.builder()
-                .sessionId(UUID.randomUUID())
+        CheckoutAttempt checkoutAttempt = CheckoutAttempt.builder()
                 .storeId(scenario.store().getId())
                 .userId(user.getId())
-                .orderType(OrderType.DELIVERY)
-                .orderStatus(OrderStatus.PENDING)
-                .paymentStatus(PaymentStatus.UNPAID)
                 .totalPrice(BigDecimal.valueOf(5.99))
-                .orderSessionProducts(List.of(orderSessionProduct))
+                .orderType(OrderType.DELIVERY)
+                .taxAmount(BigDecimal.ZERO)
+                .paymentStatus(PaymentStatus.PENDING)
+                .contactInfo(new ContactInfo("Test", "User", user.getEmail(), "5121234567"))
+                .addressInfo(new AddressInfo("123 Main", "Apt 1", "78701", "Austin, TX"))
+                .guestId(guestId)
+                .orderSessionId(orderSessionId)
+                .checkoutSessionId(checkoutSessionId)
+                .orderRecord(List.of(orderSessionProduct))
                 .build();
+
+        return checkoutAttemptRepository.save(checkoutAttempt);
     }
 
     private CountableScenario saveCountableScenario(int initialStock) {
