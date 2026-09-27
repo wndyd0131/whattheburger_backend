@@ -10,11 +10,12 @@ import com.stripe.net.RequestOptions;
 import com.stripe.param.PaymentIntentRetrieveParams;
 import com.stripe.param.RefundCreateParams;
 import com.stripe.param.checkout.SessionCreateParams;
+import com.whattheburger.backend.domain.checkout.CheckoutAttempt;
 import com.whattheburger.backend.domain.enums.OrderStatus;
 import com.whattheburger.backend.domain.enums.PaymentStatus;
 import com.whattheburger.backend.domain.order.*;
 import com.whattheburger.backend.exception.ApiException;
-import com.whattheburger.backend.repository.checkout.CheckoutSessionStorage;
+import com.whattheburger.backend.repository.CheckoutAttemptRepository;
 import com.whattheburger.backend.security.UserDetailsImpl;
 import com.whattheburger.backend.service.exception.ResourceNotFoundException;
 import com.whattheburger.backend.service.exception.order.NonRetryableOrderProcessingException;
@@ -46,38 +47,30 @@ public class CheckoutService {
     private String successUrl;
 
     private final OrderService orderService;
-    private final CheckoutSessionStorage checkoutSessionStorage;
+    private final CheckoutAttemptRepository checkoutAttemptRepository;
     private final OrderTrackingService orderTrackingService;
     private final CartService cartService;
     private final WebhookService webhookService;
 
     public Session createCheckoutSession(
-            OrderSession orderSession,
-            UUID guestId,
-            Authentication authentication
+            CheckoutAttempt checkoutAttempt,
+            UUID orderSessionId
     ) {
-        // find order
-
-        UUID orderSessionId = orderSession.getSessionId();
-        Long storeId = orderSession.getStoreId();
-        String cartSessionKey = getCartSessionKey(guestId, storeId, authentication);
-        UUID cartSessionId = cartService.getSessionId(cartSessionKey);
-
         Stripe.apiKey = secretKey;
 
         SessionCreateParams.Builder paramsBuilder = SessionCreateParams.builder()
                 .setMode(SessionCreateParams.Mode.PAYMENT)
+                .putMetadata("checkoutAttemptId", checkoutAttempt.getCheckoutAttemptId().toString())
                 .putMetadata("orderSessionId", orderSessionId.toString())
-                .putMetadata("cartSessionId", cartSessionId.toString())
                 .setSuccessUrl(successUrl + "?session_id={CHECKOUT_SESSION_ID}");
 
         SessionCreateParams.PaymentIntentData paymentIntentData = SessionCreateParams.PaymentIntentData
                 .builder()
+                .putMetadata("checkoutAttemptId", checkoutAttempt.getCheckoutAttemptId().toString())
                 .putMetadata("orderSessionId", orderSessionId.toString())
-                .putMetadata("cartSessionId", cartSessionId.toString())
                 .build();
 
-        for (OrderSessionProduct orderSessionProduct : orderSession.getOrderSessionProducts()) {
+        for (OrderSessionProduct orderSessionProduct : checkoutAttempt.getOrderRecord()) {
             BigDecimal totalPrice = orderSessionProduct.getTotalPrice();
             log.info("total price {}", totalPrice);
             BigDecimal priceInCents = totalPrice.multiply(BigDecimal.valueOf(100));
@@ -105,7 +98,10 @@ public class CheckoutService {
 
         try {
             Session session = Session.create(params);
-            checkoutSessionStorage.save(session.getId(), orderSessionId);
+            CheckoutAttempt persistedAttempt = checkoutAttemptRepository.findById(checkoutAttempt.getCheckoutAttemptId())
+                    .orElseThrow(() -> new ResourceNotFoundException("checkoutAttempt not found"));
+            persistedAttempt.changeCheckoutSessionId(session.getId());
+            checkoutAttemptRepository.save(persistedAttempt);
             return session;
         } catch (StripeException e) {
             e.printStackTrace();
@@ -127,7 +123,8 @@ public class CheckoutService {
     }
 
     public String getOrderSessionId(String checkoutSessionId) {
-        return checkoutSessionStorage.getOrderSessionId(checkoutSessionId)
+        return checkoutAttemptRepository.findByCheckoutSessionId(checkoutSessionId)
+                .map(attempt -> attempt.getOrderSessionId().toString())
                 .orElseThrow(() -> new ResourceNotFoundException("checkoutSessionId not found"));
     }
 

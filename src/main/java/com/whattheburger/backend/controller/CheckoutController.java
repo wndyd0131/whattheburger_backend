@@ -7,7 +7,6 @@ import com.stripe.net.Webhook;
 import com.whattheburger.backend.controller.dto.CheckoutResponseDto;
 import com.whattheburger.backend.controller.dto.order.OrderFormRequestDto;
 import com.whattheburger.backend.domain.checkout.CheckoutAttempt;
-import com.whattheburger.backend.domain.order.OrderSession;
 import com.whattheburger.backend.service.CheckoutService;
 import com.whattheburger.backend.service.OrderService;
 import com.whattheburger.backend.service.WebhookService;
@@ -47,8 +46,7 @@ public class CheckoutController {
     ) {
         CheckoutAttempt checkoutAttempt = orderService.createCheckoutAttempt(
                 formRequestDto, orderSessionId, authentication, guestId);
-        OrderSession orderSession = orderService.loadOrderSessionByOrderSessionId(orderSessionId);
-        Session checkoutSession = checkoutService.createCheckoutSession(orderSession, guestId, authentication);
+        Session checkoutSession = checkoutService.createCheckoutSession(checkoutAttempt, orderSessionId);
         String redirectUrl = checkoutSession.getUrl();
         log.info("URL {}", redirectUrl);
         return new ResponseEntity<>(

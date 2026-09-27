@@ -74,19 +74,9 @@ public class OrderService {
             throw new IllegalStateException();
         }
 
-        orderSession.changeAddressInfo(
-                deliveryFormRequest.streetAddr(),
-                deliveryFormRequest.streetAddrDetail(),
-                deliveryFormRequest.zipCode(),
-                deliveryFormRequest.cityState()
-        );
-        orderSession.changeContactInfo(
-                deliveryFormRequest.firstName(),
-                deliveryFormRequest.lastName(),
-                deliveryFormRequest.email(),
-                deliveryFormRequest.phoneNum()
-        );
-        orderSessionStorage.save(orderSession);
+        UUID cartSessionId = cartService
+                .tryResolveSessionId(orderSession.getStoreId(), guestId, authentication)
+                .orElse(null);
 
         CheckoutAttempt checkoutAttempt = CheckoutAttempt.builder()
                 .storeId(orderSession.getStoreId())
@@ -111,6 +101,8 @@ public class OrderService {
                 .guestId(guestId)
                 .discountType(orderSession.getDiscountType())
                 .orderStatusDuration(orderSession.getOrderStatusDuration())
+                .cartSessionId(cartSessionId)
+                .orderSessionId(orderSessionId)
                 .orderRecord(orderSession.getOrderSessionProducts())
                 .build();
 

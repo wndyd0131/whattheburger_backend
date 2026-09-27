@@ -73,6 +73,15 @@ public class CheckoutAttempt {
     @Column(name = "order_status_duration")
     private Integer orderStatusDuration;
 
+    @Column(name = "cart_session_id")
+    private UUID cartSessionId;
+
+    @Column(name = "order_session_id")
+    private UUID orderSessionId;
+
+    @Column(name = "checkout_session_id", unique = true)
+    private String checkoutSessionId;
+
     @Convert(converter = OrderRecordJsonConverter.class)
     @Column(name = "order_record", nullable = false, columnDefinition = "JSON")
     private List<OrderSessionProduct> orderRecord;
@@ -99,5 +108,9 @@ public class CheckoutAttempt {
     @PreUpdate
     public void onUpdate() {
         this.updatedAt = Instant.now();
+    }
+
+    public void changeCheckoutSessionId(String checkoutSessionId) {
+        this.checkoutSessionId = checkoutSessionId;
     }
 }

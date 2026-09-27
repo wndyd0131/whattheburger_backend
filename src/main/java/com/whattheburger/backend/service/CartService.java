@@ -252,6 +252,14 @@ public class CartService {
         return cartList.getSessionId();
     }
 
+    public Optional<UUID> tryResolveSessionId(Long storeId, UUID guestId, Authentication authentication) {
+        try {
+            return Optional.of(getSessionId(getSessionKey(guestId, storeId, authentication)));
+        } catch (CartNotFoundException e) {
+            return Optional.empty();
+        }
+    }
+
     public void cleanUp(UUID sessionId) {
         cartSessionStorage.remove(sessionId);
     }
