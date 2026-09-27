@@ -3,9 +3,9 @@ package com.whattheburger.backend.service;
 import com.stripe.model.PaymentMethod;
 import com.whattheburger.backend.controller.dto.order.DeliveryOrderFormRequestDto;
 import com.whattheburger.backend.controller.dto.order.OrderFormRequestDto;
-import com.whattheburger.backend.controller.dto.order.PickupOrderFormRequestDto;
 import com.whattheburger.backend.controller.enums.OrderSortType;
 import com.whattheburger.backend.domain.*;
+import com.whattheburger.backend.domain.checkout.CheckoutAttempt;
 import com.whattheburger.backend.domain.enums.OrderStatus;
 import com.whattheburger.backend.domain.enums.OrderType;
 import com.whattheburger.backend.domain.enums.PaymentStatus;
@@ -34,6 +34,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -52,43 +53,68 @@ public class OrderService {
     private final OrderSessionFactory orderSessionFactory;
     private final OrderFactory orderFactory;
     private final InventoryService inventoryService;
+    private final CheckoutAttemptRepository checkoutAttemptRepository;
 
     public Order loadOrderByOrderId(Long orderId) {
         return orderRepository.findById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
     }
 
-    public OrderSession updateOrderSession(OrderFormRequestDto orderFormRequestDto, UUID orderSessionId, Authentication authentication, UUID guestId) {
+    @Transactional
+    public CheckoutAttempt createCheckoutAttempt(
+            OrderFormRequestDto orderFormRequestDto,
+            UUID orderSessionId,
+            Authentication authentication,
+            UUID guestId
+    ) {
         OrderSession orderSession = orderSessionStorage.load(orderSessionId)
                 .orElseThrow(() -> new OrderSessionNotFoundException(orderSessionId.toString()));
 
-        if (orderFormRequestDto instanceof DeliveryOrderFormRequestDto deliveryFormRequest) {
-            orderSession.changeAddressInfo(
-                    deliveryFormRequest.streetAddr(),
-                    deliveryFormRequest.streetAddrDetail(),
-                    deliveryFormRequest.zipCode(),
-                    deliveryFormRequest.cityState()
-            );
-            orderSession.changeContactInfo(
-                    deliveryFormRequest.firstName(),
-                    deliveryFormRequest.lastName(),
-                    deliveryFormRequest.email(),
-                    deliveryFormRequest.phoneNum()
-            );
-            orderSessionStorage.save(orderSession);
-        } else if (orderFormRequestDto instanceof PickupOrderFormRequestDto pickUpFormRequest) {
-            orderSession.changeContactInfo(
-                    pickUpFormRequest.firstName(),
-                    pickUpFormRequest.lastName(),
-                    pickUpFormRequest.email(),
-                    pickUpFormRequest.phoneNum()
-            );
-            orderSession.changeETA(pickUpFormRequest.eta());
-            orderSessionStorage.save(orderSession);
-        } else {
+        if (!(orderFormRequestDto instanceof DeliveryOrderFormRequestDto deliveryFormRequest)) {
             throw new IllegalStateException();
         }
-        return orderSession;
+
+        orderSession.changeAddressInfo(
+                deliveryFormRequest.streetAddr(),
+                deliveryFormRequest.streetAddrDetail(),
+                deliveryFormRequest.zipCode(),
+                deliveryFormRequest.cityState()
+        );
+        orderSession.changeContactInfo(
+                deliveryFormRequest.firstName(),
+                deliveryFormRequest.lastName(),
+                deliveryFormRequest.email(),
+                deliveryFormRequest.phoneNum()
+        );
+        orderSessionStorage.save(orderSession);
+
+        CheckoutAttempt checkoutAttempt = CheckoutAttempt.builder()
+                .storeId(orderSession.getStoreId())
+                .userId(orderSession.getUserId())
+                .totalPrice(orderSession.getTotalPrice())
+                .orderType(orderSession.getOrderType())
+                .taxAmount(Optional.ofNullable(orderSession.getTaxAmount()).orElse(BigDecimal.ZERO))
+                .orderNote(orderSession.getOrderNote())
+                .paymentStatus(PaymentStatus.PENDING)
+                .contactInfo(new ContactInfo(
+                        deliveryFormRequest.firstName(),
+                        deliveryFormRequest.lastName(),
+                        deliveryFormRequest.email(),
+                        deliveryFormRequest.phoneNum()
+                ))
+                .addressInfo(new AddressInfo(
+                        deliveryFormRequest.streetAddr(),
+                        deliveryFormRequest.streetAddrDetail(),
+                        deliveryFormRequest.zipCode(),
+                        deliveryFormRequest.cityState()
+                ))
+                .guestId(guestId)
+                .discountType(orderSession.getDiscountType())
+                .orderStatusDuration(orderSession.getOrderStatusDuration())
+                .orderRecord(orderSession.getOrderSessionProducts())
+                .build();
+
+        return checkoutAttemptRepository.save(checkoutAttempt);
     }
 
     public Order saveOrder(Order order) {

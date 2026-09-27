@@ -39,6 +39,7 @@ src/**/resources/seeds
 src/**/resources/static
 src/**/resources/application.yml
 src/**/resources/application-dev.yml
+src/**/resources/local
 
 ### Personal ###
 note.txt

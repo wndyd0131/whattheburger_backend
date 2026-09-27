@@ -6,7 +6,7 @@ import com.stripe.model.checkout.Session;
 import com.stripe.net.Webhook;
 import com.whattheburger.backend.controller.dto.CheckoutResponseDto;
 import com.whattheburger.backend.controller.dto.order.OrderFormRequestDto;
-import com.whattheburger.backend.domain.checkout.IdempotencyStorage;
+import com.whattheburger.backend.domain.checkout.CheckoutAttempt;
 import com.whattheburger.backend.domain.order.OrderSession;
 import com.whattheburger.backend.service.CheckoutService;
 import com.whattheburger.backend.service.OrderService;
@@ -45,7 +45,9 @@ public class CheckoutController {
             @CookieValue(name = "guestId") UUID guestId,
             Authentication authentication
     ) {
-        OrderSession orderSession = orderService.updateOrderSession(formRequestDto, orderSessionId, authentication, guestId);
+        CheckoutAttempt checkoutAttempt = orderService.createCheckoutAttempt(
+                formRequestDto, orderSessionId, authentication, guestId);
+        OrderSession orderSession = orderService.loadOrderSessionByOrderSessionId(orderSessionId);
         Session checkoutSession = checkoutService.createCheckoutSession(orderSession, guestId, authentication);
         String redirectUrl = checkoutSession.getUrl();
         log.info("URL {}", redirectUrl);
