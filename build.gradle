@@ -81,6 +81,7 @@ dependencies {
 
 	/* PERFORMANCE */
 	implementation "org.springframework.boot:spring-boot-starter-actuator"
+	implementation "io.micrometer:micrometer-registry-prometheus" // actuator가 prometheus 전용 엔드포인트를 제공하도록 함. 즉, prometheus가 micrometer의 정보를 수집 가능하도록 함
 
 	testImplementation 'com.h2database:h2'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'

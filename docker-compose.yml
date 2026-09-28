@@ -27,38 +27,7 @@ services:
       interval: 1s
       timeout: 2s
       retries: 10
-#  backend:
-#    image: wndyd0131/whattheburger_backend:latest
-#    ports:
-#      - "8080:8080"
-#    environment:
-#      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
-#      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
-#      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
-#      SPRING_DATASOURCE_HOST: ${SPRING_DATASOURCE_HOST}
-#      SPRING_DATASOURCE_PORT: ${SPRING_DATASOURCE_PORT}
-#      SPRING_DATASOURCE_NAME: ${SPRING_DATASOURCE_NAME}
-#      AWS_ACCESS_KEY: ${AWS_ACCESS_KEY}
-#      AWS_SECRET_KEY: ${AWS_SECRET_KEY}
-#      AWS_S3_BUCKET_NAME: ${AWS_S3_BUCKET_NAME}
-#      AWS_S3_URL_POSTFIX: ${AWS_S3_URL_POSTFIX}
-#      AWS_REGION: ${AWS_REGION}
-#      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
-#      STRIPE_SUCCESS_URL: ${STRIPE_SUCCESS_URL}
-#      STRIPE_WEBHOOK_SECRET_KEY: ${STRIPE_WEBHOOK_SECRET_KEY}
-#      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
-#      MAPBOX_ACCESS_TOKEN: ${MAPBOX_ACCESS_TOKEN}
-#      SERVER_PORT: ${SERVER_PORT}
-#      REDIS_HOST: ${REDIS_HOST}
-#      STORE_SEEDING_FLAG: ${STORE_SEEDING_FLAG}
-#      PRODUCT_SEEDING_FLAG: ${PRODUCT_SEEDING_FLAG}
-#      STOREPRODUCT_SEEDING_FLAG: ${STOREPRODUCT_SEEDING_FLAG}
-#      USER_SEEDING_FLAG: ${USER_SEEDING_FLAG}
-#    depends_on:
-#      mysql:
-#        condition: service_healthy
-#      redis:
-#        condition: service_started
+
   backend:
     build: .
     container_name: app
@@ -95,6 +64,31 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./src/main/resources/prometheus.yml:/etc/prometheus/prometheus.yml  # src/../prometheus.yml을 prometheus 컨테이너의 위치로 mounting
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml" # prometheus가 사용할 config 파일 설정
+    depends_on:
+      - backend
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GF_ADMIN_USERNAME}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_ADMIN_PASSWORD}
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
 
 volumes:
   mysql_data:
