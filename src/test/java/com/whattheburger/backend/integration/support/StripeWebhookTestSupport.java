@@ -59,8 +59,14 @@ public class StripeWebhookTestSupport {
     }
 
     public String signPayload(String payload, String webhookSecret) {
-        long timestamp = System.currentTimeMillis() / 1000;
-        return Webhook.generateTestHeaderString(payload, webhookSecret, timestamp);
+        try {
+            long timestamp = System.currentTimeMillis() / 1000;
+            String payloadToSign = timestamp + "." + payload;
+            String signature = Webhook.Util.computeHmacSha256(webhookSecret, payloadToSign);
+            return "t=" + timestamp + ",v1=" + signature;
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to sign webhook payload", e);
+        }
     }
 
     public MockedStatic<PaymentIntent> mockPaymentIntentRetrieve(String paymentIntentId) {
