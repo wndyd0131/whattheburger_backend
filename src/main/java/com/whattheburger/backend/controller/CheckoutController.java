@@ -83,12 +83,15 @@ public class CheckoutController {
         }
 
         EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
-        StripeObject stripeObject = null;
-        if (dataObjectDeserializer.getObject().isPresent()) {
-            stripeObject = dataObjectDeserializer.getObject().get();
-        } else {
-            return "";
-        }
+
+        StripeObject stripeObject = dataObjectDeserializer.getObject()
+                .orElseGet(() -> {
+                    try {
+                        return dataObjectDeserializer.deserializeUnsafe();
+                    } catch (Exception e) {
+                        throw new IllegalStateException("Unable to deserialize event", e);
+                    }
+                });
 
         Session session = (Session) stripeObject;
 

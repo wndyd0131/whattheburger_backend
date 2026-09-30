@@ -34,7 +34,7 @@ public class StripeWebhookTestSupport {
                 {
                   "id": "%s",
                   "object": "event",
-                  "api_version": "2024-06-20",
+                  "api_version": "2025-03-31.basil",
                   "created": 1710000000,
                   "type": "checkout.session.completed",
                   "data": {
