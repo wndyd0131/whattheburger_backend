@@ -18,7 +18,6 @@ import com.whattheburger.backend.domain.order.OrderSessionProduct;
 import com.whattheburger.backend.exception.ApiException;
 import com.whattheburger.backend.repository.CheckoutAttemptRepository;
 import com.whattheburger.backend.service.exception.ResourceNotFoundException;
-import com.whattheburger.backend.service.exception.order.NonRetryableOrderProcessingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -140,26 +139,34 @@ public class CheckoutService {
         String checkoutAttemptId = metadata.get("checkoutAttemptId");
         CheckoutAttempt checkoutAttempt = resolveCheckoutAttempt(checkoutAttemptId, session.getId());
 
-        Order order;
-        try {
-            order = orderService.completePaidOrder(
-                    checkoutAttempt,
-                    session.getId(),
-                    paymentMethodObject
-            );
-        } catch (NonRetryableOrderProcessingException e1) {
-            orderService.markCheckoutAttemptRefunded(checkoutAttempt.getCheckoutAttemptId());
+        Order order = orderService.completePaidOrderWithLock(
+                checkoutAttempt,
+                session.getId(),
+                paymentMethodObject
+        );
+
+        CheckoutAttempt refreshed = checkoutAttemptRepository.findById(checkoutAttempt.getCheckoutAttemptId())
+                .orElseThrow(() -> new ResourceNotFoundException("checkoutAttempt not found"));
+
+        if (refreshed.getPaymentStatus() == PaymentStatus.REFUNDED) {
+            return;
+        }
+        if (refreshed.getPaymentStatus() == PaymentStatus.REFUND_PENDING) {
             try {
                 refundPayment(pi.getId());
-            } catch (StripeException e2) {
-                log.error(e2.getMessage());
+            } catch (StripeException e) {
+                log.error(e.getMessage());
                 throw new ApiException("Something is wrong with stripe server", HttpStatus.INTERNAL_SERVER_ERROR);
             }
+            orderService.markCheckoutAttemptRefunded(refreshed.getCheckoutAttemptId());
+            return;
+        }
+        if (order == null) {
             return;
         }
 
-        if (checkoutAttempt.getCartSessionId() != null) {
-            cartService.cleanUp(checkoutAttempt.getCartSessionId());
+        if (refreshed.getCartSessionId() != null) {
+            cartService.cleanUp(refreshed.getCartSessionId());
         }
 
 //        orderTrackingService.scheduleOrder(orderSession, order);

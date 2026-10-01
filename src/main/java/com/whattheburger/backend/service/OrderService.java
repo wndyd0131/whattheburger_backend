@@ -201,6 +201,51 @@ public class OrderService {
     ) throws NonRetryableOrderProcessingException {
         CheckoutAttempt persistedAttempt = checkoutAttemptRepository.findById(checkoutAttempt.getCheckoutAttemptId())
                 .orElseThrow(() -> new IllegalStateException("checkoutAttempt not found"));
+        return doCompletePaidOrder(persistedAttempt, checkoutSessionId, paymentMethodObject);
+    }
+
+    @Transactional
+    public Order completePaidOrderWithLock(
+            CheckoutAttempt checkoutAttempt,
+            String checkoutSessionId,
+            PaymentMethod paymentMethodObject
+    ) {
+        CheckoutAttempt attempt = checkoutAttemptRepository.findByIdForUpdate(checkoutAttempt.getCheckoutAttemptId())
+                .orElseThrow(() -> new IllegalStateException("checkoutAttempt not found"));
+
+        if (attempt.getPaymentStatus() == PaymentStatus.PAID
+                || attempt.getPaymentStatus() == PaymentStatus.REFUNDED) {
+            return null;
+        }
+        if (attempt.getPaymentStatus() == PaymentStatus.REFUND_PENDING) {
+            return null;
+        }
+
+        try {
+            return doCompletePaidOrder(attempt, checkoutSessionId, paymentMethodObject);
+        } catch (NonRetryableOrderProcessingException e) {
+            attempt.changePaymentStatus(PaymentStatus.REFUND_PENDING);
+            checkoutAttemptRepository.save(attempt);
+            return null;
+        }
+    }
+
+    @Transactional
+    public void markCheckoutAttemptRefunded(UUID checkoutAttemptId) {
+        CheckoutAttempt checkoutAttempt = checkoutAttemptRepository.findById(checkoutAttemptId)
+                .orElseThrow(() -> new IllegalStateException("checkoutAttempt not found"));
+        if (checkoutAttempt.getPaymentStatus() == PaymentStatus.REFUNDED) {
+            return;
+        }
+        checkoutAttempt.changePaymentStatus(PaymentStatus.REFUNDED);
+        checkoutAttemptRepository.save(checkoutAttempt);
+    }
+
+    private Order doCompletePaidOrder(
+            CheckoutAttempt persistedAttempt,
+            String checkoutSessionId,
+            PaymentMethod paymentMethodObject
+    ) throws NonRetryableOrderProcessingException {
         persistedAttempt.changePaymentStatus(PaymentStatus.PAID);
         checkoutAttemptRepository.save(persistedAttempt);
 
@@ -214,14 +259,6 @@ public class OrderService {
             throw new NonRetryableOrderProcessingException(e);
         }
         return saveOrder(order);
-    }
-
-    @Transactional
-    public void markCheckoutAttemptRefunded(UUID checkoutAttemptId) {
-        CheckoutAttempt checkoutAttempt = checkoutAttemptRepository.findById(checkoutAttemptId)
-                .orElseThrow(() -> new IllegalStateException("checkoutAttempt not found"));
-        checkoutAttempt.changePaymentStatus(PaymentStatus.REFUNDED);
-        checkoutAttemptRepository.save(checkoutAttempt);
     }
 
     private Order buildOrderFromCheckoutAttempt(CheckoutAttempt checkoutAttempt) {

@@ -4,6 +4,7 @@ import com.stripe.model.PaymentIntent;
 import com.whattheburger.backend.domain.User;
 import com.whattheburger.backend.domain.checkout.CheckoutAttempt;
 import com.whattheburger.backend.domain.enums.PaymentStatus;
+import com.whattheburger.backend.domain.order.Order;
 import com.whattheburger.backend.integration.support.AbstractStripeWebhookIntegrationTest;
 import com.whattheburger.backend.security.enums.Role;
 import com.whattheburger.backend.service.OrderService;
@@ -13,7 +14,15 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.springframework.boot.test.mock.mockito.SpyBean;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -128,5 +137,41 @@ public class StripeWebhookTest extends AbstractStripeWebhookIntegrationTest {
         assertOrderCreated(checkoutSessionId, user, scenario.store(), prevOrderCount);
         assertThat(checkoutAttemptRepository.findById(checkoutAttempt.getCheckoutAttemptId()).orElseThrow()
                 .getPaymentStatus()).isEqualTo(PaymentStatus.PAID);
+    }
+
+    @Test
+    void completePaidOrderWithLock_whenConcurrentDuplicateRequests_createsOrderOnceWithoutRefund() throws Exception {
+        int deductionPerOrder = PRODUCT_QTY * OPTION_QTY * REQUIRED_QTY;
+        CountableScenario scenario = saveCountableScenario(deductionPerOrder);
+        User user = cartTestSupport.saveUser(Role.USER);
+        CheckoutAttempt checkoutAttempt = saveCheckoutAttempt(user, scenario, null);
+        String checkoutSessionId = checkoutAttempt.getCheckoutSessionId();
+        long prevOrderCount = orderRepository.count();
+
+        int threadCount = 2;
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        CountDownLatch startLatch = new CountDownLatch(1);
+        List<Future<Order>> futures = new ArrayList<>();
+        for (int i = 0; i < threadCount; i++) {
+            futures.add(executor.submit(() -> {
+                startLatch.await();
+                return orderService.completePaidOrderWithLock(checkoutAttempt, checkoutSessionId, null);
+            }));
+        }
+        startLatch.countDown();
+
+        List<Order> results = new ArrayList<>();
+        for (Future<Order> future : futures) {
+            // NonRetryableOrderProcessingException here would mean the duplicate request triggered a refund
+            results.add(future.get(10, TimeUnit.SECONDS));
+        }
+        executor.shutdown();
+
+        assertThat(results).filteredOn(Objects::nonNull).hasSize(1);
+        assertOrderCreated(checkoutSessionId, user, scenario.store(), prevOrderCount);
+        assertThat(checkoutAttemptRepository.findById(checkoutAttempt.getCheckoutAttemptId()).orElseThrow()
+                .getPaymentStatus()).isEqualTo(PaymentStatus.PAID);
+        assertThat(storeInventoryRepository.findById(scenario.storeInventory().getId()).orElseThrow()
+                .getCurrentStock()).isZero();
     }
 }
