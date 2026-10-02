@@ -15,7 +15,6 @@ import com.whattheburger.backend.service.exception.StoreInventoryNotFoundExcepti
 import com.whattheburger.backend.service.exception.cart.InsufficientOptionStockException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -31,8 +30,7 @@ public class InventoryService {
     private final ProductOptionOptionQuantityRepository productOptionOptionQuantityRepository;
     private final InventoryRequirementCalculator inventoryRequirementCalculator;
 
-    @Transactional
-    public void deductStock(Order order) throws InsufficientOptionStockException{
+    public void deductStock(Order order) throws InsufficientOptionStockException {
         if (order == null) {
             throw new IllegalArgumentException("Order must not be null");
         }
@@ -68,7 +66,11 @@ public class InventoryService {
                         storeInventory.getCurrentStock()
                 );
             }
-            storeInventory.deductStock(amount);
+        }
+
+        for (Long ingredientId : ingredientIds) {
+            int amount = deductionsByIngredient.get(ingredientId);
+            inventoryByIngredientId.get(ingredientId).deductStock(amount);
         }
     }
 

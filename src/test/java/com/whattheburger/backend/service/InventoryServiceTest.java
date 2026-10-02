@@ -116,6 +116,30 @@ class InventoryServiceTest {
     }
 
     @Test
+    void givenPaidOrderWithInsufficientSecondIngredient_whenDeductStock_thenThrowsWithoutMutatingAnyStock() {
+        Order order = buildPaidOrder(List.of(
+                countableOrderProduct(1, 2, PRODUCT_OPTION_ID, 3),
+                countableOrderProduct(1, 2, PRODUCT_OPTION_ID_2, 4)
+        ));
+        ProductOption productOption1 = buildProductOption(PRODUCT_OPTION_ID, INGREDIENT_ID, 3);
+        ProductOption productOption2 = buildProductOption(PRODUCT_OPTION_ID_2, INGREDIENT_ID_2, 4);
+        StoreInventory storeInventory1 = buildStoreInventory(INGREDIENT_ID, 100);
+        StoreInventory storeInventory2 = buildStoreInventory(INGREDIENT_ID_2, 5);
+
+        when(productOptionRepository.findAllWithOptionByIdIn(anyCollection()))
+                .thenReturn(List.of(productOption1, productOption2));
+        when(storeInventoryRepository.findAllByStoreIdAndIngredientIdInForUpdate(
+                STORE_ID,
+                List.of(INGREDIENT_ID, INGREDIENT_ID_2)
+        )).thenReturn(List.of(storeInventory1, storeInventory2));
+
+        assertThrows(InsufficientOptionStockException.class, () -> inventoryService.deductStock(order));
+
+        assertEquals(100, storeInventory1.getCurrentStock());
+        assertEquals(5, storeInventory2.getCurrentStock());
+    }
+
+    @Test
     void givenPaidOrderWithEnoughStock_whenDeductStock_thenBatchLockFetchForAllIngredientsWithoutException() {
         int amount1 = 6;
         int amount2 = 8;

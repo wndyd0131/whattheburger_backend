@@ -215,7 +215,7 @@ public class InventoryServiceConcurrencyTest extends BaseIntegrationTest {
                 try {
                     readyLatch.countDown();
                     startLatch.await();
-                    inventoryService.deductStock(order);
+                    transactionTemplate.executeWithoutResult(status -> inventoryService.deductStock(order));
                     successCount.incrementAndGet();
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
