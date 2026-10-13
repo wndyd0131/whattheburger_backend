@@ -72,5 +72,9 @@ management:
     tags:
       application: whattheburger-backend
 
+loadtest:
+  api:
+    enabled: false
+
 server:
   port: ${SERVER_PORT}

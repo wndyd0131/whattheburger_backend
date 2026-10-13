@@ -38,6 +38,9 @@ import java.util.List;
 )
 @Slf4j
 public class DataConfig {
+    String pythonPath = System.getProperty("user.dir") + "/.venv/bin/python";
+    String scriptPath = System.getProperty("user.dir") + "/scripts/script.py";
+
     @Value("${seeding.user}")
     private Boolean userSeedingFlag;
     @Value("${seeding.store}")
@@ -82,7 +85,7 @@ public class DataConfig {
             if (storeSeedingFlag) {
                 System.out.println("Loading stores...");
                 try {
-                    ProcessBuilder pb = new ProcessBuilder("python3", "scripts/script.py"); // Assuming hello.py exists
+                    ProcessBuilder pb = new ProcessBuilder(pythonPath, scriptPath); // Assuming hello.py exists
                     Process process = pb.start();
 
                     BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));

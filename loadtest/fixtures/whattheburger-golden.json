@@ -1,0 +1,85 @@
+{
+  "orderProducts": [
+    {
+      "storeProductId": 1,
+      "quantity": 1,
+      "orderCustomRules": [
+        {
+          "customRuleId": 1,
+          "orderProductOptions": [
+            {
+              "productOptionId": 1,
+              "countType": "COUNTABLE",
+              "quantity": 1
+            }
+          ]
+        },
+        {
+          "customRuleId": 2,
+          "orderProductOptions": [
+            {
+              "productOptionId": 6,
+              "countType": "COUNTABLE",
+              "quantity": 1
+            }
+          ]
+        },
+        {
+          "customRuleId": 5,
+          "orderProductOptions": [
+            {
+              "productOptionId": 13,
+              "countType": "UNCOUNTABLE",
+              "quantity": 1,
+              "quantityDetail": {
+                "productOptionOptionQuantityId": 2,
+                "quantityType": "Regular"
+              }
+            },
+            {
+              "productOptionId": 14,
+              "countType": "UNCOUNTABLE",
+              "quantity": 1,
+              "quantityDetail": {
+                "productOptionOptionQuantityId": 5,
+                "quantityType": "Regular"
+              }
+            },
+            {
+              "productOptionId": 15,
+              "countType": "UNCOUNTABLE",
+              "quantity": 1,
+              "quantityDetail": {
+                "productOptionOptionQuantityId": 8,
+                "quantityType": "Regular"
+              }
+            },
+            {
+              "productOptionId": 16,
+              "countType": "UNCOUNTABLE",
+              "quantity": 1,
+              "quantityDetail": {
+                "productOptionOptionQuantityId": 11,
+                "quantityType": "Regular"
+              }
+            }
+          ]
+        },
+        {
+          "customRuleId": 6,
+          "orderProductOptions": [
+            {
+              "productOptionId": 18,
+              "countType": "UNCOUNTABLE",
+              "quantity": 1,
+              "quantityDetail": {
+                "productOptionOptionQuantityId": 17,
+                "quantityType": "Regular"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
