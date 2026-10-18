@@ -48,4 +48,7 @@ note.txt
 .vscode/
 
 .env
+
+### Load test ###
 loadtest.md
+docs/json
