@@ -46,7 +46,9 @@ public class InventoryService {
             return;
         }
 
-        for (Map.Entry<Long, Integer> entry : deductionsByIngredient.entrySet()) {
+        List<Map.Entry<Long, Integer>> entryList = deductionsByIngredient.entrySet().stream().sorted().toList();
+
+        for (Map.Entry<Long, Integer> entry : entryList) {
             Long ingredientId = entry.getKey();
             int amount = entry.getValue();
 
