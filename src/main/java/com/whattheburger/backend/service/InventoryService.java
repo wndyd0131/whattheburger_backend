@@ -46,11 +46,11 @@ public class InventoryService {
             return;
         }
 
-        List<Map.Entry<Long, Integer>> entryList = deductionsByIngredient.entrySet().stream().sorted().toList();
+        List<Long> ingredientIds = deductionsByIngredient.keySet().stream().sorted().toList();
 
-        for (Map.Entry<Long, Integer> entry : entryList) {
-            Long ingredientId = entry.getKey();
-            int amount = entry.getValue();
+
+        for (Long ingredientId : ingredientIds) {
+            int amount = deductionsByIngredient.get(ingredientId);
 
             storeInventoryRepository.findByStoreIdAndIngredientId(storeId, ingredientId)
                     .orElseThrow(() -> new StoreInventoryNotFoundException(storeId, ingredientId));
