@@ -9,6 +9,11 @@ import { genOrder } from './lib/generator.js';
 import { weights } from './lib/weights.js';
 import { validateDeductPayload } from './lib/validate.js';
 import { chance, weightedPick1 } from './lib/random.js';
+import {
+  deductRequestHeaders,
+  logDeductFailure,
+  newDeductTraceId,
+} from './lib/httpTrace.js';
 
 export { setup } from './setup.js';
 
@@ -189,8 +194,9 @@ export default function (data) {
   }
 
   const url = `${BASE_URL}/api/v1/loadtest/store/${storeId}/inventory/deduct`;
+  const traceId = newDeductTraceId();
   const res = http.post(url, JSON.stringify(payload), {
-    headers: { 'Content-Type': 'application/json' },
+    headers: deductRequestHeaders(traceId),
     tags: { name: 'POST loadtest inventory deduct' },
   });
 
@@ -201,8 +207,14 @@ export default function (data) {
     body = null;
   }
 
+  const deductOk = res.status === 200 && body && body.status === 'DEDUCTED';
+
   check(res, {
     'deduct status is 200': (r) => r.status === 200,
     'deduct body status is DEDUCTED': () => body && body.status === 'DEDUCTED',
   });
+
+  if (!deductOk) {
+    logDeductFailure({ traceId, storeId, url, res, body });
+  }
 }

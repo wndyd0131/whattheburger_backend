@@ -9,6 +9,7 @@ import com.whattheburger.backend.service.InventoryService;
 import com.whattheburger.backend.service.StoreService;
 import com.whattheburger.backend.service.exception.cart.InsufficientOptionStockException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @ConditionalOnProperty(name = "loadtest.api.enabled", havingValue = "true")
@@ -39,6 +41,7 @@ public class LoadTestInventoryController {
         try {
             inventoryService.deductStock(order);
         } catch (InsufficientOptionStockException e) {
+            log.warn("loadtest deduct insufficient stock storeId={}", storeId, e);
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
                     "error", "INSUFFICIENT_STOCK",
                     "message", e.getMessage()
