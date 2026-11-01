@@ -13,7 +13,7 @@ public interface ProductOptionOptionQuantityRepository extends JpaRepository<Pro
     @Query("""
             SELECT DISTINCT pooq FROM ProductOptionOptionQuantity pooq
             JOIN FETCH pooq.optionQuantity oq
-            JOIN FETCH o.optionIngredients oi
+            JOIN FETCH oq.optionQuantityIngredients oi
             WHERE pooq.id IN :ids
             """)
     List<ProductOptionOptionQuantity> findAllWithOptionQuantityByIdIn(@Param("ids") Collection<Long> ids);
