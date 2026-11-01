@@ -4,8 +4,8 @@ services:
     image: mysql
     container_name: mysql
     environment:
-      MYSQL_DATABASE: ${MYSQL_DB_NAME}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_DB_PASSWORD}
+      MYSQL_DATABASE: whattheburger_dev
+      MYSQL_ROOT_PASSWORD: root
     ports:
       - "3307:3306"
     volumes:
@@ -29,7 +29,8 @@ services:
       retries: 10
 
   backend:
-    image: ${DOCKER_USERNAME}/whattheburger:${IMAGE_TAG}
+    build: .
+    container_name: app
     ports:
       - "8080:8080"
     environment:
@@ -50,7 +51,7 @@ services:
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       MAPBOX_ACCESS_TOKEN: ${MAPBOX_ACCESS_TOKEN}
       SERVER_PORT: ${SERVER_PORT}
-      SPRING_DATA_REDIS_HOST: ${SPRING_DATA_REDIS_HOST}
+      REDIS_HOST: ${REDIS_HOST}
       STORE_SEEDING_FLAG: ${STORE_SEEDING_FLAG}
       PRODUCT_SEEDING_FLAG: ${PRODUCT_SEEDING_FLAG}
       STOREPRODUCT_SEEDING_FLAG: ${STOREPRODUCT_SEEDING_FLAG}
@@ -70,9 +71,9 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./src/main/resources/prometheus.yml:/etc/prometheus/prometheus.yml  # src/../prometheus.yml을 prometheus 컨테이너의 위치로 mounting
     command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--config.file=/etc/prometheus/prometheus.yml" # prometheus가 사용할 config 파일 설정
     depends_on:
       - backend
 
@@ -91,4 +92,3 @@ services:
 
 volumes:
   mysql_data:
-  grafana_data:

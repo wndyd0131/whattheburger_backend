@@ -1,0 +1,34 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+seeding:
+  enabled: false
+
+aws:
+  access-key: test-access-key
+  secret-key: test-secret-key
+  region: us-east-1
+  s3:
+    public-url: https://cdn.example.com
+    bucket-name: test-bucket
+
+client:
+  url: localhost
+
+stripe:
+  secret: stripe-secret-key
+  successUrl: success-url
+  webhook:
+    secret: stripe-webhook-secret-key
+
+google:
+  apiKey: google-api-key
+
+mapbox:
+  accessToken: mapbox-access-token

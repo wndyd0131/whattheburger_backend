@@ -1,38 +1,39 @@
 package com.whattheburger.backend.service;
 
-import com.whattheburger.backend.domain.ProductOption;
-import com.whattheburger.backend.domain.ProductOptionOptionQuantity;
-import com.whattheburger.backend.domain.StoreInventory;
+import com.whattheburger.backend.domain.*;
+import com.whattheburger.backend.domain.enums.CountType;
 import com.whattheburger.backend.domain.enums.PaymentStatus;
-import com.whattheburger.backend.domain.inventory.InventoryRequirementCalculator;
-import com.whattheburger.backend.domain.inventory.OrderStockRequirementLineMapper;
-import com.whattheburger.backend.domain.inventory.StockRequirementLine;
-import com.whattheburger.backend.domain.order.Order;
+import com.whattheburger.backend.domain.order.*;
 import com.whattheburger.backend.repository.ProductOptionOptionQuantityRepository;
 import com.whattheburger.backend.repository.ProductOptionRepository;
 import com.whattheburger.backend.repository.StoreInventoryRepository;
+import com.whattheburger.backend.service.exception.POOQuantityNotFoundException;
+import com.whattheburger.backend.service.exception.ProductOptionNotFoundException;
 import com.whattheburger.backend.service.exception.StoreInventoryNotFoundException;
 import com.whattheburger.backend.service.exception.cart.InsufficientOptionStockException;
+import com.whattheburger.backend.service.exception.cart.InvalidOptionRequestException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class InventoryService {
 
     private final StoreInventoryRepository storeInventoryRepository;
     private final ProductOptionRepository productOptionRepository;
     private final ProductOptionOptionQuantityRepository productOptionOptionQuantityRepository;
-    private final InventoryRequirementCalculator inventoryRequirementCalculator;
 
     @Transactional
-    public void deductStock(Order order) throws InsufficientOptionStockException{
+    public void deductStock(Order order) {
+        String requestId = UUID.randomUUID().toString();
+
         if (order == null) {
             throw new IllegalArgumentException("Order must not be null");
         }
@@ -40,55 +41,124 @@ public class InventoryService {
             throw new IllegalArgumentException("Order payment status must be PAID to deduct stock");
         }
 
-        Map<Long, Integer> deductionsByIngredient = collectDeductions(order);
-        if (deductionsByIngredient.isEmpty()) {
-            return;
-        }
-
         Long storeId = order.getStore().getId();
-        List<Long> ingredientIds = deductionsByIngredient.keySet().stream().sorted().toList();
+        Map<Long, Integer> deductionsByIngredient = collectDeductions(order);
 
-        List<StoreInventory> lockedInventories = storeInventoryRepository
-                .findAllByStoreIdAndIngredientIdInForUpdate(storeId, ingredientIds);
+        for (Map.Entry<Long, Integer> entry : deductionsByIngredient.entrySet()) {
+            Long ingredientId = entry.getKey();
+            int amount = entry.getValue();
 
-        Map<Long, StoreInventory> inventoryByIngredientId = lockedInventories.stream()
-                .collect(Collectors.toMap(si -> si.getIngredient().getId(), Function.identity()));
+            storeInventoryRepository.findByStoreIdAndIngredientId(storeId, ingredientId)
+                    .orElseThrow(() -> new StoreInventoryNotFoundException(storeId, ingredientId));
 
-        for (Long ingredientId : ingredientIds) {
-            StoreInventory storeInventory = inventoryByIngredientId.get(ingredientId);
-            if (storeInventory == null) {
-                throw new StoreInventoryNotFoundException(storeId, ingredientId);
+            long start = System.nanoTime();
+
+            int updated = storeInventoryRepository.deductStockAtomic(storeId, ingredientId, amount);
+            long elapsedNanos = System.nanoTime() - start;
+            long elapsedMs = elapsedNanos / 1_000_000;
+            long elapsedMicros = elapsedNanos / 1_000;
+
+            log.info(
+                    "stock_update requestId={} storeId={} ingredientId={} amount={} elapsedMs={} elapsedMicros={} updated={}",
+                    requestId,
+                    storeId,
+                    ingredientId,
+                    amount,
+                    elapsedMs,
+                    elapsedMicros,
+                    updated
+            );
+
+            if (updated == 0) {
+                StoreInventory storeInventory = storeInventoryRepository
+                        .findByStoreIdAndIngredientId(storeId, ingredientId)
+                        .orElseThrow(() -> new StoreInventoryNotFoundException(storeId, ingredientId));
+                throw new InsufficientOptionStockException(null, ingredientId, amount, storeInventory.getCurrentStock());
             }
-            int amount = deductionsByIngredient.get(ingredientId);
-            if (storeInventory.getCurrentStock() < amount) {
-                throw new InsufficientOptionStockException(
-                        null,
-                        ingredientId,
-                        amount,
-                        storeInventory.getCurrentStock()
-                );
-            }
-            storeInventory.deductStock(amount);
         }
     }
 
     private Map<Long, Integer> collectDeductions(Order order) {
-        List<StockRequirementLine> lines = OrderStockRequirementLineMapper.fromOrder(order);
+        Set<Long> countableProductOptionIds = new HashSet<>();
+        Set<Long> uncountablePooqIds = new HashSet<>();
+
+        for (OrderProduct orderProduct : order.getOrderProducts()) {
+            for (OrderCustomRule orderCustomRule : orderProduct.getOrderCustomRules()) {
+                for (OrderProductOption orderProductOption : orderCustomRule.getOrderProductOptions()) {
+                    CountType countType = orderProductOption.getCountType();
+                    if (countType == null || countType == CountType.NONE) {
+                        continue;
+                    }
+                    if (countType == CountType.COUNTABLE) {
+                        countableProductOptionIds.add(orderProductOption.getProductOptionId());
+                    } else if (countType == CountType.UNCOUNTABLE) {
+                        QuantityDetail quantityDetail = orderProductOption.getQuantityDetail();
+                        if (quantityDetail == null) {
+                            throw InvalidOptionRequestException.missingQuantityDetail(orderProductOption.getProductOptionId());
+                        }
+                        uncountablePooqIds.add(quantityDetail.getProductOptionOptionQuantityId());
+                    }
+                }
+            }
+        }
 
         Map<Long, ProductOption> productOptionMap = productOptionRepository
-                .findAllWithOptionByIdIn(
-                        OrderStockRequirementLineMapper.collectCountableProductOptionIds(lines)
-                )
+                .findAllWithOptionIngredientsByIdIn(countableProductOptionIds)
                 .stream()
                 .collect(Collectors.toMap(ProductOption::getId, Function.identity()));
 
         Map<Long, ProductOptionOptionQuantity> pooqMap = productOptionOptionQuantityRepository
-                .findAllWithOptionQuantityByIdIn(
-                        OrderStockRequirementLineMapper.collectUncountablePooqIds(lines)
-                )
+                .findAllWithOptionQuantityIngredientsByIdIn(uncountablePooqIds)
                 .stream()
                 .collect(Collectors.toMap(ProductOptionOptionQuantity::getId, Function.identity()));
 
-        return inventoryRequirementCalculator.aggregate(lines, productOptionMap, pooqMap);
+        Map<Long, Integer> deductionsByIngredient = new HashMap<>();
+
+        for (OrderProduct orderProduct : order.getOrderProducts()) {
+            int productQuantity = orderProduct.getQuantity();
+            for (OrderCustomRule orderCustomRule : orderProduct.getOrderCustomRules()) {
+                for (OrderProductOption orderProductOption : orderCustomRule.getOrderProductOptions()) {
+                    CountType countType = orderProductOption.getCountType();
+                    if (countType == null || countType == CountType.NONE) {
+                        continue;
+                    }
+
+                    if (countType == CountType.COUNTABLE) {
+                        Integer optionQuantity = orderProductOption.getQuantity();
+                        if (optionQuantity == null || optionQuantity <= 0) {
+                            throw InvalidOptionRequestException.missingCountableQuantity(
+                                    orderProductOption.getProductOptionId(),
+                                    optionQuantity
+                            );
+                        }
+                        ProductOption productOption = Optional
+                                .ofNullable(productOptionMap.get(orderProductOption.getProductOptionId()))
+                                .orElseThrow(() -> new ProductOptionNotFoundException(orderProductOption.getProductOptionId()));
+
+                        for (OptionIngredient optionIngredient : productOption.getOption().getOptionIngredients()) {
+                            int needed = productQuantity * optionQuantity * optionIngredient.getRequiredQuantity();
+                            Long ingredientId = optionIngredient.getIngredient().getId();
+                            deductionsByIngredient.merge(ingredientId, needed, Integer::sum);
+                        }
+                    } else if (countType == CountType.UNCOUNTABLE) {
+                        QuantityDetail quantityDetail = orderProductOption.getQuantityDetail();
+                        if (quantityDetail == null) {
+                            throw InvalidOptionRequestException.missingQuantityDetail(orderProductOption.getProductOptionId());
+                        }
+                        ProductOptionOptionQuantity pooq = Optional
+                                .ofNullable(pooqMap.get(quantityDetail.getProductOptionOptionQuantityId()))
+                                .orElseThrow(() -> new POOQuantityNotFoundException(quantityDetail.getProductOptionOptionQuantityId()));
+
+                        for (OptionQuantityIngredient oqi : pooq.getOptionQuantity().getOptionQuantityIngredients()) {
+                            int needed = productQuantity * oqi.getRequiredQuantity();
+                            Long ingredientId = oqi.getIngredient().getId();
+                            deductionsByIngredient.merge(ingredientId, needed, Integer::sum);
+                        }
+                    }
+                }
+            }
+        }
+
+        return deductionsByIngredient;
     }
 }

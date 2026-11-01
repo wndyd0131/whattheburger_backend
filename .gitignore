@@ -47,3 +47,6 @@ note.txt
 .vscode/
 
 .env
+.venv
+
+cache/

@@ -22,6 +22,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.BufferedReader;
@@ -38,6 +39,9 @@ import java.util.List;
 )
 @Slf4j
 public class DataConfig {
+    String pythonPath = System.getProperty("user.dir") + "/.venv/bin/python";
+    String scriptPath = System.getProperty("user.dir") + "/scripts/script.py";
+
     @Value("${seeding.user}")
     private Boolean userSeedingFlag;
     @Value("${seeding.store}")
@@ -46,13 +50,26 @@ public class DataConfig {
     private Boolean productSeedingFlag;
     @Value("${seeding.storeProduct}")
     private Boolean storeProductSeedingFlag;
+    @Value("${seeding.inventory:false}")
+    private Boolean inventorySeedingFlag;
+
+    private static final String SEED_STORE_INVENTORY_SQL = """
+            INSERT INTO store_inventory (current_stock, store_id, ingredient_id)
+            SELECT
+                CASE i.unit WHEN 'COUNT' THEN 500 ELSE 50000 END,
+                s.store_id,
+                i.ingredient_id
+            FROM store s
+            CROSS JOIN ingredient i;
+            """;
 
     @Bean
     public CommandLineRunner seedRunner(
             UserService userService,
             ProductService productService,
             StoreProductService storeProductService,
-            StoreService storeService
+            StoreService storeService,
+            JdbcTemplate jdbcTemplate
     ) throws IOException {
         return args -> {
             if (userSeedingFlag) {
@@ -82,7 +99,7 @@ public class DataConfig {
             if (storeSeedingFlag) {
                 System.out.println("Loading stores...");
                 try {
-                    ProcessBuilder pb = new ProcessBuilder("python3", "scripts/script.py"); // Assuming hello.py exists
+                    ProcessBuilder pb = new ProcessBuilder(pythonPath, scriptPath); // Assuming hello.py exists
                     Process process = pb.start();
 
                     BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
@@ -105,6 +122,11 @@ public class DataConfig {
                 System.out.println("Stores loaded successfully");
             }
             List<Store> stores = storeService.loadAllStores();
+
+            if (inventorySeedingFlag) {
+                int seededRows = jdbcTemplate.update(SEED_STORE_INVENTORY_SQL);
+                log.info("Store inventory seeded: {} rows for {} stores", seededRows, stores.size());
+            }
 
             if (productSeedingFlag) {
                 ObjectMapper objectMapper = new ObjectMapper();
