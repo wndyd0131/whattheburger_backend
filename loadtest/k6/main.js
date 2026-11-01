@@ -1,6 +1,6 @@
 /**
- * Loadtest deduct: multi-store setup; each iteration picks store, lineCount, SKUs, golden vs generator.
- * Run from repo root: k6 run loadtest/k6/main.js
+ * Loadtest deduct: multi-store catalog; picks store, lineCount, SKUs, golden vs generator.
+ * Default: setup() HTTP catalog (BASE_URL). Optional file: export JSON + LOADTEST_CATALOG_SOURCE=file.
  */
 import http from 'k6/http';
 import { check } from 'k6';
@@ -14,10 +14,19 @@ import {
   logDeductFailure,
   newDeductTraceId,
 } from './lib/httpTrace.js';
+import { usesFileCatalog } from './lib/catalogSource.js';
+import { getCatalogSnapshot } from './lib/sharedCatalogSnapshot.js';
 
 export { setup } from './setup.js';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
+
+function resolveCatalog(setupData) {
+  if (usesFileCatalog()) {
+    return getCatalogSnapshot();
+  }
+  return setupData;
+}
 
 function getProductDetail(products, storeProductId) {
   return products[storeProductId] ?? products[String(storeProductId)] ?? null;
@@ -144,17 +153,33 @@ function buildDeductPayload(storeSnapshot, weightConfig) {
 }
 
 export const options = {
-  vus: 1,
-  iterations: 1,
+  scenarios: {
+    deduct_ramp: {
+      executor: 'ramping-arrival-rate',
+      startRate: 0,
+      timeUnit: '1s',
+      preAllocatedVUs: 100,
+      maxVUs: 500,
+      stages: [
+        { duration: '1m', target: 10 },
+        { duration: '2m', target: 10 },
+        { duration: '1m', target: 50 },
+        { duration: '2m', target: 50 },
+        { duration: '1m', target: 100 },
+        { duration: '2m', target: 100 },
+      ],
+    }
+  }
 };
 
 export default function (data) {
-  const products = data?.products || {};
-  const storeId = pickStoreId(data, weights);
-  const storeSnapshot = storeId != null ? getStoreSnapshot(data, storeId) : null;
+  const catalog = resolveCatalog(data);
+  const products = catalog?.products || {};
+  const storeId = pickStoreId(catalog, weights);
+  const storeSnapshot = storeId != null ? getStoreSnapshot(catalog, storeId) : null;
 
   check(null, {
-    'setup loaded products': () => Object.keys(products).length > 0,
+    'snapshot loaded products': () => Object.keys(products).length > 0,
     'picked store in snapshot': () => storeSnapshot != null,
   });
 

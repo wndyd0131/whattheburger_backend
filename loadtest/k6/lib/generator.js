@@ -1,5 +1,5 @@
 import { goldenLine, buildDefaultOption } from './templates.js';
-import { chance, weightedPick1 } from './random.js';
+import { chanceUnseeded, weightedPick1Unseeded } from './random.js';
 
 function productNameKey(productDetail) {
   return productDetail.productName;
@@ -78,7 +78,7 @@ function uniqueWeightMap(ruleWeights, options) {
 
 function selectUnique(block, ruleWeights) {
   const weightMap = uniqueWeightMap(ruleWeights, block.options);
-  const pickedId = weightedPick1(weightMap);
+  const pickedId = weightedPick1Unseeded(weightMap);
   const picked = block.options.find((o) => o.productOptionId === pickedId);
   return picked ? [picked] : [];
 }
@@ -90,7 +90,7 @@ function selectFree(block, ruleWeights) {
     const id = option.productOptionId;
     const entry = weightTable[id] ?? weightTable[String(id)];
     const p = bernoulliP(entry);
-    if (chance(p)) {
+    if (chanceUnseeded(p)) {
       selected.push(option);
     }
   }
@@ -173,7 +173,7 @@ function pickPooqDetail(option, weights) {
     return null;
   }
   const eligible = buildEligiblePooqWeights(option, weights);
-  const pickedType = weightedPick1(eligible);
+  const pickedType = weightedPick1Unseeded(eligible);
   if (pickedType != null) {
     const match = details.find((d) => d.quantityType === pickedType);
     if (match) {
@@ -222,7 +222,7 @@ function applyRandomRules(line, productDetail, weights) {
     const ruleName = block.rule.name;
     const modifyP = getModifyProbability(weights, productName, ruleName);
 
-    if (!chance(modifyP)) {
+    if (!chanceUnseeded(modifyP)) {
       const goldenRule = goldenByRuleId[ruleId];
       if (goldenRule && (goldenRule.orderProductOptions || []).length > 0) {
         resultByRuleId[ruleId] = goldenRule;

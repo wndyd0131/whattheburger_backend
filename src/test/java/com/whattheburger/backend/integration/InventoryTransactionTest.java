@@ -10,7 +10,6 @@ import com.whattheburger.backend.domain.Store;
 import com.whattheburger.backend.domain.StoreInventory;
 import com.whattheburger.backend.domain.StoreProduct;
 import com.whattheburger.backend.domain.User;
-import com.whattheburger.backend.domain.checkout.CheckoutAttempt;
 import com.whattheburger.backend.domain.enums.CountType;
 import com.whattheburger.backend.domain.enums.CustomRuleType;
 import com.whattheburger.backend.domain.enums.IngredientUnit;
@@ -28,7 +27,6 @@ import com.whattheburger.backend.security.enums.Role;
 import com.whattheburger.backend.service.InventoryService;
 import com.whattheburger.backend.service.OrderService;
 import com.whattheburger.backend.service.exception.cart.InsufficientOptionStockException;
-import com.whattheburger.backend.service.exception.order.NonRetryableOrderProcessingException;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.assertj.core.api.Assertions;
@@ -54,8 +52,6 @@ public class InventoryTransactionTest extends BaseIntegrationTest {
     OrderService orderService;
     @Autowired
     OrderRepository orderRepository;
-    @Autowired
-    CheckoutAttemptRepository checkoutAttemptRepository;
     @Autowired
     InventoryService inventoryService;
     @Autowired
@@ -99,7 +95,7 @@ public class InventoryTransactionTest extends BaseIntegrationTest {
     void givenInsufficientStock_whenCompletePaidOrder_thenSuccessfullyRollback() throws Exception {
         CountableScenario scenario = saveCountableScenario(5);
         User user = cartTestSupport.saveUser(Role.USER);
-        CheckoutAttempt checkoutAttempt = buildCheckoutAttempt(user, scenario);
+        OrderSession orderSession = buildOrderSession(user, scenario);
 
         String checkoutSessionId = UUID.randomUUID().toString();
         long prevOrderCount= orderRepository.count();
@@ -108,10 +104,8 @@ public class InventoryTransactionTest extends BaseIntegrationTest {
         Integer prevStock = scenario.storeInventory.getCurrentStock();
 
         Assertions.assertThatThrownBy(() -> {
-            orderService.completePaidOrder(checkoutAttempt, checkoutSessionId, null);
-        })
-                .isInstanceOf(NonRetryableOrderProcessingException.class)
-                .hasCauseInstanceOf(InsufficientOptionStockException.class);
+            orderService.completePaidOrder(orderSession, checkoutSessionId, null);
+        }).isInstanceOf(InsufficientOptionStockException.class);
 
         // Order should not be saved
         assertThat(orderRepository.count()).isEqualTo(prevOrderCount);
@@ -124,7 +118,7 @@ public class InventoryTransactionTest extends BaseIntegrationTest {
         String checkoutSessionId = UUID.randomUUID().toString();
         CountableScenario scenario = saveCountableScenario(50);
         User user = cartTestSupport.saveUser(Role.USER);
-        CheckoutAttempt checkoutAttempt = buildCheckoutAttempt(user, scenario);
+        OrderSession orderSession = buildOrderSession(user, scenario);
 
         orderRepository.save(Order.builder()
                 .store(scenario.store())
@@ -141,7 +135,7 @@ public class InventoryTransactionTest extends BaseIntegrationTest {
         Integer prevStock = scenario.storeInventory.getCurrentStock();
 
         assertThatThrownBy(() -> {
-            orderService.completePaidOrder(checkoutAttempt, checkoutSessionId, null);
+            orderService.completePaidOrder(orderSession, checkoutSessionId, null);
         }).isInstanceOf(DataIntegrityViolationException.class);
 
         // Order should not be saved
@@ -150,7 +144,7 @@ public class InventoryTransactionTest extends BaseIntegrationTest {
         assertThat(storeInventoryRepository.findById(storeInventoryId).orElseThrow().getCurrentStock()).isEqualTo(prevStock);
     }
 
-    private CheckoutAttempt buildCheckoutAttempt(User user, CountableScenario scenario) {
+    private OrderSession buildOrderSession(User user, CountableScenario scenario) {
         OrderSessionOption orderSessionOption = OrderSessionOption.builder()
                 .productOptionId(scenario.productOption().getId())
                 .countType(CountType.COUNTABLE)
@@ -170,25 +164,19 @@ public class InventoryTransactionTest extends BaseIntegrationTest {
                 .quantity(PRODUCT_QTY)
                 .name("Burger")
                 .productType(ProductType.ONLY)
-                .totalPrice(BigDecimal.valueOf(5.99))
                 .orderSessionCustomRules(List.of(orderSessionCustomRule))
                 .build();
 
-        CheckoutAttempt checkoutAttempt = CheckoutAttempt.builder()
+        return OrderSession.builder()
+                .sessionId(UUID.randomUUID())
                 .storeId(scenario.store().getId())
                 .userId(user.getId())
                 .orderType(OrderType.DELIVERY)
+                .orderStatus(OrderStatus.PENDING)
+                .paymentStatus(PaymentStatus.UNPAID)
                 .totalPrice(BigDecimal.valueOf(5.99))
-                .taxAmount(BigDecimal.ZERO)
-                .paymentStatus(PaymentStatus.PENDING)
-                .contactInfo(new ContactInfo("Test", "User", user.getEmail(), "5121234567"))
-                .addressInfo(new AddressInfo("123 Main", "Apt 1", "78701", "Austin, TX"))
-                .guestId(UUID.randomUUID())
-                .orderSessionId(UUID.randomUUID())
-                .orderRecord(List.of(orderSessionProduct))
+                .orderSessionProducts(List.of(orderSessionProduct))
                 .build();
-
-        return checkoutAttemptRepository.save(checkoutAttempt);
     }
 
     private CountableScenario saveCountableScenario(int initialStock) {

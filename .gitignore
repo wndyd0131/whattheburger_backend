@@ -54,3 +54,5 @@ loadtest.md
 docs/json
 loadtest/k6/fixtures/catalog-snapshot.json
 loadtest/fixtures/catalog-snapshot.json
+cache/
+docs/private
