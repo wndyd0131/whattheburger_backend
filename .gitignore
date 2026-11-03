@@ -39,6 +39,7 @@ src/**/resources/seeds
 src/**/resources/static
 src/**/resources/application.yml
 src/**/resources/application-dev.yml
+src/**/resources/application-perf.yml
 src/**/resources/local
 
 ### Personal ###
@@ -56,3 +57,5 @@ loadtest/k6/fixtures/catalog-snapshot.json
 loadtest/fixtures/catalog-snapshot.json
 cache/
 docs/private
+
+scripts

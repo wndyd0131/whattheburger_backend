@@ -14,22 +14,20 @@ import {
   logDeductFailure,
   newDeductTraceId,
 } from './lib/httpTrace.js';
-import { usesFileCatalog } from './lib/catalogSource.js';
+import { usesFileCatalog, usesFixturePayload } from './lib/catalogSource.js';
 import { getCatalogSnapshot } from './lib/sharedCatalogSnapshot.js';
+import { openGoldenFixture } from './lib/openFixture.js';
 
 export { setup } from './setup.js';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
+const FIXTURE_BODY = usesFixturePayload() ? openGoldenFixture() : null;
 
 function resolveCatalog(setupData) {
   if (usesFileCatalog()) {
     return getCatalogSnapshot();
   }
   return setupData;
-}
-
-function getProductDetail(products, storeProductId) {
-  return products[storeProductId] ?? products[String(storeProductId)] ?? null;
 }
 
 function fixedProductNameFromEnv() {
@@ -51,9 +49,8 @@ function buildEligibleProductWeights(storeProductIdByName, productsByName) {
   return eligible;
 }
 
-function pickProductDetail(storeSnapshot, weightConfig) {
-  const products = storeSnapshot?.products || {};
-  const byName = storeSnapshot?.storeProductIdByName || {};
+function pickProductDetail(catalog, storeIdByName, weightConfig) {
+  const byName = storeIdByName || {};
   const productsByName = weightConfig.productsByName ?? {};
 
   let productName = fixedProductNameFromEnv();
@@ -69,10 +66,11 @@ function pickProductDetail(storeSnapshot, weightConfig) {
   if (storeProductId == null) {
     return null;
   }
-  const detail = getProductDetail(products, storeProductId);
-  if (!detail) {
+  const shared = catalog.detailsByName?.[productName];
+  if (!shared) {
     return null;
   }
+  const detail = { ...shared, storeProductId };
   return { detail, productName, storeProductId };
 }
 
@@ -86,14 +84,15 @@ function pickStoreId(data, weightConfig) {
   if (!Number.isFinite(storeId) || storeId <= 0) {
     return null;
   }
-  if (!data?.byStore?.[storeId] && !data?.byStore?.[String(storeId)]) {
+  if (getStoreProductIds(data, storeId) == null) {
     return null;
   }
   return storeId;
 }
 
-function getStoreSnapshot(data, storeId) {
-  return data.byStore[storeId] ?? data.byStore[String(storeId)] ?? null;
+function getStoreProductIds(data, storeId) {
+  const byStore = data?.storeProductIdByStore;
+  return byStore?.[storeId] ?? byStore?.[String(storeId)] ?? null;
 }
 
 function pickLineCount(weightConfig) {
@@ -136,23 +135,25 @@ function buildOrderLine(productDetail, useGolden, weightConfig) {
   return genOrder(productDetail, weightConfig).orderProducts[0];
 }
 
-function buildDeductPayload(storeSnapshot, weightConfig) {
+function buildDeductPayload(catalog, storeIdByName, weightConfig) {
   const lineCount = pickLineCount(weightConfig);
   const useGolden = chance(resolveGoldenRatio(weightConfig));
   const lines = [];
+  const products = {};
 
   for (let i = 0; i < lineCount; i++) {
-    const resolved = pickProductDetail(storeSnapshot, weightConfig);
+    const resolved = pickProductDetail(catalog, storeIdByName, weightConfig);
     if (!resolved?.detail) {
       return null;
     }
+    products[resolved.storeProductId] = resolved.detail;
     lines.push(buildOrderLine(resolved.detail, useGolden, weightConfig));
   }
 
-  return { orderProducts: lines };
+  return { payload: { orderProducts: lines }, products };
 }
 
-export const options = {
+const rampOptions = {
   scenarios: {
     deduct_ramp: {
       executor: 'ramping-arrival-rate',
@@ -172,23 +173,33 @@ export const options = {
   }
 };
 
+export const options = FIXTURE_BODY
+  ? { vus: 1, iterations: Number(__ENV.LOADTEST_FIXTURE_ITERATIONS || 1) }
+  : rampOptions;
+
 export default function (data) {
+  if (FIXTURE_BODY) {
+    postDeduct(Number(__ENV.LOADTEST_FIXTURE_STORE_ID || 1), FIXTURE_BODY);
+    return;
+  }
+
   const catalog = resolveCatalog(data);
-  const products = catalog?.products || {};
   const storeId = pickStoreId(catalog, weights);
-  const storeSnapshot = storeId != null ? getStoreSnapshot(catalog, storeId) : null;
+  const storeIdByName = storeId != null ? getStoreProductIds(catalog, storeId) : null;
 
   check(null, {
-    'snapshot loaded products': () => Object.keys(products).length > 0,
-    'picked store in snapshot': () => storeSnapshot != null,
+    'snapshot loaded products': () =>
+      Object.keys(catalog?.detailsByName ?? {}).length > 0,
+    'picked store in snapshot': () => storeIdByName != null,
   });
 
-  if (!storeSnapshot) {
+  if (!storeIdByName) {
     console.error('[main] store not found (weights.stores vs setup byStore)');
     return;
   }
 
-  const payload = buildDeductPayload(storeSnapshot, weights);
+  const built = buildDeductPayload(catalog, storeIdByName, weights);
+  const payload = built?.payload ?? null;
 
   check(null, {
     'picked SKU in snapshot': () =>
@@ -209,7 +220,7 @@ export default function (data) {
     return;
   }
 
-  const validation = validateDeductPayload(payload, products);
+  const validation = validateDeductPayload(payload, built.products);
   check(null, {
     'deduct payload valid': () => validation.valid,
   });
@@ -218,9 +229,13 @@ export default function (data) {
     return;
   }
 
+  postDeduct(storeId, JSON.stringify(payload));
+}
+
+function postDeduct(storeId, bodyString) {
   const url = `${BASE_URL}/api/v1/loadtest/store/${storeId}/inventory/deduct`;
   const traceId = newDeductTraceId();
-  const res = http.post(url, JSON.stringify(payload), {
+  const res = http.post(url, bodyString, {
     headers: deductRequestHeaders(traceId),
     tags: { name: 'POST loadtest inventory deduct' },
   });
