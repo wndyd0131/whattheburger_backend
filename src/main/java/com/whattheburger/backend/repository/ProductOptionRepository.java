@@ -21,6 +21,7 @@ public interface ProductOptionRepository extends JpaRepository<ProductOption, Lo
             SELECT DISTINCT po FROM ProductOption po
             JOIN FETCH po.option o
             JOIN FETCH o.optionIngredients oi
+            JOIN FETCH oi.ingredient i
             WHERE po.id IN :ids
             """)
     List<ProductOption> findAllWithOptionByIdIn(@Param("ids") Collection<Long> ids);

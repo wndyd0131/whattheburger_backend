@@ -83,6 +83,10 @@ dependencies {
 	implementation "org.springframework.boot:spring-boot-starter-actuator"
 	implementation "io.micrometer:micrometer-registry-prometheus"
 
+    implementation 'net.ttddyy:datasource-proxy:1.11.1'
+
+
+
 	testImplementation 'com.h2database:h2'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
