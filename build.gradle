@@ -5,6 +5,8 @@ plugins {
     id 'jacoco'
 }
 
+ext['testcontainers.version'] = '1.21.4'
+
 group = 'com.whataburger'
 version = '0.0.1-SNAPSHOT'
 

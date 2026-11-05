@@ -10,6 +10,7 @@ import com.whattheburger.backend.domain.Store;
 import com.whattheburger.backend.domain.StoreInventory;
 import com.whattheburger.backend.domain.StoreProduct;
 import com.whattheburger.backend.domain.User;
+import com.whattheburger.backend.domain.checkout.CheckoutAttempt;
 import com.whattheburger.backend.domain.enums.CountType;
 import com.whattheburger.backend.domain.enums.CustomRuleType;
 import com.whattheburger.backend.domain.enums.IngredientUnit;
@@ -27,6 +28,7 @@ import com.whattheburger.backend.security.enums.Role;
 import com.whattheburger.backend.service.InventoryService;
 import com.whattheburger.backend.service.OrderService;
 import com.whattheburger.backend.service.exception.cart.InsufficientOptionStockException;
+import com.whattheburger.backend.service.exception.order.NonRetryableOrderProcessingException;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.assertj.core.api.Assertions;
@@ -78,6 +80,8 @@ public class InventoryTransactionTest extends BaseIntegrationTest {
     StoreProductRepository storeProductRepository;
     @Autowired
     TransactionTemplate transactionTemplate;
+    @Autowired
+    CheckoutAttemptRepository checkoutAttemptRepository;
 
     @PersistenceContext
     EntityManager entityManager;
@@ -95,17 +99,18 @@ public class InventoryTransactionTest extends BaseIntegrationTest {
     void givenInsufficientStock_whenCompletePaidOrder_thenSuccessfullyRollback() throws Exception {
         CountableScenario scenario = saveCountableScenario(5);
         User user = cartTestSupport.saveUser(Role.USER);
-        OrderSession orderSession = buildOrderSession(user, scenario);
+        CheckoutAttempt checkoutAttempt = saveCheckoutAttempt(user, scenario);
+        String checkoutSessionId = checkoutAttempt.getCheckoutSessionId();
 
-        String checkoutSessionId = UUID.randomUUID().toString();
         long prevOrderCount= orderRepository.count();
 
         Long storeInventoryId = scenario.storeInventory.getId();
         Integer prevStock = scenario.storeInventory.getCurrentStock();
 
         Assertions.assertThatThrownBy(() -> {
-            orderService.completePaidOrder(orderSession, checkoutSessionId, null);
-        }).isInstanceOf(InsufficientOptionStockException.class);
+            orderService.completePaidOrder(checkoutAttempt, checkoutSessionId, null);
+        }).isInstanceOf(NonRetryableOrderProcessingException.class)
+                .hasCauseInstanceOf(InsufficientOptionStockException.class);
 
         // Order should not be saved
         assertThat(orderRepository.count()).isEqualTo(prevOrderCount);
@@ -115,10 +120,10 @@ public class InventoryTransactionTest extends BaseIntegrationTest {
 
     @Test
     void givenExistingOrder_whenCompletePaidOrderFailsDueToFlushFail_thenSuccessfullyRollback() throws Exception {
-        String checkoutSessionId = UUID.randomUUID().toString();
         CountableScenario scenario = saveCountableScenario(50);
         User user = cartTestSupport.saveUser(Role.USER);
-        OrderSession orderSession = buildOrderSession(user, scenario);
+        CheckoutAttempt checkoutAttempt = saveCheckoutAttempt(user, scenario);
+        String checkoutSessionId = checkoutAttempt.getCheckoutSessionId();
 
         orderRepository.save(Order.builder()
                 .store(scenario.store())
@@ -135,7 +140,7 @@ public class InventoryTransactionTest extends BaseIntegrationTest {
         Integer prevStock = scenario.storeInventory.getCurrentStock();
 
         assertThatThrownBy(() -> {
-            orderService.completePaidOrder(orderSession, checkoutSessionId, null);
+            orderService.completePaidOrder(checkoutAttempt, checkoutSessionId, null);
         }).isInstanceOf(DataIntegrityViolationException.class);
 
         // Order should not be saved
@@ -144,7 +149,23 @@ public class InventoryTransactionTest extends BaseIntegrationTest {
         assertThat(storeInventoryRepository.findById(storeInventoryId).orElseThrow().getCurrentStock()).isEqualTo(prevStock);
     }
 
-    private OrderSession buildOrderSession(User user, CountableScenario scenario) {
+    private CheckoutAttempt saveCheckoutAttempt(User user, CountableScenario scenario) {
+        return checkoutAttemptRepository.save(CheckoutAttempt.builder()
+                .storeId(scenario.store().getId())
+                .userId(user.getId())
+                .totalPrice(BigDecimal.valueOf(5.99))
+                .orderType(OrderType.DELIVERY)
+                .taxAmount(BigDecimal.ZERO)
+                .paymentStatus(PaymentStatus.PENDING)
+                .contactInfo(new ContactInfo("Test", "User", user.getEmail(), "5121234567"))
+                .addressInfo(new AddressInfo("123 Main", "Apt 1", "78701", "Austin, TX"))
+                .guestId(UUID.randomUUID())
+                .checkoutSessionId("cs_test_" + UUID.randomUUID().toString().replace("-", ""))
+                .orderRecord(List.of(buildOrderSessionProduct(scenario)))
+                .build());
+    }
+
+    private OrderSessionProduct buildOrderSessionProduct(CountableScenario scenario) {
         OrderSessionOption orderSessionOption = OrderSessionOption.builder()
                 .productOptionId(scenario.productOption().getId())
                 .countType(CountType.COUNTABLE)
@@ -159,23 +180,13 @@ public class InventoryTransactionTest extends BaseIntegrationTest {
                 .orderSessionOptions(List.of(orderSessionOption))
                 .build();
 
-        OrderSessionProduct orderSessionProduct = OrderSessionProduct.builder()
+        return OrderSessionProduct.builder()
                 .storeProductId(scenario.storeProduct().getId())
                 .quantity(PRODUCT_QTY)
                 .name("Burger")
                 .productType(ProductType.ONLY)
-                .orderSessionCustomRules(List.of(orderSessionCustomRule))
-                .build();
-
-        return OrderSession.builder()
-                .sessionId(UUID.randomUUID())
-                .storeId(scenario.store().getId())
-                .userId(user.getId())
-                .orderType(OrderType.DELIVERY)
-                .orderStatus(OrderStatus.PENDING)
-                .paymentStatus(PaymentStatus.UNPAID)
                 .totalPrice(BigDecimal.valueOf(5.99))
-                .orderSessionProducts(List.of(orderSessionProduct))
+                .orderSessionCustomRules(List.of(orderSessionCustomRule))
                 .build();
     }
 

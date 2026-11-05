@@ -30,17 +30,17 @@ public interface StoreInventoryRepository extends JpaRepository<StoreInventory, 
             @Param("ingredientIds") Collection<Long> ingredientIds
     );
 
-    @Modifying(clearAutomatically = true)
-    @Query("""
-            UPDATE StoreInventory si
-            SET si.currentStock = si.currentStock - :amount
-            WHERE si.store.id = :storeId
-              AND si.ingredient.id = :ingredientId
-              AND si.currentStock >= :amount
-            """)
-    int deductStockAtomic(
-            @Param("storeId") Long storeId,
-            @Param("ingredientId") Long ingredientId,
-            @Param("amount") int amount
-    );
+//     @Modifying(clearAutomatically = true)
+//     @Query("""
+//             UPDATE StoreInventory si
+//             SET si.currentStock = si.currentStock - :amount
+//             WHERE si.store.id = :storeId
+//               AND si.ingredient.id = :ingredientId
+//               AND si.currentStock >= :amount
+//             """)
+//     int deductStockAtomic(
+//             @Param("storeId") Long storeId,
+//             @Param("ingredientId") Long ingredientId,
+//             @Param("amount") int amount
+//     );
 }

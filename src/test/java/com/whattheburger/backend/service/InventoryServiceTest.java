@@ -7,7 +7,9 @@ import com.whattheburger.backend.domain.inventory.InventoryRequirementCalculator
 import com.whattheburger.backend.domain.order.*;
 import com.whattheburger.backend.repository.ProductOptionOptionQuantityRepository;
 import com.whattheburger.backend.repository.ProductOptionRepository;
+import com.whattheburger.backend.repository.StoreInventoryBatchRepository;
 import com.whattheburger.backend.repository.StoreInventoryRepository;
+import com.whattheburger.backend.service.exception.StoreInventoryNotFoundException;
 import com.whattheburger.backend.service.exception.cart.InsufficientOptionStockException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,12 +17,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -37,6 +40,8 @@ class InventoryServiceTest {
     @Mock
     private StoreInventoryRepository storeInventoryRepository;
     @Mock
+    private StoreInventoryBatchRepository storeInventoryBatchRepository;
+    @Mock
     private ProductOptionRepository productOptionRepository;
     @Mock
     private ProductOptionOptionQuantityRepository productOptionOptionQuantityRepository;
@@ -50,6 +55,7 @@ class InventoryServiceTest {
         store = Store.builder().id(STORE_ID).build();
         inventoryService = new InventoryService(
                 storeInventoryRepository,
+                storeInventoryBatchRepository,
                 productOptionRepository,
                 productOptionOptionQuantityRepository,
                 new InventoryRequirementCalculator()
@@ -60,7 +66,8 @@ class InventoryServiceTest {
     void givenNullOrder_whenDeductStock_thenThrowsIllegalArgumentException() {
         assertThrows(IllegalArgumentException.class, () -> inventoryService.deductStock(null));
 
-        verifyNoInteractions(storeInventoryRepository, productOptionRepository, productOptionOptionQuantityRepository);
+        verifyNoInteractions(storeInventoryRepository, storeInventoryBatchRepository,
+                productOptionRepository, productOptionOptionQuantityRepository);
     }
 
     @Test
@@ -69,102 +76,110 @@ class InventoryServiceTest {
 
         assertThrows(IllegalArgumentException.class, () -> inventoryService.deductStock(order));
 
-        verifyNoInteractions(storeInventoryRepository, productOptionRepository, productOptionOptionQuantityRepository);
+        verifyNoInteractions(storeInventoryRepository, storeInventoryBatchRepository,
+                productOptionRepository, productOptionOptionQuantityRepository);
     }
 
     @Test
-    void givenPaidOrderAndInsufficientStock_whenDeductStock_thenThrowsInsufficientOptionStockException() {
-        int amount = 6;
+    void givenPaidOrderWithEnoughStock_whenDeductStock_thenSendsSingleBatchWithSortedIds() {
         Order order = buildPaidOrder(List.of(
+                countableOrderProduct(1, 2, PRODUCT_OPTION_ID_2, 4),
                 countableOrderProduct(1, 2, PRODUCT_OPTION_ID, 3)
         ));
-        ProductOption productOption = buildProductOption(PRODUCT_OPTION_ID, INGREDIENT_ID, 3);
-        StoreInventory storeInventory = buildStoreInventory(INGREDIENT_ID, 5);
+        ProductOption productOption1 = buildProductOption(PRODUCT_OPTION_ID, INGREDIENT_ID, 3);
+        ProductOption productOption2 = buildProductOption(PRODUCT_OPTION_ID_2, INGREDIENT_ID_2, 4);
 
         when(productOptionRepository.findAllWithOptionByIdIn(anyCollection()))
-                .thenReturn(List.of(productOption));
-        when(storeInventoryRepository.findAllByStoreIdAndIngredientIdInForUpdate(STORE_ID, List.of(INGREDIENT_ID)))
-                .thenReturn(List.of(storeInventory));
+                .thenReturn(List.of(productOption1, productOption2));
+        when(storeInventoryBatchRepository.deductStockAtomicBatch(eq(STORE_ID), anyList(), anyMap()))
+                .thenReturn(new int[]{1, 1});
 
-        assertThrows(InsufficientOptionStockException.class, () -> inventoryService.deductStock(order));
+        assertDoesNotThrow(() -> inventoryService.deductStock(order));
 
-        verify(storeInventoryRepository, times(1))
-                .findAllByStoreIdAndIngredientIdInForUpdate(STORE_ID, List.of(INGREDIENT_ID));
+        verify(storeInventoryBatchRepository, times(1)).deductStockAtomicBatch(
+                STORE_ID,
+                List.of(INGREDIENT_ID, INGREDIENT_ID_2),
+                Map.of(INGREDIENT_ID, 6, INGREDIENT_ID_2, 8)
+        );
+        verifyNoInteractions(storeInventoryRepository);
     }
 
     @Test
-    void givenPaidOrderWithSameIngredientFromMultipleOptions_whenDeductStock_thenBatchLockFetchAndDeductSummedAmount() {
-        int summedAmount = 10;
+    void givenSameIngredientFromMultipleOptions_whenDeductStock_thenBatchesSummedAmount() {
         Order order = buildPaidOrder(List.of(
                 countableOrderProduct(1, 2, PRODUCT_OPTION_ID, 3),
                 countableOrderProduct(1, 1, PRODUCT_OPTION_ID_2, 4)
         ));
         ProductOption productOption1 = buildProductOption(PRODUCT_OPTION_ID, INGREDIENT_ID, 3);
         ProductOption productOption2 = buildProductOption(PRODUCT_OPTION_ID_2, INGREDIENT_ID, 4);
-        StoreInventory storeInventory = buildStoreInventory(INGREDIENT_ID, 100);
 
         when(productOptionRepository.findAllWithOptionByIdIn(anyCollection()))
                 .thenReturn(List.of(productOption1, productOption2));
-        when(storeInventoryRepository.findAllByStoreIdAndIngredientIdInForUpdate(STORE_ID, List.of(INGREDIENT_ID)))
-                .thenReturn(List.of(storeInventory));
+        when(storeInventoryBatchRepository.deductStockAtomicBatch(eq(STORE_ID), anyList(), anyMap()))
+                .thenReturn(new int[]{1});
 
         assertDoesNotThrow(() -> inventoryService.deductStock(order));
 
-        verify(storeInventoryRepository, times(1))
-                .findAllByStoreIdAndIngredientIdInForUpdate(STORE_ID, List.of(INGREDIENT_ID));
-        assertEquals(100 - summedAmount, storeInventory.getCurrentStock());
+        verify(storeInventoryBatchRepository).deductStockAtomicBatch(
+                STORE_ID,
+                List.of(INGREDIENT_ID),
+                Map.of(INGREDIENT_ID, 10)
+        );
     }
 
     @Test
-    void givenPaidOrderWithInsufficientSecondIngredient_whenDeductStock_thenThrowsWithoutMutatingAnyStock() {
+    void givenSecondRowNotUpdated_whenDeductStock_thenThrowsInsufficientForThatIngredient() {
         Order order = buildPaidOrder(List.of(
                 countableOrderProduct(1, 2, PRODUCT_OPTION_ID, 3),
                 countableOrderProduct(1, 2, PRODUCT_OPTION_ID_2, 4)
         ));
         ProductOption productOption1 = buildProductOption(PRODUCT_OPTION_ID, INGREDIENT_ID, 3);
         ProductOption productOption2 = buildProductOption(PRODUCT_OPTION_ID_2, INGREDIENT_ID_2, 4);
-        StoreInventory storeInventory1 = buildStoreInventory(INGREDIENT_ID, 100);
-        StoreInventory storeInventory2 = buildStoreInventory(INGREDIENT_ID_2, 5);
 
         when(productOptionRepository.findAllWithOptionByIdIn(anyCollection()))
                 .thenReturn(List.of(productOption1, productOption2));
-        when(storeInventoryRepository.findAllByStoreIdAndIngredientIdInForUpdate(
-                STORE_ID,
-                List.of(INGREDIENT_ID, INGREDIENT_ID_2)
-        )).thenReturn(List.of(storeInventory1, storeInventory2));
+        when(storeInventoryBatchRepository.deductStockAtomicBatch(eq(STORE_ID), anyList(), anyMap()))
+                .thenReturn(new int[]{1, 0});
+        when(storeInventoryRepository.findByStoreIdAndIngredientId(STORE_ID, INGREDIENT_ID_2))
+                .thenReturn(Optional.of(buildStoreInventory(INGREDIENT_ID_2, 5)));
 
         assertThrows(InsufficientOptionStockException.class, () -> inventoryService.deductStock(order));
 
-        assertEquals(100, storeInventory1.getCurrentStock());
-        assertEquals(5, storeInventory2.getCurrentStock());
+        verify(storeInventoryRepository, never()).findByStoreIdAndIngredientId(STORE_ID, INGREDIENT_ID);
     }
 
     @Test
-    void givenPaidOrderWithEnoughStock_whenDeductStock_thenBatchLockFetchForAllIngredientsWithoutException() {
-        int amount1 = 6;
-        int amount2 = 8;
+    void givenRowNotUpdatedAndInventoryMissing_whenDeductStock_thenThrowsStoreInventoryNotFound() {
         Order order = buildPaidOrder(List.of(
-                countableOrderProduct(1, 2, PRODUCT_OPTION_ID, 3),
-                countableOrderProduct(1, 2, PRODUCT_OPTION_ID_2, 4)
+                countableOrderProduct(1, 2, PRODUCT_OPTION_ID, 3)
         ));
-        ProductOption productOption1 = buildProductOption(PRODUCT_OPTION_ID, INGREDIENT_ID, 3);
-        ProductOption productOption2 = buildProductOption(PRODUCT_OPTION_ID_2, INGREDIENT_ID_2, 4);
-        StoreInventory storeInventory1 = buildStoreInventory(INGREDIENT_ID, 100);
-        StoreInventory storeInventory2 = buildStoreInventory(INGREDIENT_ID_2, 100);
+        ProductOption productOption = buildProductOption(PRODUCT_OPTION_ID, INGREDIENT_ID, 3);
 
         when(productOptionRepository.findAllWithOptionByIdIn(anyCollection()))
-                .thenReturn(List.of(productOption1, productOption2));
-        when(storeInventoryRepository.findAllByStoreIdAndIngredientIdInForUpdate(
-                STORE_ID,
-                List.of(INGREDIENT_ID, INGREDIENT_ID_2)
-        )).thenReturn(List.of(storeInventory1, storeInventory2));
+                .thenReturn(List.of(productOption));
+        when(storeInventoryBatchRepository.deductStockAtomicBatch(eq(STORE_ID), anyList(), anyMap()))
+                .thenReturn(new int[]{0});
+        when(storeInventoryRepository.findByStoreIdAndIngredientId(STORE_ID, INGREDIENT_ID))
+                .thenReturn(Optional.empty());
 
-        assertDoesNotThrow(() -> inventoryService.deductStock(order));
+        assertThrows(StoreInventoryNotFoundException.class, () -> inventoryService.deductStock(order));
+    }
 
-        verify(storeInventoryRepository, times(1))
-                .findAllByStoreIdAndIngredientIdInForUpdate(STORE_ID, List.of(INGREDIENT_ID, INGREDIENT_ID_2));
-        assertEquals(100 - amount1, storeInventory1.getCurrentStock());
-        assertEquals(100 - amount2, storeInventory2.getCurrentStock());
+    @Test
+    void givenUnknownUpdateCount_whenDeductStock_thenThrowsIllegalState() {
+        Order order = buildPaidOrder(List.of(
+                countableOrderProduct(1, 2, PRODUCT_OPTION_ID, 3)
+        ));
+        ProductOption productOption = buildProductOption(PRODUCT_OPTION_ID, INGREDIENT_ID, 3);
+
+        when(productOptionRepository.findAllWithOptionByIdIn(anyCollection()))
+                .thenReturn(List.of(productOption));
+        when(storeInventoryBatchRepository.deductStockAtomicBatch(eq(STORE_ID), anyList(), anyMap()))
+                .thenReturn(new int[]{Statement.SUCCESS_NO_INFO});
+
+        assertThrows(IllegalStateException.class, () -> inventoryService.deductStock(order));
+
+        verifyNoInteractions(storeInventoryRepository);
     }
 
     private Order buildPaidOrder(List<OrderProduct> orderProducts) {

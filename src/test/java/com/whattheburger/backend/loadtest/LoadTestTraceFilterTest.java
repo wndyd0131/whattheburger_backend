@@ -1,5 +1,6 @@
 package com.whattheburger.backend.loadtest;
 
+import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -32,9 +33,8 @@ class LoadTestTraceFilterTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         AtomicReference<String> mdcDuringChain = new AtomicReference<>();
 
-        filter.doFilter(request, response, new MockFilterChain((req, res) -> {
-            mdcDuringChain.set(MDC.get(LoadTestTraceSupport.MDC_KEY));
-        }));
+        FilterChain chain = (req, res) -> mdcDuringChain.set(MDC.get(LoadTestTraceSupport.MDC_KEY));
+        filter.doFilter(request, response, chain);
 
         assertThat(response.getHeader(LoadTestTraceSupport.HEADER_NAME)).isEqualTo("k6-1-0-123");
         assertThat(mdcDuringChain.get()).isEqualTo("k6-1-0-123");
@@ -50,9 +50,8 @@ class LoadTestTraceFilterTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         AtomicReference<String> mdcDuringChain = new AtomicReference<>();
 
-        filter.doFilter(request, response, new MockFilterChain((req, res) -> {
-            mdcDuringChain.set(MDC.get(LoadTestTraceSupport.MDC_KEY));
-        }));
+        FilterChain chain = (req, res) -> mdcDuringChain.set(MDC.get(LoadTestTraceSupport.MDC_KEY));
+        filter.doFilter(request, response, chain);
 
         String header = response.getHeader(LoadTestTraceSupport.HEADER_NAME);
         assertThat(header).isNotBlank();

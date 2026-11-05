@@ -10,6 +10,7 @@ import com.whattheburger.backend.domain.inventory.StockRequirementLine;
 import com.whattheburger.backend.domain.order.Order;
 import com.whattheburger.backend.repository.ProductOptionOptionQuantityRepository;
 import com.whattheburger.backend.repository.ProductOptionRepository;
+import com.whattheburger.backend.repository.StoreInventoryBatchRepository;
 import com.whattheburger.backend.repository.StoreInventoryRepository;
 import com.whattheburger.backend.service.exception.StoreInventoryNotFoundException;
 import com.whattheburger.backend.service.exception.cart.InsufficientOptionStockException;
@@ -27,6 +28,7 @@ import java.util.stream.Collectors;
 public class InventoryService {
 
     private final StoreInventoryRepository storeInventoryRepository;
+    private final StoreInventoryBatchRepository storeInventoryBatchRepository;
     private final ProductOptionRepository productOptionRepository;
     private final ProductOptionOptionQuantityRepository productOptionOptionQuantityRepository;
     private final InventoryRequirementCalculator inventoryRequirementCalculator;
@@ -48,18 +50,32 @@ public class InventoryService {
 
         List<Long> ingredientIds = deductionsByIngredient.keySet().stream().sorted().toList();
 
+        int[] updatedCounts = storeInventoryBatchRepository
+                .deductStockAtomicBatch(storeId, ingredientIds, deductionsByIngredient);
+        if (updatedCounts.length != ingredientIds.size()) {
+            throw new IllegalStateException(
+                    "Batch update count size mismatch: expected=" + ingredientIds.size()
+                            + ", actual=" + updatedCounts.length
+            );
+        }
 
-        for (Long ingredientId : ingredientIds) {
-            int amount = deductionsByIngredient.get(ingredientId);
-
-            int updated = storeInventoryRepository.deductStockAtomic(storeId, ingredientId, amount);
-
-            if (updated == 0) {
-                StoreInventory storeInventory = storeInventoryRepository
-                        .findByStoreIdAndIngredientId(storeId, ingredientId)
-                        .orElseThrow(() -> new StoreInventoryNotFoundException(storeId, ingredientId));
-                throw new InsufficientOptionStockException(null, ingredientId, amount, storeInventory.getCurrentStock());
+        for (int i = 0; i < ingredientIds.size(); i++) {
+            int updated = updatedCounts[i];
+            if (updated == 1) {
+                continue;
             }
+            Long ingredientId = ingredientIds.get(i);
+            if (updated != 0) {
+                // e.g. Statement.SUCCESS_NO_INFO: cannot tell whether the conditional update matched
+                throw new IllegalStateException(
+                        "Unexpected update count " + updated + " for storeId=" + storeId + ", ingredientId=" + ingredientId
+                );
+            }
+            int amount = deductionsByIngredient.get(ingredientId);
+            StoreInventory storeInventory = storeInventoryRepository
+                    .findByStoreIdAndIngredientId(storeId, ingredientId)
+                    .orElseThrow(() -> new StoreInventoryNotFoundException(storeId, ingredientId));
+            throw new InsufficientOptionStockException(null, ingredientId, amount, storeInventory.getCurrentStock());
         }
     }
 
