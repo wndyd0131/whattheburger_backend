@@ -52,9 +52,6 @@ public class InventoryService {
         for (Long ingredientId : ingredientIds) {
             int amount = deductionsByIngredient.get(ingredientId);
 
-            storeInventoryRepository.findByStoreIdAndIngredientId(storeId, ingredientId)
-                    .orElseThrow(() -> new StoreInventoryNotFoundException(storeId, ingredientId));
-
             int updated = storeInventoryRepository.deductStockAtomic(storeId, ingredientId, amount);
 
             if (updated == 0) {
