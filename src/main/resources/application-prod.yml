@@ -15,6 +15,10 @@ spring:
     database: mysql
     database-platform: org.hibernate.dialect.MySQL8Dialect
     defer-datasource-initialization: true
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
 
   servlet:
     multipart:
@@ -72,5 +76,14 @@ management:
     tags:
       application: whattheburger-backend
 
+loadtest:
+  api:
+    enabled: false
+
 server:
   port: ${SERVER_PORT}
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
