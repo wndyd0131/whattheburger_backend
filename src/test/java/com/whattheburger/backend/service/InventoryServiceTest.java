@@ -7,6 +7,7 @@ import com.whattheburger.backend.domain.inventory.InventoryRequirementCalculator
 import com.whattheburger.backend.domain.order.*;
 import com.whattheburger.backend.repository.ProductOptionOptionQuantityRepository;
 import com.whattheburger.backend.repository.ProductOptionRepository;
+import com.whattheburger.backend.repository.StoreInventoryJdbcRepository;
 import com.whattheburger.backend.repository.StoreInventoryRepository;
 import com.whattheburger.backend.service.exception.cart.InsufficientOptionStockException;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -37,6 +39,8 @@ class InventoryServiceTest {
     @Mock
     private StoreInventoryRepository storeInventoryRepository;
     @Mock
+    private StoreInventoryJdbcRepository storeInventoryJdbcRepository;
+    @Mock
     private ProductOptionRepository productOptionRepository;
     @Mock
     private ProductOptionOptionQuantityRepository productOptionOptionQuantityRepository;
@@ -50,6 +54,7 @@ class InventoryServiceTest {
         store = Store.builder().id(STORE_ID).build();
         inventoryService = new InventoryService(
                 storeInventoryRepository,
+                storeInventoryJdbcRepository,
                 productOptionRepository,
                 productOptionOptionQuantityRepository,
                 new InventoryRequirementCalculator()
@@ -60,7 +65,12 @@ class InventoryServiceTest {
     void givenNullOrder_whenDeductStock_thenThrowsIllegalArgumentException() {
         assertThrows(IllegalArgumentException.class, () -> inventoryService.deductStock(null));
 
-        verifyNoInteractions(storeInventoryRepository, productOptionRepository, productOptionOptionQuantityRepository);
+        verifyNoInteractions(
+                storeInventoryRepository,
+                storeInventoryJdbcRepository,
+                productOptionRepository,
+                productOptionOptionQuantityRepository
+        );
     }
 
     @Test
@@ -69,7 +79,12 @@ class InventoryServiceTest {
 
         assertThrows(IllegalArgumentException.class, () -> inventoryService.deductStock(order));
 
-        verifyNoInteractions(storeInventoryRepository, productOptionRepository, productOptionOptionQuantityRepository);
+        verifyNoInteractions(
+                storeInventoryRepository,
+                storeInventoryJdbcRepository,
+                productOptionRepository,
+                productOptionOptionQuantityRepository
+        );
     }
 
     @Test
@@ -90,6 +105,7 @@ class InventoryServiceTest {
 
         verify(storeInventoryRepository, times(1))
                 .findAllByStoreIdAndIngredientIdInForUpdate(STORE_ID, List.of(INGREDIENT_ID));
+        verifyNoInteractions(storeInventoryJdbcRepository);
     }
 
     @Test
@@ -107,12 +123,21 @@ class InventoryServiceTest {
                 .thenReturn(List.of(productOption1, productOption2));
         when(storeInventoryRepository.findAllByStoreIdAndIngredientIdInForUpdate(STORE_ID, List.of(INGREDIENT_ID)))
                 .thenReturn(List.of(storeInventory));
+        when(storeInventoryJdbcRepository.deductByCase(
+                STORE_ID,
+                List.of(INGREDIENT_ID),
+                Map.of(INGREDIENT_ID, summedAmount)
+        )).thenReturn(1);
 
         assertDoesNotThrow(() -> inventoryService.deductStock(order));
 
         verify(storeInventoryRepository, times(1))
                 .findAllByStoreIdAndIngredientIdInForUpdate(STORE_ID, List.of(INGREDIENT_ID));
-        assertEquals(100 - summedAmount, storeInventory.getCurrentStock());
+        verify(storeInventoryJdbcRepository, times(1)).deductByCase(
+                STORE_ID,
+                List.of(INGREDIENT_ID),
+                Map.of(INGREDIENT_ID, summedAmount)
+        );
     }
 
     @Test
@@ -137,6 +162,7 @@ class InventoryServiceTest {
 
         assertEquals(100, storeInventory1.getCurrentStock());
         assertEquals(5, storeInventory2.getCurrentStock());
+        verifyNoInteractions(storeInventoryJdbcRepository);
     }
 
     @Test
@@ -158,13 +184,21 @@ class InventoryServiceTest {
                 STORE_ID,
                 List.of(INGREDIENT_ID, INGREDIENT_ID_2)
         )).thenReturn(List.of(storeInventory1, storeInventory2));
+        when(storeInventoryJdbcRepository.deductByCase(
+                STORE_ID,
+                List.of(INGREDIENT_ID, INGREDIENT_ID_2),
+                Map.of(INGREDIENT_ID, amount1, INGREDIENT_ID_2, amount2)
+        )).thenReturn(2);
 
         assertDoesNotThrow(() -> inventoryService.deductStock(order));
 
         verify(storeInventoryRepository, times(1))
                 .findAllByStoreIdAndIngredientIdInForUpdate(STORE_ID, List.of(INGREDIENT_ID, INGREDIENT_ID_2));
-        assertEquals(100 - amount1, storeInventory1.getCurrentStock());
-        assertEquals(100 - amount2, storeInventory2.getCurrentStock());
+        verify(storeInventoryJdbcRepository, times(1)).deductByCase(
+                STORE_ID,
+                List.of(INGREDIENT_ID, INGREDIENT_ID_2),
+                Map.of(INGREDIENT_ID, amount1, INGREDIENT_ID_2, amount2)
+        );
     }
 
     private Order buildPaidOrder(List<OrderProduct> orderProducts) {

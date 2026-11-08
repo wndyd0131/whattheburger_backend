@@ -10,11 +10,13 @@ import com.whattheburger.backend.domain.inventory.StockRequirementLine;
 import com.whattheburger.backend.domain.order.Order;
 import com.whattheburger.backend.repository.ProductOptionOptionQuantityRepository;
 import com.whattheburger.backend.repository.ProductOptionRepository;
+import com.whattheburger.backend.repository.StoreInventoryJdbcRepository;
 import com.whattheburger.backend.repository.StoreInventoryRepository;
 import com.whattheburger.backend.service.exception.StoreInventoryNotFoundException;
 import com.whattheburger.backend.service.exception.cart.InsufficientOptionStockException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -26,10 +28,12 @@ import java.util.stream.Collectors;
 public class InventoryService {
 
     private final StoreInventoryRepository storeInventoryRepository;
+    private final StoreInventoryJdbcRepository storeInventoryJdbcRepository;
     private final ProductOptionRepository productOptionRepository;
     private final ProductOptionOptionQuantityRepository productOptionOptionQuantityRepository;
     private final InventoryRequirementCalculator inventoryRequirementCalculator;
 
+    @Transactional
     public void deductStock(Order order) throws InsufficientOptionStockException {
         if (order == null) {
             throw new IllegalArgumentException("Order must not be null");
@@ -68,9 +72,15 @@ public class InventoryService {
             }
         }
 
-        for (Long ingredientId : ingredientIds) {
-            int amount = deductionsByIngredient.get(ingredientId);
-            inventoryByIngredientId.get(ingredientId).deductStock(amount);
+        int updated = storeInventoryJdbcRepository.deductByCase(
+                storeId,
+                ingredientIds,
+                deductionsByIngredient
+        );
+        if (updated != ingredientIds.size()) {
+            throw new IllegalStateException(
+                    "Expected to update " + ingredientIds.size() + " store inventory rows but updated " + updated
+            );
         }
     }
 
